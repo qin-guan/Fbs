@@ -1,0 +1,6 @@
+﻿services:
+  fbs.webapi:
+    image: fbs.webapi
+    build:
+      context: .
+      dockerfile: Fbs.WebApi/Dockerfile
