@@ -8,7 +8,9 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Google.Apis.Sheets.v4" Version="1.69.0.3694" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.4" />
+        <PackageReference Include="WebApiClientCore" Version="2.1.5" />
     </ItemGroup>
 
     <ItemGroup>
