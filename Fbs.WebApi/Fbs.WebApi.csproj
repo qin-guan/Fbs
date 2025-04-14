@@ -1,22 +1,31 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    </PropertyGroup>
+      <UserSecretsId>57bcd9b0-a2e7-405b-a92c-9de0d882cbc9</UserSecretsId>
+  </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
+        <PackageReference Include="FastEndpoints" Version="6.0.0" />
+        <PackageReference Include="FastEndpoints.Security" Version="6.0.0" />
+        <PackageReference Include="FastEndpoints.Swagger" Version="6.0.0" />
         <PackageReference Include="Google.Apis.Sheets.v4" Version="1.69.0.3694" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.4" />
-        <PackageReference Include="WebApiClientCore" Version="2.1.5" />
+        <PackageReference Include="Telegram.Bot" Version="22.5.0" />
     </ItemGroup>
 
     <ItemGroup>
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Fbs.ServiceDefaults\Fbs.ServiceDefaults.csproj" />
     </ItemGroup>
 
 </Project>

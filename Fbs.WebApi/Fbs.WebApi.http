@@ -1,6 +1,27 @@
-@Fbs.WebApi_HostAddress = http://localhost:5204
+@Fbs_WebApi_HostAddress = https://localhost:7172
 
-GET {{Fbs.WebApi_HostAddress}}/weatherforecast/
+POST {{Fbs_WebApi_HostAddress}}/Auth/Login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "phone": "6587784497"
+}
+
+###
+
+POST {{Fbs_WebApi_HostAddress}}/Auth/Verify
+Content-Type: application/json
+Accept: application/json
+
+{
+  "phone": "6587784497",
+  "code": "927479"
+}
+
+###
+
+GET {{Fbs_WebApi_HostAddress}}/Facilities
 Accept: application/json
 
 ###
