@@ -3,7 +3,9 @@ using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
+using Fbs.WebApi.Types;
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Microsoft.Extensions.Options;
@@ -17,7 +19,8 @@ builder.AddServiceDefaults();
 builder.AddGraphQL()
     .ModifyRequestOptions(options => { options.IncludeExceptionDetails = true; })
     .AddAuthorization()
-    .AddTypes();
+    .AddTypes()
+    .AddMutationType<Mutation>();
 
 #region Options
 
@@ -53,6 +56,22 @@ builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
 
+    var credential = GoogleCredential.FromJson(options.Value.ServiceAccountJsonCredential).CreateScoped([
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.events",
+    ]);
+    var service = new CalendarService(new BaseClientService.Initializer
+    {
+        HttpClientInitializer = credential
+    });
+
+    return service;
+});
+
+builder.Services.AddSingleton(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
+
     var credential = GoogleCredential.FromJson(options.Value.ServiceAccountJsonCredential);
     var service = new SheetsService(new BaseClientService.Initializer
     {
@@ -65,6 +84,7 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddScoped<FacilityRepository>();
 builder.Services.AddScoped<OtpRepository>();
 builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<BookingRepository>();
 
 builder.Services.AddFastEndpoints();
 builder.Services.SwaggerDocument(options =>

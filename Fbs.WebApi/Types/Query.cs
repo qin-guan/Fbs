@@ -39,4 +39,12 @@ public static class Query
     {
         return await facilityRepository.GetListAsync(ct);
     }
+
+    public static async Task<List<Booking>> GetBookings(
+        BookingRepository bookingRepository,
+        CancellationToken ct
+    )
+    {
+        return await bookingRepository.GetListAsync(ct);
+    }
 }
