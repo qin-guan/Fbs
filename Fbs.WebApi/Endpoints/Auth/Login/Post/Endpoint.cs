@@ -1,15 +1,15 @@
 using System.Security.Cryptography;
 using System.Text;
 using FastEndpoints;
-using Fbs.WebApi.Services.GoogleSheets;
+using Fbs.WebApi.Repository;
 using Org.BouncyCastle.Crypto.Generators;
 using Telegram.Bot;
 
 namespace Fbs.WebApi.Endpoints.Auth.Login.Post;
 
 public class Endpoint(
-    GoogleSheetsUsersService usersService,
-    GoogleSheetsOtpService otpService,
+    OtpRepository otpRepository,
+    UserRepository userRepository,
     TelegramBotClient client
 ) : Endpoint<Request>
 {
@@ -21,10 +21,8 @@ public class Endpoint(
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
-        var users = await usersService.GetAsync();
-        var user = users.SingleOrDefault(u => u.Phone == req.Phone);
-
-        if (user is null or { TelegramChatId : { Length: 0 } })
+        var user = await userRepository.FindAsync(u => u.Phone == req.Phone, ct);
+        if (user is null or { TelegramChatId: null })
         {
             await SendNotFoundAsync(ct);
             return;
@@ -38,7 +36,19 @@ public class Endpoint(
             )
         );
 
-        await otpService.SetOtpAsync(req.Phone, hash);
+        var existingOtp = await otpRepository.FindAsync(o => o.Phone == req.Phone, ct);
+        if (existingOtp is not null)
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
+        await otpRepository.InsertAsync(new Entities.Otp
+        {
+            Phone = req.Phone,
+            Code = hash,
+            CreatedAt = DateTimeOffset.UtcNow
+        }, ct);
 
         await client.SendMessage(
             user.TelegramChatId,

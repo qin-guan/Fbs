@@ -1,16 +1,23 @@
 using FastEndpoints;
 using FastEndpoints.Security;
+using FastEndpoints.Swagger;
 using Fbs.WebApi.Options;
-using Fbs.WebApi.Services.GoogleSheets;
+using Fbs.WebApi.Repository;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Microsoft.Extensions.Options;
+using Scalar.AspNetCore;
 using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+
+builder.AddGraphQL()
+    .ModifyRequestOptions(options => { options.IncludeExceptionDetails = true; })
+    .AddAuthorization()
+    .AddTypes();
 
 #region Options
 
@@ -42,10 +49,6 @@ builder.Services.AddHttpClient<TelegramBotClient>("tgwebhook")
         )
     );
 
-builder.Services.AddScoped<GoogleSheetsOtpService>();
-builder.Services.AddScoped<GoogleSheetsUsersService>();
-builder.Services.AddScoped<GoogleSheetsFacilitiesService>();
-
 builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
@@ -59,8 +62,15 @@ builder.Services.AddSingleton(sp =>
     return service;
 });
 
+builder.Services.AddScoped<FacilityRepository>();
+builder.Services.AddScoped<OtpRepository>();
+builder.Services.AddScoped<UserRepository>();
+
 builder.Services.AddFastEndpoints();
-builder.Services.AddOpenApi();
+builder.Services.SwaggerDocument(options =>
+{
+    options.EndpointFilter = ep => ep.EndpointTags?.Contains("Telegram") is false or null;
+});
 
 #endregion
 
@@ -77,14 +87,13 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseFastEndpoints();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+app.UseFastEndpoints();
+app.UseSwaggerGen(config => { config.Path = "/openapi/{documentName}.json"; });
 
 app.MapDefaultEndpoints();
+app.MapScalarApiReference();
 
-app.Run();
+app.MapGraphQL();
+
+app.RunWithGraphQLCommands(args);

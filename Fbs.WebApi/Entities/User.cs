@@ -1,8 +1,13 @@
+using Fbs.WebApi.Repository;
+
 namespace Fbs.WebApi.Entities;
 
-public class User : SheetEntity
+public class User : Entity
 {
-    public required string Name { get; set; }
-    public required string Phone { get; set; }
-    public required string TelegramChatId { get; set; }
+    public string? Unit { get; set; }
+    public string? Name { get; set; }
+    public string? Phone { get; set; }
+    public string? TelegramChatId { get; set; }
+
+    public override string? GetId() => Phone;
 }

@@ -1,6 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Services.GoogleSheets;
-using Google.Apis.Sheets.v4;
+using Fbs.WebApi.Repository;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -11,13 +10,13 @@ namespace Fbs.WebApi.Endpoints.Bot.Post;
 public class Endpoint(
     ILogger<Endpoint> logger,
     TelegramBotClient client,
-    GoogleSheetsUsersService googleSheetsUsersService,
-    SheetsService sheetsService
+    UserRepository userRepository
 ) : Endpoint<Update>
 {
     public override void Configure()
     {
         Post("/Bot");
+        Tags("Telegram");
         AllowAnonymous();
     }
 
@@ -27,8 +26,6 @@ public class Endpoint(
         {
             case { Contact: { } contact }:
             {
-                var whitelistedNumbers = await googleSheetsUsersService.GetAsync();
-
                 var normalizedPhoneNumber = contact.PhoneNumber.StartsWith('+')
                     ? contact.PhoneNumber[1..]
                     : contact.PhoneNumber;
@@ -38,8 +35,7 @@ public class Endpoint(
                     logger.LogWarning("Normalized phone number length is incorrect for {Phone}", normalizedPhoneNumber);
                 }
 
-                var user = whitelistedNumbers.SingleOrDefault(u => u.Phone == normalizedPhoneNumber);
-
+                var user = await userRepository.FindAsync(u => u.Phone == normalizedPhoneNumber, ct);
                 if (user is null)
                 {
                     await client.SendMessage(
@@ -56,7 +52,9 @@ public class Endpoint(
                     break;
                 }
 
-                await googleSheetsUsersService.SetTelegramChatIdAsync(user.Row, req.Message.Chat.Id);
+                user.TelegramChatId = req.Message.Chat.Id.ToString();
+
+                await userRepository.UpdateAsync(user, ct);
 
                 await client.SendMessage(
                     req.Message.Chat,

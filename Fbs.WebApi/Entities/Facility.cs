@@ -1,6 +1,10 @@
+using Fbs.WebApi.Repository;
+
 namespace Fbs.WebApi.Entities;
 
-public class Facility : SheetEntity
+public class Facility : Entity
 {
-    public required string Name { get; set; }
+    public string? Name { get; set; }
+
+    public override string? GetId() => Name;
 }

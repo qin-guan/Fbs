@@ -2,14 +2,14 @@ using System.Security.Cryptography;
 using System.Text;
 using FastEndpoints;
 using FastEndpoints.Security;
-using Fbs.WebApi.Services.GoogleSheets;
+using Fbs.WebApi.Repository;
 using Org.BouncyCastle.Crypto.Generators;
 
 namespace Fbs.WebApi.Endpoints.Auth.Verify.Post;
 
 public class Endpoint(
-    GoogleSheetsUsersService usersService,
-    GoogleSheetsOtpService sheetsOtpService
+    OtpRepository otpRepository,
+    UserRepository userRepository
 ) : Endpoint<Request>
 {
     public override void Configure()
@@ -20,13 +20,14 @@ public class Endpoint(
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
-        var hash = SCryptGenerate(Encoding.Default.GetBytes(req.Code), Encoding.Default.GetBytes(req.Phone));
-
-        var otp = await sheetsOtpService.GetOtpAsync(req.Phone);
-        if (otp is null)
+        var otp = await otpRepository.FindAsync(o => o.Phone == req.Phone, ct);
+        if (otp is null or { Code: null })
         {
-            throw new ArgumentNullException();
+            await SendUnauthorizedAsync(ct);
+            return;
         }
+
+        var hash = SCryptGenerate(Encoding.Default.GetBytes(req.Code), Encoding.Default.GetBytes(req.Phone));
 
         var valid = CryptographicOperations.FixedTimeEquals(Convert.FromHexString(otp.Code), hash);
         if (!valid)
@@ -35,16 +36,16 @@ public class Endpoint(
             return;
         }
 
-        var users = await usersService.GetAsync();
-        var user = users.Single(u => u.Phone == req.Phone);
-
-        await sheetsOtpService.RemoveOtpAsync(req.Phone);
-
-        await CookieAuth.SignInAsync(u =>
+        var user = await userRepository.FindAsync(u => u.Phone == req.Phone);
+        if (user is null or { Phone: null })
         {
-            u["Phone"] = req.Phone;
-            u["Name"] = user.Name;
-        });
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
+        await otpRepository.DeleteAsync(o => o.Phone == req.Phone, ct);
+
+        await CookieAuth.SignInAsync(u => { u["Phone"] = user.Phone; });
     }
 
     private static byte[] SCryptGenerate(byte[] password, byte[] salt)

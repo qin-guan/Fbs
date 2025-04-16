@@ -1,8 +1,12 @@
+using Fbs.WebApi.Repository;
+
 namespace Fbs.WebApi.Entities;
 
-public class Otp : SheetEntity
+public class Otp : Entity
 {
-    public required string Phone { get; set; }
-    public required string Code { get; set; }
-    public required DateTimeOffset CreatedAt { get; set; }
+    public string? Phone { get; set; }
+    public string? Code { get; set; }
+    public DateTimeOffset? CreatedAt { get; set; }
+
+    public override string GetId() => Phone;
 }
