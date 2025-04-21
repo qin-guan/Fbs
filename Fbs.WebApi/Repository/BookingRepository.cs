@@ -37,13 +37,15 @@ public class BookingRepository(
     public async Task<Booking?> FindAsync(Expression<Func<Booking, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var list = await GetListAsync(cancellationToken);
+        return list.SingleOrDefault(predicate.Compile());
     }
 
     public async Task<Booking> GetAsync(Expression<Func<Booking, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var list = await GetListAsync(cancellationToken);
+        return list.Single(predicate.Compile());
     }
 
     public async Task<Booking> InsertAsync(Booking entity, CancellationToken cancellationToken = default)
@@ -54,8 +56,8 @@ public class BookingRepository(
         await calendarService.Events.Insert(
                 new Event
                 {
-                    Id = entity.Id.ToString(),
-                    Summary = entity.FacilityName,
+                    Id = entity.Id.ToString("N"),
+                    Summary = $"{user.Unit} {entity.Conduct}",
                     Start = new EventDateTime
                     {
                         DateTimeDateTimeOffset = entity.StartDateTime,
@@ -66,11 +68,12 @@ public class BookingRepository(
                     },
                     Location = entity.FacilityName,
                     Description = $"""
+                                   Point of contact: {entity.PocName} / {entity.PocPhone}
+
                                    Booked by: {user.Unit} / {user.Name}
-                                   Contact Number: {user.Phone?[2..]}
+                                   Number: {user.Phone?[2..]}
 
-                                   Reason:
-
+                                   Description: 
                                    {entity.Description}
                                    """,
                     ExtendedProperties = new Event.ExtendedPropertiesData
@@ -92,12 +95,66 @@ public class BookingRepository(
 
     public async Task<Booking> UpdateAsync(Booking entity, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var bookings = await GetListAsync(cancellationToken);
+        var booking = bookings.Single(b => b.Id == entity.Id);
+
+        booking.StartDateTime = entity.StartDateTime;
+        booking.EndDateTime = entity.EndDateTime;
+        booking.Conduct = entity.Conduct;
+        booking.Description = entity.Description;
+        booking.FacilityName = entity.FacilityName;
+        booking.PocName = entity.PocName;
+        booking.PocPhone = entity.PocPhone;
+        booking.UserPhone = entity.UserPhone;
+
+        var user = await userRepository.GetAsync(u => u.Phone == entity.UserPhone, cancellationToken);
+
+        await calendarService.Events.Update(
+                new Event
+                {
+                    Id = entity.Id.ToString("N"),
+                    Summary = $"{user.Unit} {entity.Conduct}",
+                    Start = new EventDateTime
+                    {
+                        DateTimeDateTimeOffset = entity.StartDateTime,
+                    },
+                    End = new EventDateTime
+                    {
+                        DateTimeDateTimeOffset = entity.EndDateTime,
+                    },
+                    Location = entity.FacilityName,
+                    Description = $"""
+                                   Point of contact: {entity.PocName} / {entity.PocPhone}
+
+                                   Booked by: {user.Unit} / {user.Name}
+                                   Number: {user.Phone?[2..]}
+
+                                   Description: 
+                                   {entity.Description}
+                                   """,
+                    ExtendedProperties = new Event.ExtendedPropertiesData
+                    {
+                        Private__ = new Dictionary<string, string>()
+                        {
+                            {
+                                "Data", JsonSerializer.Serialize(entity)
+                            }
+                        }
+                    }
+                },
+                options.Value.CalendarId,
+                booking.Id.ToString("N")
+            )
+            .ExecuteAsync(cancellationToken);
+
+        return booking;
     }
 
     public async Task DeleteAsync(Expression<Func<Booking, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var booking = await GetAsync(predicate, cancellationToken);
+        await calendarService.Events.Delete(options.Value.CalendarId, booking.Id.ToString("N"))
+            .ExecuteAsync(cancellationToken);
     }
 }

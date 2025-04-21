@@ -22,10 +22,16 @@ public class Endpoint(
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
         var user = await userRepository.FindAsync(u => u.Phone == req.Phone, ct);
-        if (user is null or { TelegramChatId: null })
+        switch (user)
         {
-            await SendNotFoundAsync(ct);
-            return;
+            case null:
+                AddError(r => r.Phone, "User is not allow-listed.", "EX01");
+                await SendErrorsAsync(cancellation: ct);
+                return;
+            case { TelegramChatId: null }:
+                AddError(r => r.Phone, "User is not registered on Telegram.", "EX02");
+                await SendErrorsAsync(cancellation: ct);
+                return;
         }
 
         var code = RandomNumberGenerator.GetString("1234567890", 6);
@@ -37,18 +43,27 @@ public class Endpoint(
         );
 
         var existingOtp = await otpRepository.FindAsync(o => o.Phone == req.Phone, ct);
-        if (existingOtp is not null)
+        if (existingOtp is not null && existingOtp.CreatedAt + TimeSpan.FromSeconds(60) > DateTimeOffset.UtcNow)
         {
             await SendUnauthorizedAsync(ct);
             return;
         }
 
-        await otpRepository.InsertAsync(new Entities.Otp
+        if (existingOtp is not null)
         {
-            Phone = req.Phone,
-            Code = hash,
-            CreatedAt = DateTimeOffset.UtcNow
-        }, ct);
+            existingOtp.Code = hash;
+            existingOtp.CreatedAt = DateTimeOffset.UtcNow;
+            await otpRepository.UpdateAsync(existingOtp, ct);
+        }
+        else
+        {
+            await otpRepository.InsertAsync(new Entities.Otp
+            {
+                Phone = req.Phone,
+                Code = hash,
+                CreatedAt = DateTimeOffset.UtcNow
+            }, ct);
+        }
 
         await client.SendMessage(
             user.TelegramChatId,

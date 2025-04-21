@@ -92,6 +92,26 @@ builder.Services.SwaggerDocument(options =>
     options.EndpointFilter = ep => ep.EndpointTags?.Contains("Telegram") is false or null;
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.WithOrigins("http://localhost:3000");
+        }
+        else
+        {
+            policy.WithOrigins("https://*.3sib-fbs.pages.dev");
+        }
+
+        policy
+            .AllowCredentials()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 #endregion
 
 var app = builder.Build();
@@ -103,12 +123,12 @@ await using (var scope = app.Services.CreateAsyncScope())
     await client.SetWebhook(options.Value.WebhookUrl);
 }
 
-app.UseHttpsRedirection();
+app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseFastEndpoints();
+app.UseFastEndpoints(config => config.Errors.UseProblemDetails(c => { c.IndicateErrorCode = true; }));
 app.UseSwaggerGen(config => { config.Path = "/openapi/{documentName}.json"; });
 
 app.MapDefaultEndpoints();

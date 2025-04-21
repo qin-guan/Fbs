@@ -1,2 +1,8 @@
 packages:
   - Fbs.WebApp
+ignoredBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
+  - vue-demi
+onlyBuiltDependencies:
+  - sharp

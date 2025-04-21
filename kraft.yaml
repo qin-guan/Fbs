@@ -1,0 +1,6 @@
+spec: v0.6
+name: 3sib-fbs
+rootfs: ./Dockerfile
+
+runtime: base-compat:latest
+cmd: ["dotnet", "/app/Fbs.WebApi.dll"]

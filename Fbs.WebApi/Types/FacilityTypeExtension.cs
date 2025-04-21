@@ -13,7 +13,7 @@ public class FacilityTypeExtension(BookingRepository bookingRepository)
         CancellationToken ct
     )
     {
-        if (start >= end || start.Minute % 15 != 0 || end.Minute % 15 != 0)
+        if (start >= end || start.Minute % 30 != 0 || end.Minute % 30 != 0)
         {
             throw new Exception();
         }
@@ -28,16 +28,12 @@ public class FacilityTypeExtension(BookingRepository bookingRepository)
         do
         {
             var newCurrent = current;
-            var newEnd = current.AddMinutes(15);
-            current = current.AddMinutes(15);
+            var newEnd = current.AddMinutes(30);
+            current = current.AddMinutes(30);
 
-            var overlaps = overlapping.Any(b => b.StartDateTime < newEnd && b.EndDateTime > newCurrent);
-            if (overlaps)
-            {
-                continue;
-            }
-
-            yield return new TimeSlot(newCurrent, newEnd);
+            var overlaps = overlapping.SingleOrDefault(b => b.StartDateTime < newEnd && b.EndDateTime > newCurrent);
+            
+            yield return new TimeSlot(newCurrent, newEnd, overlaps);
         } while (!ct.IsCancellationRequested && current < end);
     }
 }
