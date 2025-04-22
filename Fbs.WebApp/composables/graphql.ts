@@ -18,6 +18,19 @@ export const queries = {
     }
   `),
 
+  meWithEverything: graphql(`
+    query meWithEverything {
+      me {
+        id
+        unit
+        name
+        phone
+        telegramChatId
+        row
+      }
+    }
+  `),
+
   facilities: graphql(`
     query facilities {
       facilities {
@@ -44,9 +57,24 @@ export const queries = {
     }
   `),
 
+  booking: graphql(`
+    query booking($id: UUID!) {
+      booking(id: $id) {
+        id
+        conduct
+        description
+        startDateTime
+        endDateTime
+        facilityName
+        pocName
+        pocPhone
+      }
+    }
+  `),
+
   bookings: graphql(`
-    query bookings($id: UUID, $userPhone: String) {
-      bookings(id: $id, userPhone: $userPhone) {
+    query bookings($userPhone: String, $startsAfter: DateTime) {
+      bookings(userPhone: $userPhone, startsAfter: $startsAfter) {
         id
         conduct
         description
@@ -71,7 +99,6 @@ export const mutations = {
       $id: UUID!
       $conduct: String!
       $description: String!
-      $facilityName: String!
       $pocName: String!
       $pocPhone: String!
     ) {
@@ -80,7 +107,6 @@ export const mutations = {
         id: $id
         conduct: $conduct
         description: $description
-        facilityName: $facilityName
         pocName: $pocName
         pocPhone: $pocPhone
       ) {

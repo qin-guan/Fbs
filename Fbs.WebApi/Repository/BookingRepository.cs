@@ -1,9 +1,9 @@
 using System.Linq.Expressions;
-using System.Text.Json;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Options;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
+using MemoryPack;
 using Microsoft.Extensions.Options;
 
 namespace Fbs.WebApi.Repository;
@@ -26,8 +26,9 @@ public class BookingRepository(
 
             bookings.AddRange(
                 items.Items
-                    .Select(item => item.ExtendedProperties.Private__["Data"])
-                    .Select(item => JsonSerializer.Deserialize<Booking>(item!))!
+                    .Select(item => item.ExtendedProperties.Shared["Data"])
+                    .Select(Convert.FromBase64String)
+                    .Select(item => MemoryPackSerializer.Deserialize<Booking>(item))!
             );
         } while (token is not null);
 
@@ -53,6 +54,13 @@ public class BookingRepository(
         var user = await userRepository.GetAsync(u => u.Phone == entity.UserPhone, cancellationToken);
 
         entity.Id = Guid.NewGuid();
+        var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(entity));
+
+        if (data.Length > 1000)
+        {
+            throw new Exception("Event information is too long.");
+        }
+
         await calendarService.Events.Insert(
                 new Event
                 {
@@ -78,10 +86,10 @@ public class BookingRepository(
                                    """,
                     ExtendedProperties = new Event.ExtendedPropertiesData
                     {
-                        Private__ = new Dictionary<string, string>()
+                        Shared = new Dictionary<string, string>()
                         {
                             {
-                                "Data", JsonSerializer.Serialize(entity)
+                                "Data", data
                             }
                         }
                     }
@@ -107,37 +115,44 @@ public class BookingRepository(
         booking.PocPhone = entity.PocPhone;
         booking.UserPhone = entity.UserPhone;
 
-        var user = await userRepository.GetAsync(u => u.Phone == entity.UserPhone, cancellationToken);
+        var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(booking));
+
+        if (data.Length > 1000)
+        {
+            throw new Exception("Event information is too long.");
+        }
+
+        var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, cancellationToken);
 
         await calendarService.Events.Update(
                 new Event
                 {
-                    Id = entity.Id.ToString("N"),
-                    Summary = $"{user.Unit} {entity.Conduct}",
+                    Id = booking.Id.ToString("N"),
+                    Summary = $"{user.Unit} {booking.Conduct}",
                     Start = new EventDateTime
                     {
-                        DateTimeDateTimeOffset = entity.StartDateTime,
+                        DateTimeDateTimeOffset = booking.StartDateTime,
                     },
                     End = new EventDateTime
                     {
-                        DateTimeDateTimeOffset = entity.EndDateTime,
+                        DateTimeDateTimeOffset = booking.EndDateTime,
                     },
-                    Location = entity.FacilityName,
+                    Location = booking.FacilityName,
                     Description = $"""
-                                   Point of contact: {entity.PocName} / {entity.PocPhone}
+                                   Point of contact: {booking.PocName} / {booking.PocPhone}
 
                                    Booked by: {user.Unit} / {user.Name}
                                    Number: {user.Phone?[2..]}
 
                                    Description: 
-                                   {entity.Description}
+                                   {booking.Description}
                                    """,
                     ExtendedProperties = new Event.ExtendedPropertiesData
                     {
-                        Private__ = new Dictionary<string, string>()
+                        Shared = new Dictionary<string, string>()
                         {
                             {
-                                "Data", JsonSerializer.Serialize(entity)
+                                "Data", data
                             }
                         }
                     }

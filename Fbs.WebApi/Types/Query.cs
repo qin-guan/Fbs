@@ -51,25 +51,34 @@ public static class Query
         return [facility];
     }
 
+    public static async Task<Booking> GetBooking(
+        Guid id,
+        BookingRepository bookingRepository,
+        CancellationToken ct
+    )
+    {
+        return await bookingRepository.GetAsync(b => b.Id == id, ct);
+    }
+
     public static async Task<List<Booking>> GetBookings(
-        Guid? id,
         string? userPhone,
+        DateTimeOffset? startsAfter,
         BookingRepository bookingRepository,
         CancellationToken ct
     )
     {
         var all = await bookingRepository.GetListAsync(ct);
 
-        if (id is not null)
-        {
-            all = all.Where(b => b.Id == id).ToList();
-        }
-
         if (userPhone is not null)
         {
             all = all.Where(b => b.UserPhone == userPhone).ToList();
         }
 
-        return all;
+        if (startsAfter is not null)
+        {
+            all = all.Where(b => b.StartDateTime >= startsAfter).ToList();
+        }
+
+        return all.OrderByDescending(b => b.StartDateTime).ToList();
     }
 }

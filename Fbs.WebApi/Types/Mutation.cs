@@ -10,6 +10,15 @@ namespace Fbs.WebApi.Types;
 
 public class Mutation
 {
+    private const string PurpleLightLyrics = """
+                                             <i>
+                                             Purple light
+                                             In the valley
+                                             That is where, I wanna be
+                                             Infantry, best companions
+                                             (With my rifle and my buddy and me)
+                                             </i>
+                                             """;
     [Authorize]
     public async Task<Guid> DeleteBooking(
         ClaimsPrincipal claimsPrincipal,
@@ -39,7 +48,7 @@ public class Mutation
         }
 
         await bookingRepository.DeleteAsync(b => b.Id == id, ct);
-        
+
         var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
         await botClient.SendMessage(
             user.TelegramChatId!,
@@ -56,7 +65,6 @@ public class Mutation
              {booking.EndDateTime?.ToLocalTime():f}
 
              <u>Point of contact</u>
-             Unit: {user.Unit}
              Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
              Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
 
@@ -66,11 +74,10 @@ public class Mutation
              Contact: {user.Phone}
 
              <u>Description</u>
-             {htmlEncoder.Encode(booking.Description ?? string.Empty)}
-
+             {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
+             
              <u>Confirmation</u>
              {booking.Id}
-
              """,
             ParseMode.Html,
             cancellationToken:
@@ -91,7 +98,6 @@ public class Mutation
         Guid id,
         string conduct,
         string description,
-        string facilityName,
         string pocName,
         string pocPhone,
         CancellationToken ct
@@ -124,15 +130,8 @@ public class Mutation
             throw new Exception("Conduct must be less than 100 characters.");
         }
 
-        var facility = await facilityRepository.FindAsync(f => f.Name == facilityName, ct);
-        if (facility is null)
-        {
-            throw new Exception("Facility does not exist.");
-        }
-
         booking.Conduct = conduct;
         booking.Description = description;
-        booking.FacilityName = facilityName;
         booking.PocName = pocName;
         booking.PocPhone = pocPhone;
         booking.UserPhone = phone;
@@ -142,7 +141,7 @@ public class Mutation
         await botClient.SendMessage(
             user.TelegramChatId!,
             $"""
-             Your booking for <b>{facilityName}</b> has been updated!
+             Your booking for <b>{booking.FacilityName}</b> has been updated!
 
              <u>Conduct</u>
              {htmlEncoder.Encode(conduct)}
@@ -154,7 +153,6 @@ public class Mutation
              {booking.EndDateTime?.ToLocalTime():f}
 
              <u>Point of contact</u>
-             Unit: {user.Unit}
              Name: {htmlEncoder.Encode(pocName)}
              Contact: {htmlEncoder.Encode(pocPhone)}
 
@@ -164,12 +162,12 @@ public class Mutation
              Contact: {user.Phone}
 
              <u>Description</u>
-             {htmlEncoder.Encode(description)}
-
+             {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
+             
              <u>Confirmation</u>
              {booking.Id}
 
-             Cancel or update your booking <a href="https://3sib-fbs.pages.dev/{booking.Id}">here</a>.
+             Cancel or update your booking <a href="https://3sib-fbs.pages.dev/booking/{booking.Id}">here</a>.
              """,
             ParseMode.Html,
             cancellationToken:
@@ -276,7 +274,6 @@ public class Mutation
              {endDateTime.ToLocalTime():f}
 
              <u>Point of contact</u>
-             Unit: {user.Unit}
              Name: {htmlEncoder.Encode(pocName)}
              Contact: {htmlEncoder.Encode(pocPhone)}
 
@@ -286,12 +283,12 @@ public class Mutation
              Contact: {user.Phone}
 
              <u>Description</u>
-             {htmlEncoder.Encode(description)}
-
+             {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
+             
              <u>Confirmation</u>
              {booking.Id}
 
-             Cancel or update your booking <a href="https://3sib-fbs.pages.dev/{booking.Id}">here</a>.
+             Cancel or update your booking <a href="https://3sib-fbs.pages.dev/booking/{booking.Id}">here</a>.
              """,
             ParseMode.Html,
             cancellationToken:

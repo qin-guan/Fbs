@@ -2,23 +2,22 @@
 import { useMutation, useQuery } from '@urql/vue'
 import type { BreadcrumbItem } from '@nuxt/ui'
 
+definePageMeta({
+  layout: 'app',
+})
+
 const id = useRoute().params.id as string
 
 const toast = useToast()
 
 const bookingQuery = useQuery({
-  query: queries.bookings,
+  query: queries.booking,
   variables: {
     id,
   },
 })
 
-const facilities = useQuery({
-  query: queries.facilities,
-  variables: {},
-})
-
-const booking = computed(() => bookingQuery.data?.value?.bookings.at(0))
+const booking = computed(() => bookingQuery.data?.value?.booking)
 const updateBookingMutation = useMutation(mutations.updateBooking)
 const deleteBookingMutation = useMutation(mutations.deleteBooking)
 
@@ -26,7 +25,6 @@ const modifiedBooking = reactive({
   pending: false,
   conduct: '',
   description: '',
-  facilityName: '',
   pocName: '',
   pocPhone: '',
 })
@@ -34,7 +32,6 @@ const modifiedBooking = reactive({
 whenever(booking, (value) => {
   modifiedBooking.conduct = value.conduct ?? ''
   modifiedBooking.description = value.description ?? ''
-  modifiedBooking.facilityName = value.facilityName ?? ''
   modifiedBooking.pocName = value.pocName ?? ''
   modifiedBooking.pocPhone = value.pocPhone ?? ''
 }, { immediate: true })
@@ -71,90 +68,108 @@ function update() {
 }
 
 function deleteBooking() {
+  modifiedBooking.pending = true
   deleteBookingMutation.executeMutation({ id }, { additionalTypenames: ['Booking'] })
+    .then(({ error }) => {
+      if (!error) {
+        navigateTo('/booking')
+      }
+      else {
+        error.graphQLErrors.forEach((error) => {
+          toast.add({
+            color: 'error',
+            title: 'Error',
+            description: error.extensions?.message as string ?? error.message ?? 'Unknown error occurred.',
+          })
+        })
+      }
+    })
+    .finally(() => {
+      modifiedBooking.pending = false
+    })
 }
 </script>
 
 <template>
-  <div class="p-4">
-    <UBreadcrumb :items="items" />
+  <UDashboardPanel>
+    <template #header>
+      <UDashboardNavbar title="Upcoming bookings">
+        <template #toggle>
+          <UDashboardSidebarToggle />
+        </template>
+        <template #left>
+          <UBreadcrumb :items="items" />
+        </template>
+      </UDashboardNavbar>
+    </template>
 
-    <form
-      class="mt-4 space-y-4"
-      @submit.prevent="update"
-    >
-      <h1 class="font-semibold text-xl">
-        {{ booking?.conduct }}
-      </h1>
-
-      <UFormField
-        label="Facility"
-        name="facility"
+    <template #body>
+      <form
+        class="mt-4 space-y-4"
+        @submit.prevent="update"
       >
-        <USelectMenu
-          v-model="modifiedBooking.facilityName"
-          placeholder="Select facility"
-          class="w-64"
-          :items="facilities.data.value?.facilities"
-          label-key="name"
-          value-key="name"
-          :search-input="{
-            placeholder: 'Search facilities...',
-          }"
+        <h1 class="font-semibold text-xl">
+          {{ booking?.conduct }}
+        </h1>
+
+        <UAlert
+          title="Heads up!"
+          description="To update the timing or facility, please delete and create a new booking."
+          icon="i-lucide-info"
         />
-      </UFormField>
 
-      <UFormField
-        label="Conduct"
-        name="conduct"
-      >
-        <UInput
-          v-model="modifiedBooking.conduct"
-          autofocus
-        />
-      </UFormField>
-
-      <UFormField
-        label="Description"
-        name="description"
-      >
-        <UTextarea
-          v-model="modifiedBooking.description"
-          autoresize
-        />
-      </UFormField>
-
-      <UFormField
-        label="PoC Name"
-        name="pocName"
-      >
-        <UInput v-model="modifiedBooking.pocName" />
-      </UFormField>
-
-      <UFormField
-        label="PoC Phone"
-        name="pocPhone"
-      >
-        <UInput v-model="modifiedBooking.pocPhone" />
-      </UFormField>
-
-      <div class="flex gap-3">
-        <UButton
-          :loading="modifiedBooking.pending"
-          type="submit"
+        <UFormField
+          label="Conduct"
+          name="conduct"
         >
-          Update
-        </UButton>
+          <UInput
+            v-model="modifiedBooking.conduct"
+            autofocus
+          />
+        </UFormField>
 
-        <UButton
-          :loading="modifiedBooking.pending"
-          color="error"
-          variant="ghost"
-          @click="deleteBooking"
+        <UFormField
+          label="Description"
+          name="description"
         >
-          Delete
-        </UButton>
-      </div>
-    </form>
-  </div>
+          <UTextarea
+            v-model="modifiedBooking.description"
+            autoresize
+          />
+        </UFormField>
+
+        <UFormField
+          label="PoC Name"
+          name="pocName"
+        >
+          <UInput v-model="modifiedBooking.pocName" />
+        </UFormField>
+
+        <UFormField
+          label="PoC Phone"
+          name="pocPhone"
+        >
+          <UInput v-model="modifiedBooking.pocPhone" />
+        </UFormField>
+
+        <div class="flex gap-3">
+          <UButton
+            :loading="modifiedBooking.pending"
+            type="submit"
+          >
+            Update
+          </UButton>
+
+          <UButton
+            :loading="modifiedBooking.pending"
+            color="error"
+            variant="ghost"
+            @click="deleteBooking"
+          >
+            Delete
+          </UButton>
+        </div>
+      </form>
+    </template>
+  </UDashboardPanel>
 </template>

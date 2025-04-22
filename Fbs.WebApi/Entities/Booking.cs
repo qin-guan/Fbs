@@ -1,8 +1,10 @@
 using Fbs.WebApi.Repository;
+using MemoryPack;
 
 namespace Fbs.WebApi.Entities;
 
-public class Booking : Entity<Guid>
+[MemoryPackable]
+public partial class Booking : Entity<Guid>
 {
     public DateTimeOffset? StartDateTime { get; set; }
     public DateTimeOffset? EndDateTime { get; set; }

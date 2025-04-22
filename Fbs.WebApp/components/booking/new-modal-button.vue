@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { today, getLocalTimeZone } from '@internationalized/date'
 import { useMutation, useQuery } from '@urql/vue'
-import { metadata } from 'valibot'
 
 const { df, tf } = useFormatter()
 
@@ -22,6 +21,10 @@ const slotSelection = reactive({
   selectionStart: -1,
   selectionEnd: -1,
   hovered: -1,
+})
+
+defineShortcuts({
+  n: () => modalOpen.value = true,
 })
 
 const facilities = useQuery({

@@ -1,6 +1,7 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
+using Fbs.WebApi.EventListeners;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
 using Fbs.WebApi.Types;
@@ -17,6 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.AddGraphQL()
+    .AddDiagnosticEventListener<ExceptionEventListener>()
     .ModifyRequestOptions(options => { options.IncludeExceptionDetails = true; })
     .AddAuthorization()
     .AddTypes()
