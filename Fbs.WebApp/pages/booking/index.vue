@@ -84,7 +84,7 @@ const items = computed(() => [
 <template>
   <UDashboardPanel :ui="{ body: 'p-0!' }">
     <template #header>
-      <UDashboardNavbar title="Upcoming bookings">
+      <UDashboardNavbar title="Bookings">
         <template #toggle>
           <UDashboardSidebarToggle />
         </template>

@@ -45,11 +45,11 @@ builder.Services.AddOptions<TelegramOptions>()
 
 builder.Services.AddAuthenticationCookie(validFor: TimeSpan.FromDays(1), options =>
     {
-        if (builder.Environment.IsProduction())
-        {
-            options.Cookie.SameSite = SameSiteMode.None;
-            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        }
+        if (!builder.Environment.IsProduction()) return;
+        
+        options.Cookie.SameSite = SameSiteMode.None;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.Domain = ".3sib-fbs.from.sg";
     })
     .AddAuthorization();
 
@@ -113,6 +113,8 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins("https://*.3sib-fbs.pages.dev");
             policy.WithOrigins("https://3sib-fbs.pages.dev");
+            policy.WithOrigins("https://*.3sib-fbs.from.sg");
+            policy.WithOrigins("https://3sib-fbs.from.sg");
         }
 
         policy

@@ -93,7 +93,7 @@ function deleteBooking() {
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Upcoming bookings">
+      <UDashboardNavbar>
         <template #toggle>
           <UDashboardSidebarToggle />
         </template>
