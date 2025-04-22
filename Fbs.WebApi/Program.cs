@@ -43,7 +43,14 @@ builder.Services.AddOptions<TelegramOptions>()
 
 #region Services
 
-builder.Services.AddAuthenticationCookie(validFor: TimeSpan.FromDays(1))
+builder.Services.AddAuthenticationCookie(validFor: TimeSpan.FromDays(1), options =>
+    {
+        if (builder.Environment.IsProduction())
+        {
+            options.Cookie.SameSite = SameSiteMode.None;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        }
+    })
     .AddAuthorization();
 
 builder.Services.AddHttpClient<TelegramBotClient>("tgwebhook")
@@ -105,12 +112,14 @@ builder.Services.AddCors(options =>
         else
         {
             policy.WithOrigins("https://*.3sib-fbs.pages.dev");
+            policy.WithOrigins("https://3sib-fbs.pages.dev");
         }
 
         policy
             .AllowCredentials()
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .SetIsOriginAllowedToAllowWildcardSubdomains();
     });
 });
 
