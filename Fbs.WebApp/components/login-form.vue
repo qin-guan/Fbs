@@ -105,7 +105,10 @@ async function login() {
         label="Phone"
         name="phone"
       >
-        <UInput v-model="state.phone" />
+        <UInput
+          v-model="state.phone"
+          type="phone"
+        />
       </UFormField>
 
       <UFormField
@@ -115,8 +118,9 @@ async function login() {
       >
         <UPinInput
           v-model="state.otp"
-          otp
           length="6"
+          otp
+          type="number"
         />
       </UFormField>
 
