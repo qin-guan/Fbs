@@ -77,16 +77,27 @@ async function login() {
   }
 
   else {
-    await $fetch(`${api}/Auth/Verify`, {
-      method: 'POST',
-      body: {
-        phone: '65' + state.phone,
-        code: state.otp.join(''),
-      },
-      credentials: 'include',
-    })
+    try {
+      await $fetch(`${api}/Auth/Verify`, {
+        method: 'POST',
+        body: {
+          phone: '65' + state.phone,
+          code: state.otp.join(''),
+        },
+        credentials: 'include',
+      })
 
-    navigateTo('/booking')
+      navigateTo('/booking')
+    }
+    catch (error) {
+      if (error instanceof FetchError) {
+        toast.add({
+          color: 'error',
+          title: 'Error',
+          description: error.message,
+        })
+      }
+    }
   }
 
   state.pending = false
