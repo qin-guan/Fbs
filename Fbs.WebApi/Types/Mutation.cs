@@ -167,7 +167,7 @@ public class Mutation
              <u>Confirmation</u>
              {booking.Id}
 
-             Cancel or update your booking <a href="https://3sib-fbs.pages.dev/booking/{booking.Id}">here</a>.
+             Cancel or update your booking <a href="https://3sib-fbs.from.sg/booking/{booking.Id}">here</a>.
              """,
             ParseMode.Html,
             cancellationToken:
