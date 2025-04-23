@@ -14,7 +14,7 @@ public class UserRepository(
 {
     private readonly string[] _header =
     [
-        "Unit", "Name", "Phone", "TelegramChatId"
+        "Unit", "Name", "Phone", "TelegramChatId", "NotificationGroup"
     ];
 
     public async Task<List<User>> GetListAsync(CancellationToken cancellationToken = default)
@@ -36,6 +36,7 @@ public class UserRepository(
                 Name = row.ElementAtOrDefault(1) as string,
                 Phone = row.ElementAtOrDefault(2) as string,
                 TelegramChatId = row.ElementAtOrDefault(3) as string,
+                NotificationGroup = row.ElementAtOrDefault(4) as string,
             })
             .ToList();
     }
@@ -64,7 +65,7 @@ public class UserRepository(
         var request = sheetsService.Spreadsheets.Values.Update(
             new ValueRange
             {
-                Values = [[entity.Unit, entity.Name, entity.Phone, entity.TelegramChatId]]
+                Values = [[entity.Unit, entity.Name, entity.Phone, entity.TelegramChatId, entity.NotificationGroup]]
             },
             options.Value.SpreadsheetId,
             $"Users!A{entity.Row}:D{entity.Row}"

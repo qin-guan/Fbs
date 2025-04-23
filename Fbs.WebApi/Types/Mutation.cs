@@ -19,6 +19,7 @@ public class Mutation
                                              (With my rifle and my buddy and me)
                                              </i>
                                              """;
+
     [Authorize]
     public async Task<Guid> DeleteBooking(
         ClaimsPrincipal claimsPrincipal,
@@ -49,7 +50,15 @@ public class Mutation
 
         await bookingRepository.DeleteAsync(b => b.Id == id, ct);
 
+        var users = await userRepository.GetListAsync(ct);
         var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
+        var subscribedUsers = users
+            .Where(u =>
+                (u.Phone != phone) ||
+                (u.NotificationGroup == "All") ||
+                (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
+            );
+
         await botClient.SendMessage(
             user.TelegramChatId!,
             $"""
@@ -75,14 +84,49 @@ public class Mutation
 
              <u>Description</u>
              {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
-             
+
              <u>Confirmation</u>
              {booking.Id}
              """,
             ParseMode.Html,
-            cancellationToken:
-            ct
+            cancellationToken: ct
         );
+
+        await Parallel.ForEachAsync(subscribedUsers, ct, async (u, ct2) =>
+        {
+            await botClient.SendMessage(
+                u.TelegramChatId!,
+                $"""
+                 A booking for <b>{booking.FacilityName}</b> has been cancelled!
+
+                 <u>Conduct</u>
+                 {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+
+                 <u>From</u>
+                 {booking.StartDateTime?.ToLocalTime():f}
+
+                 <u>To</u>
+                 {booking.EndDateTime?.ToLocalTime():f}
+
+                 <u>Point of contact</u>
+                 Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
+                 Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+
+                 <u>Cancelled by</u>
+                 Unit: {user.Unit}
+                 Name: {user.Name}
+                 Contact: {user.Phone}
+
+                 <u>Description</u>
+                 {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
+
+                 <u>Confirmation</u>
+                 {booking.Id}
+                 """,
+                ParseMode.Html,
+                cancellationToken: ct2
+            );
+        });
 
         return id;
     }
@@ -137,7 +181,16 @@ public class Mutation
         booking.UserPhone = phone;
 
         await bookingRepository.UpdateAsync(booking, ct);
+
+        var users = await userRepository.GetListAsync(ct);
         var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
+        var subscribedUsers = users
+            .Where(u =>
+                (u.Phone != phone) ||
+                (u.NotificationGroup == "All") ||
+                (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
+            );
+
         await botClient.SendMessage(
             user.TelegramChatId!,
             $"""
@@ -163,16 +216,53 @@ public class Mutation
 
              <u>Description</u>
              {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
-             
+
              <u>Confirmation</u>
              {booking.Id}
 
              Cancel or update your booking <a href="https://3sib-fbs.from.sg/booking/{booking.Id}">here</a>.
              """,
             ParseMode.Html,
-            cancellationToken:
-            ct
+            cancellationToken: ct
         );
+
+        await Parallel.ForEachAsync(subscribedUsers, ct, async (u, ct2) =>
+        {
+            await botClient.SendMessage(
+                user.TelegramChatId!,
+                $"""
+                 A booking for <b>{booking.FacilityName}</b> has been updated!
+
+                 <u>Conduct</u>
+                 {htmlEncoder.Encode(conduct)}
+
+                 <u>From</u>
+                 {booking.StartDateTime?.ToLocalTime():f}
+
+                 <u>To</u>
+                 {booking.EndDateTime?.ToLocalTime():f}
+
+                 <u>Point of contact</u>
+                 Name: {htmlEncoder.Encode(pocName)}
+                 Contact: {htmlEncoder.Encode(pocPhone)}
+
+                 <u>Booked by</u>
+                 Unit: {user.Unit}
+                 Name: {user.Name}
+                 Contact: {user.Phone}
+
+                 <u>Description</u>
+                 {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
+
+                 <u>Confirmation</u>
+                 {booking.Id}
+
+                 Cancel or update your booking <a href="https://3sib-fbs.from.sg/booking/{booking.Id}">here</a>.
+                 """,
+                ParseMode.Html,
+                cancellationToken: ct2
+            );
+        });
 
         return booking;
     }
@@ -258,7 +348,15 @@ public class Mutation
 
         await bookingRepository.InsertAsync(booking, ct);
 
+        var users = await userRepository.GetListAsync(ct);
         var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
+        var subscribedUsers = users
+            .Where(u =>
+                (u.Phone != phone) ||
+                (u.NotificationGroup == "All") ||
+                (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
+            );
+
         await botClient.SendMessage(
             user.TelegramChatId!,
             $"""
@@ -284,16 +382,53 @@ public class Mutation
 
              <u>Description</u>
              {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
-             
+
              <u>Confirmation</u>
              {booking.Id}
 
-             Cancel or update your booking <a href="https://3sib-fbs.pages.dev/booking/{booking.Id}">here</a>.
+             Cancel or update your booking <a href="https://3sib-fbs.from.sg/booking/{booking.Id}">here</a>.
              """,
             ParseMode.Html,
-            cancellationToken:
-            ct
+            cancellationToken: ct
         );
+
+        await Parallel.ForEachAsync(subscribedUsers, ct, async (u, ct2) =>
+        {
+            await botClient.SendMessage(
+                user.TelegramChatId!,
+                $"""
+                 A booking for <b>{facilityName}</b> has been created!
+
+                 <u>Conduct</u>
+                 {htmlEncoder.Encode(conduct)}
+
+                 <u>From</u>
+                 {startDateTime.ToLocalTime():f}
+
+                 <u>To</u>
+                 {endDateTime.ToLocalTime():f}
+
+                 <u>Point of contact</u>
+                 Name: {htmlEncoder.Encode(pocName)}
+                 Contact: {htmlEncoder.Encode(pocPhone)}
+
+                 <u>Booked by</u>
+                 Unit: {user.Unit}
+                 Name: {user.Name}
+                 Contact: {user.Phone}
+
+                 <u>Description</u>
+                 {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
+
+                 <u>Confirmation</u>
+                 {booking.Id}
+
+                 Cancel or update your booking <a href="https://3sib-fbs.from.sg/booking/{booking.Id}">here</a>.
+                 """,
+                ParseMode.Html,
+                cancellationToken: ct2
+            );
+        });
 
         return booking;
     }

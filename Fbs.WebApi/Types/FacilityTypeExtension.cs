@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Repository;
 
@@ -10,7 +11,7 @@ public class FacilityTypeExtension(BookingRepository bookingRepository)
         [Parent] Facility facility,
         DateTimeOffset start,
         DateTimeOffset end,
-        CancellationToken ct
+        [EnumeratorCancellation] CancellationToken ct
     )
     {
         if (start >= end || start.Minute % 30 != 0 || end.Minute % 30 != 0)
@@ -32,7 +33,7 @@ public class FacilityTypeExtension(BookingRepository bookingRepository)
             current = current.AddMinutes(30);
 
             var overlaps = overlapping.SingleOrDefault(b => b.StartDateTime < newEnd && b.EndDateTime > newCurrent);
-            
+
             yield return new TimeSlot(newCurrent, newEnd, overlaps);
         } while (!ct.IsCancellationRequested && current < end);
     }
