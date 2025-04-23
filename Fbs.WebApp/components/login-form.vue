@@ -87,7 +87,7 @@ async function login() {
         credentials: 'include',
       })
 
-      navigateTo('/booking')
+      await navigateTo('/booking')
     }
     catch (error) {
       if (error instanceof FetchError) {
@@ -118,7 +118,7 @@ async function login() {
       >
         <UInput
           v-model="state.phone"
-          type="phone"
+          type="tel"
         />
       </UFormField>
 
