@@ -53,8 +53,8 @@ public class Mutation
         var users = await userRepository.GetListAsync(ct);
         var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
         var subscribedUsers = users
+            .Where(u => u.Phone != phone)
             .Where(u =>
-                (u.Phone != phone) ||
                 (u.NotificationGroup == "All") ||
                 (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
             );
@@ -185,8 +185,8 @@ public class Mutation
         var users = await userRepository.GetListAsync(ct);
         var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
         var subscribedUsers = users
+            .Where(u => u.Phone != phone)
             .Where(u =>
-                (u.Phone != phone) ||
                 (u.NotificationGroup == "All") ||
                 (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
             );
@@ -229,7 +229,7 @@ public class Mutation
         await Parallel.ForEachAsync(subscribedUsers, ct, async (u, ct2) =>
         {
             await botClient.SendMessage(
-                user.TelegramChatId!,
+                u.TelegramChatId!,
                 $"""
                  A booking for <b>{booking.FacilityName}</b> has been updated!
 
@@ -351,8 +351,8 @@ public class Mutation
         var users = await userRepository.GetListAsync(ct);
         var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
         var subscribedUsers = users
+            .Where(u => u.Phone != phone)
             .Where(u =>
-                (u.Phone != phone) ||
                 (u.NotificationGroup == "All") ||
                 (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
             );
@@ -395,7 +395,7 @@ public class Mutation
         await Parallel.ForEachAsync(subscribedUsers, ct, async (u, ct2) =>
         {
             await botClient.SendMessage(
-                user.TelegramChatId!,
+                u.TelegramChatId!,
                 $"""
                  A booking for <b>{facilityName}</b> has been created!
 
@@ -422,8 +422,6 @@ public class Mutation
 
                  <u>Confirmation</u>
                  {booking.Id}
-
-                 Cancel or update your booking <a href="https://3sib-fbs.from.sg/booking/{booking.Id}">here</a>.
                  """,
                 ParseMode.Html,
                 cancellationToken: ct2
