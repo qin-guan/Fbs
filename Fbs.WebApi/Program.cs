@@ -48,6 +48,7 @@ builder.Services.AddAuthenticationCookie(validFor: TimeSpan.FromDays(1), options
         if (!builder.Environment.IsProduction()) return;
         
         options.Cookie.Domain = ".from.sg";
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     })
     .AddAuthorization();
 
