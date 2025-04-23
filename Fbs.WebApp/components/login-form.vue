@@ -124,7 +124,10 @@ async function login() {
         />
       </UFormField>
 
-      <UButton type="submit">
+      <UButton
+        type="submit"
+        :loading="state.pending"
+      >
         Login
       </UButton>
     </UForm>
