@@ -47,9 +47,7 @@ builder.Services.AddAuthenticationCookie(validFor: TimeSpan.FromDays(1), options
     {
         if (!builder.Environment.IsProduction()) return;
         
-        options.Cookie.SameSite = SameSiteMode.None;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        options.Cookie.Domain = ".3sib-fbs.from.sg";
+        options.Cookie.Domain = ".from.sg";
     })
     .AddAuthorization();
 

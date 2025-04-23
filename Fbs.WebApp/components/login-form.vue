@@ -24,50 +24,51 @@ async function login() {
       await $fetch(`${api}/Auth/Login`, {
         method: 'POST',
         body: {
-          phone: '65' + state.phone
-        }
+          phone: '65' + state.phone,
+        },
       })
       state.verify = true
-    } catch (e) {
+    }
+    catch (e) {
       if (e instanceof FetchError) {
         const errors = e.data.errors
 
         for (const error of errors) {
           switch (error.code) {
-            case "EX01": {
+            case 'EX01': {
               toast.add({
                 color: 'error',
                 title: 'Error',
-                description: "This number is not allow-listed. Please contact your unit S3 to add your number."
+                description: 'This number is not allow-listed. Please contact your unit S3 to add your number.',
               })
-              break;
+              break
             }
 
-            case "EX02": {
+            case 'EX02': {
               toast.add({
                 color: 'primary',
                 title: 'Verify your number',
-                description: "This number is not verified. Please verify your number first.",
+                description: 'This number is not verified. Please verify your number first.',
                 actions: [
                   {
                     label: 'Verify',
                     color: 'primary',
                     onClick: () => {
-                      window.open("https://t.me/temasek_facility_booking_bot")
-                    }
+                      window.open('https://t.me/temasek_facility_booking_bot')
+                    },
                   },
-                ]
+                ],
               })
-              break;
+              break
             }
 
             default: {
               toast.add({
                 color: 'error',
                 title: 'Error',
-                description: error.message
+                description: error.message,
               })
-              break;
+              break
             }
           }
         }
@@ -80,26 +81,43 @@ async function login() {
       method: 'POST',
       body: {
         phone: '65' + state.phone,
-        code: state.otp.join('')
+        code: state.otp.join(''),
       },
-      credentials: 'include'
+      credentials: 'include',
     })
-    
-    window.location.reload()
+
+    navigateTo('/booking')
   }
 
   state.pending = false
 }
 </script>
+
 <template>
   <div class="flex-1 flex items-center justify-center">
-    <UForm :schema="schema" :state="state" class="space-y-4" @submit="login">
-      <UFormField label="Phone" name="phone">
+    <UForm
+      :schema="schema"
+      :state="state"
+      class="space-y-4"
+      @submit="login"
+    >
+      <UFormField
+        label="Phone"
+        name="phone"
+      >
         <UInput v-model="state.phone" />
       </UFormField>
 
-      <UFormField v-if="state.verify" label="OTP" name="otp">
-        <UPinInput v-model="state.otp" otp length="6" />
+      <UFormField
+        v-if="state.verify"
+        label="OTP"
+        name="otp"
+      >
+        <UPinInput
+          v-model="state.otp"
+          otp
+          length="6"
+        />
       </UFormField>
 
       <UButton type="submit">
