@@ -49,4 +49,9 @@ jobs:
               -e Telegram__Token="${{ secrets.TELEGRAM_TOKEN }}" \
               -e Google__SpreadsheetId="1CBKV1aWpR5axdWL7AJZt6K4SKL8SOOO3IomMtY8EQKU" \
               -e Google__ServiceAccountJsonCredential='${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_CREDENTIAL }}' \
-              -e Google__CalendarId="497fc5c8633621812414b1f4e88f7d7147a6fd39bb58a2591bdb68bca0b38ece@group.calendar.google.com";
+              -e Google__CalendarId="497fc5c8633621812414b1f4e88f7d7147a6fd39bb58a2591bdb68bca0b38ece@group.calendar.google.com" \
+              -e OTEL_ATTRIBUTE_COUNT_LIMIT=64
+              -e OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT=4095
+              -e OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.eu01.nr-data.net
+              -e OTEL_EXPORTER_OTLP_HEADERS='${{ secrets.OTEL_EXPORTER_OTLP_HEADERS }}'
+              -e OTEL_SERVICE_NAME="Fbs";
