@@ -63,7 +63,7 @@ public class Endpoint(
 
                      You may now use Telegram to authenticate with the Facility Booking System.
 
-                     Make a booking <a href="https://3sib-fbs.pages.dev">here</a>.
+                     Make a booking <a href="https://3sib-fbs.from.sg">here</a>.
                      """,
                     ParseMode.Html,
                     replyMarkup: new ReplyKeyboardRemove(),
