@@ -8,7 +8,7 @@ const me = useQuery({
 </script>
 
 <template>
-  <UApp>
+  <UApp class="font-display">
     <UHeader title="3SIB Facility Booking">
       <template #right>
         <UButton

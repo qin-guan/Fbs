@@ -25,7 +25,7 @@ whenever(() => !fetching.value, () => {
 </script>
 
 <template>
-  <UApp>
+  <UApp class="font-display">
     <UDashboardGroup>
       <UDashboardSidebar
         :ui="{ footer: 'border-0' }"
