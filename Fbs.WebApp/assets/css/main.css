@@ -1,2 +1,7 @@
 @import "tailwindcss";
 @import "@nuxt/ui-pro";
+
+@theme {
+  --font-display: "Inter", "sans-serif";
+}
+
