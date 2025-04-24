@@ -9,5 +9,6 @@
 <style>
 #__nuxt {
   height: 100vh;
+  font-family: Inter, sans-serif;
 }
 </style>
