@@ -28,7 +28,7 @@ public class Endpoint(
                 AddError(r => r.Phone, "User is not allow-listed.", "EX01");
                 await SendErrorsAsync(cancellation: ct);
                 return;
-            case { TelegramChatId: null }:
+            case { TelegramChatId: null or { Length: 0 } }:
                 AddError(r => r.Phone, "User is not registered on Telegram.", "EX02");
                 await SendErrorsAsync(cancellation: ct);
                 return;

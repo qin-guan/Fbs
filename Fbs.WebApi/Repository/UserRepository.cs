@@ -68,7 +68,7 @@ public class UserRepository(
                 Values = [[entity.Unit, entity.Name, entity.Phone, entity.TelegramChatId, entity.NotificationGroup]]
             },
             options.Value.SpreadsheetId,
-            $"Users!A{entity.Row}:D{entity.Row}"
+            $"Users!A{entity.Row}:E{entity.Row}"
         );
 
         request.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
