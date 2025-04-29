@@ -1,3 +1,8 @@
+<script setup lang="ts">
+useHead({
+  title: '3SIB Facility Booking'
+})
+</script>
 <template>
   <NuxtRouteAnnouncer />
   <NuxtLoadingIndicator />
