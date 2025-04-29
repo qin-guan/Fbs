@@ -44,6 +44,7 @@ jobs:
               --rollout remove \
               -g 3sib-fbs \
               -M 1024 \
+              -e TZ="Asia/Singapore" \
               -e DOTNET_URLS="http://0.0.0.0:5000" \
               -e Telegram__WebhookUrl="https://3sib-fbs-api.from.sg/Bot" \
               -e Telegram__Token="${{ secrets.TELEGRAM_TOKEN }}" \
