@@ -51,19 +51,34 @@ public static class Query
         return [facility];
     }
 
-    public static async Task<Booking> GetBooking(
+    public static async Task<BookingWithUser> GetBooking(
         Guid id,
         BookingRepository bookingRepository,
+        UserRepository userRepository,
         CancellationToken ct
     )
     {
-        return await bookingRepository.GetAsync(b => b.Id == id, ct);
+        var booking = await bookingRepository.GetAsync(b => b.Id == id, ct);
+        
+        return new BookingWithUser
+        {
+            Id = booking.Id,
+            FacilityName = booking.FacilityName,
+            Conduct = booking.Conduct,
+            Description = booking.Description,
+            PocName = booking.PocName,
+            PocPhone = booking.PocPhone,
+            StartDateTime = booking.StartDateTime,
+            EndDateTime = booking.EndDateTime,
+            User = await userRepository.FindAsync(u => u.Phone == booking.UserPhone, ct),
+        };
     }
 
-    public static async Task<List<Booking>> GetBookings(
+    public static async Task<List<BookingWithUser>> GetBookings(
         string? userPhone,
         DateTimeOffset? startsAfter,
         BookingRepository bookingRepository,
+        UserRepository userRepository,
         CancellationToken ct
     )
     {
@@ -79,6 +94,20 @@ public static class Query
             all = all.Where(b => b.StartDateTime >= startsAfter).ToList();
         }
 
-        return all.OrderByDescending(b => b.StartDateTime).ToList();
+        var users = await userRepository.GetListAsync(ct);
+        var withUser = all.Select(booking => new BookingWithUser
+        {
+            Id = booking.Id,
+            FacilityName = booking.FacilityName,
+            Conduct = booking.Conduct,
+            Description = booking.Description,
+            PocName = booking.PocName,
+            PocPhone = booking.PocPhone,
+            StartDateTime = booking.StartDateTime,
+            EndDateTime = booking.EndDateTime,
+            User = users.Single(u => u.Phone == booking.UserPhone),
+        });
+
+        return withUser.OrderByDescending(b => b.StartDateTime).ToList();
     }
 }

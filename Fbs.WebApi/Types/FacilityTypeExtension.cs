@@ -5,7 +5,7 @@ using Fbs.WebApi.Repository;
 namespace Fbs.WebApi.Types;
 
 [ExtendObjectType<Facility>]
-public class FacilityTypeExtension(BookingRepository bookingRepository)
+public class FacilityTypeExtension(BookingRepository bookingRepository, UserRepository userRepository)
 {
     public async IAsyncEnumerable<TimeSlot> AvailableTimeSlots(
         [Parent] Facility facility,
@@ -19,10 +19,23 @@ public class FacilityTypeExtension(BookingRepository bookingRepository)
             throw new Exception();
         }
 
+        var users = await userRepository.GetListAsync(ct);
         var bookings = await bookingRepository.GetListAsync(ct);
         var overlapping = bookings
             .Where(b => b.FacilityName == facility.Name)
             .Where(b => b.StartDateTime <= end && b.EndDateTime >= start)
+            .Select(booking => new BookingWithUser
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                User = users.Single(u => u.Phone == booking.UserPhone),
+            })
             .ToList();
 
         var current = start;

@@ -51,6 +51,9 @@ export const queries = {
             description
             pocName
             pocPhone
+            user {
+              unit
+            }
           }
         }
       }

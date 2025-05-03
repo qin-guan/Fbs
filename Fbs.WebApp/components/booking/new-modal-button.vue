@@ -194,7 +194,7 @@ function onClick(idx: number) {
     let hasIntersection = false
     for (let i = rangeStart; i <= rangeEnd; i++) {
       // Check bounds just in case, though idx should be valid if coming from UI
-      if (i >= 0 && i < allSlotsMeta.length && allSlotsMeta[i]?.slot?.booking) {
+      if ((i >= 0 && i < allSlotsMeta.length && allSlotsMeta[i]?.slot?.booking) || allSlotsMeta[i]?.meta.state === 'pastBookingDate') {
         // Found a booked slot within the potential selection range
         hasIntersection = true
         console.warn(`Selection attempt blocked: Intersection detected at index ${i} within range [${rangeStart}, ${rangeEnd}].`)
@@ -333,59 +333,78 @@ function clickInsertBooking() {
         v-if="stepper === 1"
         class="space-y-4"
       >
-        <div>
-          <span>
-            Availability for:
-          </span>
+        <div class="flex justify-between items-center">
+          <div>
+            <span>
+              Availability for:
+            </span>
 
-          <span class="font-semibold">
-            {{ formFacilityName }}
+            <span class="font-semibold">
+              {{ formFacilityName }}
+            </span>
+          </div>
+
+          <span class="text-sm">
+            Click on
+            <UChip
+              standalone
+              inset
+              color="error"
+              size="3xl"
+              text="Unavailable"
+            /> slots for more info
           </span>
         </div>
 
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-2">
-            <div class="w-4 h-4 rounded-sm bg-green-50 border-1 border-green-300" />
+            <div class="w-4 h-4 rounded-sm bg-green-50 border-1 border-green-400" />
             <span>
               Available
             </span>
           </div>
 
           <div class="flex items-center gap-2">
-            <div class="w-4 h-4 rounded-sm bg-blue-50 border-1 border-blue-300" />
+            <div class="w-4 h-4 rounded-sm bg-blue-50 border-1 border-blue-400" />
             <span>
               Selected
             </span>
           </div>
 
           <div class="flex items-center gap-2">
-            <div class="w-4 h-4 rounded-sm bg-slate-50 border-1 border-slate-300" />
+            <div class="w-4 h-4 rounded-sm bg-red-50 border-1 border-red-400" />
+            <span>
+              Booked
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded-sm bg-gray-50 border-1 border-gray-400" />
             <span>
               Unavailable
             </span>
           </div>
         </div>
 
-        <div class="grid grid-cols-4 md:grid-cols-8 gap-2">
-          <BookingNewModalButtonTimeslot
+        <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+          <template
             v-for="{ slot, meta } in slotWithMeta"
             :key="slot.startDateTime"
-            :time-slot="slot.startDateTime"
-            :state="meta.state"
-            @click="onClick(meta.idx)"
-            @mouseover="slotSelection.hovered = meta.idx"
           >
-            <template
+            <BookingNewNewModalButtonTimeslotUnavailable
               v-if="slot.booking"
-              #tooltip
-            >
-              <span>
-                Conduct: {{ slot.booking?.conduct }}
-                <br>
-                PoC: {{ slot.booking?.pocName }} ({{ slot.booking?.pocPhone }})
-              </span>
-            </template>
-          </BookingNewModalButtonTimeslot>
+              :slot="slot"
+              :time-slot="slot.startDateTime"
+              :tooltip="slot.booking.user?.unit ?? 'N/A'"
+            />
+            <BookingNewNewModalButtonTimeslotAvailable
+              v-else
+              :state="meta.state"
+              :time-slot="slot.startDateTime"
+              @click="onClick(meta.idx)"
+              @mouseover="slotSelection.hovered = meta.idx"
+            />
+          </template>
         </div>
 
         <UCard

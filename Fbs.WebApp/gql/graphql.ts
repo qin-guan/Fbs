@@ -43,6 +43,19 @@ export type Booking = {
   userPhone?: Maybe<Scalars['String']['output']>;
 };
 
+export type BookingWithUser = {
+  __typename?: 'BookingWithUser';
+  conduct?: Maybe<Scalars['String']['output']>;
+  description?: Maybe<Scalars['String']['output']>;
+  endDateTime?: Maybe<Scalars['DateTime']['output']>;
+  facilityName?: Maybe<Scalars['String']['output']>;
+  id: Scalars['UUID']['output'];
+  pocName?: Maybe<Scalars['String']['output']>;
+  pocPhone?: Maybe<Scalars['String']['output']>;
+  startDateTime?: Maybe<Scalars['DateTime']['output']>;
+  user?: Maybe<User>;
+};
+
 export type Facility = {
   __typename?: 'Facility';
   availableTimeSlots: Array<TimeSlot>;
@@ -91,8 +104,8 @@ export type MutationUpdateBookingArgs = {
 
 export type Query = {
   __typename?: 'Query';
-  booking: Booking;
-  bookings: Array<Booking>;
+  booking: BookingWithUser;
+  bookings: Array<BookingWithUser>;
   facilities: Array<Facility>;
   me?: Maybe<User>;
 };
@@ -115,7 +128,7 @@ export type QueryFacilitiesArgs = {
 
 export type TimeSlot = {
   __typename?: 'TimeSlot';
-  booking?: Maybe<Booking>;
+  booking?: Maybe<BookingWithUser>;
   endDateTime: Scalars['DateTime']['output'];
   startDateTime: Scalars['DateTime']['output'];
 };
@@ -124,6 +137,7 @@ export type User = {
   __typename?: 'User';
   id?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
+  notificationGroup?: Maybe<Scalars['String']['output']>;
   phone?: Maybe<Scalars['String']['output']>;
   row: Scalars['Int']['output'];
   telegramChatId?: Maybe<Scalars['String']['output']>;
@@ -157,14 +171,14 @@ export type SlotsQueryVariables = Exact<{
 }>;
 
 
-export type SlotsQuery = { __typename?: 'Query', facilities: Array<{ __typename?: 'Facility', name?: string | null, availableTimeSlots: Array<{ __typename?: 'TimeSlot', startDateTime: any, endDateTime: any, booking?: { __typename?: 'Booking', conduct?: string | null, description?: string | null, pocName?: string | null, pocPhone?: string | null } | null }> }> };
+export type SlotsQuery = { __typename?: 'Query', facilities: Array<{ __typename?: 'Facility', name?: string | null, availableTimeSlots: Array<{ __typename?: 'TimeSlot', startDateTime: any, endDateTime: any, booking?: { __typename?: 'BookingWithUser', conduct?: string | null, description?: string | null, pocName?: string | null, pocPhone?: string | null, user?: { __typename?: 'User', unit?: string | null } | null } | null }> }> };
 
 export type BookingQueryVariables = Exact<{
   id: Scalars['UUID']['input'];
 }>;
 
 
-export type BookingQuery = { __typename?: 'Query', booking: { __typename?: 'Booking', id?: string | null, conduct?: string | null, description?: string | null, startDateTime?: any | null, endDateTime?: any | null, facilityName?: string | null, pocName?: string | null, pocPhone?: string | null } };
+export type BookingQuery = { __typename?: 'Query', booking: { __typename?: 'BookingWithUser', id: any, conduct?: string | null, description?: string | null, startDateTime?: any | null, endDateTime?: any | null, facilityName?: string | null, pocName?: string | null, pocPhone?: string | null } };
 
 export type BookingsQueryVariables = Exact<{
   userPhone?: InputMaybe<Scalars['String']['input']>;
@@ -172,7 +186,7 @@ export type BookingsQueryVariables = Exact<{
 }>;
 
 
-export type BookingsQuery = { __typename?: 'Query', bookings: Array<{ __typename?: 'Booking', id?: string | null, conduct?: string | null, description?: string | null, startDateTime?: any | null, endDateTime?: any | null, facilityName?: string | null, pocName?: string | null, pocPhone?: string | null }> };
+export type BookingsQuery = { __typename?: 'Query', bookings: Array<{ __typename?: 'BookingWithUser', id: any, conduct?: string | null, description?: string | null, startDateTime?: any | null, endDateTime?: any | null, facilityName?: string | null, pocName?: string | null, pocPhone?: string | null }> };
 
 export type DeleteBookingMutationVariables = Exact<{
   id: Scalars['UUID']['input'];
@@ -210,7 +224,7 @@ export const MeDocument = {"kind":"Document","definitions":[{"kind":"OperationDe
 export const MeWithNameDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"meWithName"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"me"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}}]}}]}}]} as unknown as DocumentNode<MeWithNameQuery, MeWithNameQueryVariables>;
 export const MeWithEverythingDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"meWithEverything"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"me"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"telegramChatId"}},{"kind":"Field","name":{"kind":"Name","value":"row"}}]}}]}}]} as unknown as DocumentNode<MeWithEverythingQuery, MeWithEverythingQueryVariables>;
 export const FacilitiesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"facilities"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"facilities"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<FacilitiesQuery, FacilitiesQueryVariables>;
-export const SlotsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"slots"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"facility"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"facilities"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"facility"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"availableTimeSlots"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"start"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"end"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"startDateTime"}},{"kind":"Field","name":{"kind":"Name","value":"endDateTime"}},{"kind":"Field","name":{"kind":"Name","value":"booking"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"conduct"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"pocName"}},{"kind":"Field","name":{"kind":"Name","value":"pocPhone"}}]}}]}}]}}]}}]} as unknown as DocumentNode<SlotsQuery, SlotsQueryVariables>;
+export const SlotsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"slots"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"facility"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"facilities"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"facility"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"availableTimeSlots"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"start"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"end"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"startDateTime"}},{"kind":"Field","name":{"kind":"Name","value":"endDateTime"}},{"kind":"Field","name":{"kind":"Name","value":"booking"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"conduct"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"pocName"}},{"kind":"Field","name":{"kind":"Name","value":"pocPhone"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unit"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<SlotsQuery, SlotsQueryVariables>;
 export const BookingDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"booking"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UUID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"booking"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"conduct"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"startDateTime"}},{"kind":"Field","name":{"kind":"Name","value":"endDateTime"}},{"kind":"Field","name":{"kind":"Name","value":"facilityName"}},{"kind":"Field","name":{"kind":"Name","value":"pocName"}},{"kind":"Field","name":{"kind":"Name","value":"pocPhone"}}]}}]}}]} as unknown as DocumentNode<BookingQuery, BookingQueryVariables>;
 export const BookingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"bookings"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userPhone"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startsAfter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"bookings"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"userPhone"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userPhone"}}},{"kind":"Argument","name":{"kind":"Name","value":"startsAfter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startsAfter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"conduct"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"startDateTime"}},{"kind":"Field","name":{"kind":"Name","value":"endDateTime"}},{"kind":"Field","name":{"kind":"Name","value":"facilityName"}},{"kind":"Field","name":{"kind":"Name","value":"pocName"}},{"kind":"Field","name":{"kind":"Name","value":"pocPhone"}}]}}]}}]} as unknown as DocumentNode<BookingsQuery, BookingsQueryVariables>;
 export const DeleteBookingDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"deleteBooking"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UUID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteBooking"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteBookingMutation, DeleteBookingMutationVariables>;
