@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useQuery } from '@urql/vue'
+
 const { tf } = useFormatter()
 
 defineSlots<{
@@ -24,12 +26,31 @@ const props = defineProps<{
   }
   timeSlot: string
   tooltip: string
+  facilityName: string
 }>()
 
+const user = useQuery({
+  query: queries.meWithEverything,
+  variables: {},
+})
 const open = ref(false)
 const slotDate = computed(() => new Date(props.timeSlot))
 const slotStartDateTime = computed(() => new Date(props.slot.startDateTime || ''))
 const slotEndDateTime = computed(() => new Date(props.slot.endDateTime || ''))
+const pocContactHref = computed(() => {
+  const message = encodeURIComponent(`
+  Hello, I am ${user.data.value?.me?.name} from ${user.data.value?.me?.unit}.
+  
+  I would like to check if you would be open to sharing your slot
+  
+  at ${props.facilityName} for ${props.slot.booking.conduct} 
+  from ${tf.format(slotStartDateTime.value)} to ${tf.format(slotEndDateTime.value)}.
+  
+  Let me know if you are open to it, thanks!
+  `)
+
+  return `https://api.whatsapp.com/send?phone=${encodeURIComponent(props.slot.booking.pocPhone ?? '')}&text=${message}`
+})
 </script>
 
 <template>
@@ -94,7 +115,8 @@ const slotEndDateTime = computed(() => new Date(props.slot.endDateTime || ''))
             PoC
           </span>
           <span>
-            {{ props.slot.booking.pocName || 'N/A' }} (<ULink :href="'tel:+' + props.slot.booking.pocPhone">{{ props.slot.booking.pocPhone }}</ULink>)
+            {{ props.slot.booking.pocName || 'N/A' }} (<ULink :href="pocContactHref">{{ props.slot.booking.pocPhone }}
+            </ULink>)
           </span>
         </div>
       </div>

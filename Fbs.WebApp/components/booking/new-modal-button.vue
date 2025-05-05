@@ -394,6 +394,7 @@ function clickInsertBooking() {
             <BookingNewNewModalButtonTimeslotUnavailable
               v-if="slot.booking"
               :slot="slot"
+              :facility-name="formFacilityName"
               :time-slot="slot.startDateTime"
               :tooltip="slot.booking.user?.unit ?? 'N/A'"
             />
