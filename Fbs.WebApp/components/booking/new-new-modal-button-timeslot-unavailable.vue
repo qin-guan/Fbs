@@ -39,14 +39,14 @@ const slotStartDateTime = computed(() => new Date(props.slot.startDateTime || ''
 const slotEndDateTime = computed(() => new Date(props.slot.endDateTime || ''))
 const pocContactHref = computed(() => {
   const message = encodeURIComponent(`
-  Hello, I am ${user.data.value?.me?.name} from ${user.data.value?.me?.unit}.
-  
-  I would like to check if you would be open to sharing your slot
-  
-  at ${props.facilityName} for ${props.slot.booking.conduct} 
-  from ${tf.format(slotStartDateTime.value)} to ${tf.format(slotEndDateTime.value)}.
-  
-  Let me know if you are open to it, thanks!
+Hello, I am ${user.data.value?.me?.name} from ${user.data.value?.me?.unit}.
+
+I would like to check if you would be open to sharing your slot
+
+at ${props.facilityName} for ${props.slot.booking.conduct} 
+from ${tf.format(slotStartDateTime.value)} to ${tf.format(slotEndDateTime.value)}.
+
+Let me know if you are open to it, thanks!
   `)
 
   return `https://api.whatsapp.com/send?phone=${encodeURIComponent(props.slot.booking.pocPhone ?? '')}&text=${message}`
