@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 namespace Fbs.WebApi.Repository;
 
 public class UserRepository(
+    InstrumentationSource instrumentation,
     IOptions<GoogleOptions> options,
     SheetsService sheetsService
 ) : IRepository<User>
@@ -19,6 +20,8 @@ public class UserRepository(
 
     public async Task<List<User>> GetListAsync(CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var items = await sheetsService.Spreadsheets.Values.Get(options.Value.SpreadsheetId, "Users")
             .ExecuteAsync(cancellationToken);
 
@@ -44,6 +47,8 @@ public class UserRepository(
     public async Task<User?> FindAsync(Expression<Func<User, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var items = await GetListAsync(cancellationToken);
         return items.SingleOrDefault(predicate.Compile());
     }
@@ -51,6 +56,8 @@ public class UserRepository(
     public async Task<User> GetAsync(Expression<Func<User, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var items = await GetListAsync(cancellationToken);
         return items.Single(predicate.Compile());
     }
@@ -62,6 +69,8 @@ public class UserRepository(
 
     public async Task<User> UpdateAsync(User entity, CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var request = sheetsService.Spreadsheets.Values.Update(
             new ValueRange
             {
@@ -79,6 +88,7 @@ public class UserRepository(
 
     public async Task DeleteAsync(Expression<Func<User, bool>> predicate, CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
         var entity = await GetAsync(predicate, cancellationToken);
 
         await sheetsService.Spreadsheets.BatchUpdate(new BatchUpdateSpreadsheetRequest
@@ -104,6 +114,8 @@ public class UserRepository(
 
     private async Task<int?> GetSheetId(CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var sheet = await sheetsService.Spreadsheets.Get(options.Value.SpreadsheetId).ExecuteAsync(cancellationToken);
         return sheet.Sheets.Single(s => s.Properties.Title == "Users").Properties.SheetId;
     }

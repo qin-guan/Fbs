@@ -8,6 +8,7 @@ using Org.BouncyCastle.Crypto.Generators;
 namespace Fbs.WebApi.Endpoints.Auth.Verify.Post;
 
 public class Endpoint(
+    ILogger<Endpoint> logger,
     OtpRepository otpRepository,
     UserRepository userRepository
 ) : Endpoint<Request>
@@ -44,6 +45,8 @@ public class Endpoint(
         }
 
         await otpRepository.DeleteAsync(o => o.Phone == req.Phone, ct);
+        
+        logger.LogInformation("User {Phone} verified OTP", user.Phone);
 
         await CookieAuth.SignInAsync(u => { u["Phone"] = user.Phone; });
     }

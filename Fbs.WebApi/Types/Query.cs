@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Security.Claims;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Repository;
@@ -10,12 +12,15 @@ namespace Fbs.WebApi.Types;
 public static class Query
 {
     public static async Task<User?> GetMe(
+        InstrumentationSource instrumentation,
         ClaimsPrincipal claimsPrincipal,
         UserRepository userRepository,
         IResolverContext context,
         CancellationToken ct
     )
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+        
         var phone = claimsPrincipal.FindFirstValue("Phone");
         if (phone is null)
         {
@@ -32,16 +37,19 @@ public static class Query
     }
 
     public static async Task<List<Facility>> GetFacilities(
+        InstrumentationSource instrumentation,
         string? name,
         FacilityRepository facilityRepository,
         CancellationToken ct
     )
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         if (name is null)
         {
             return await facilityRepository.GetListAsync(ct);
         }
-
+        
         var facility = await facilityRepository.FindAsync(f => f.Name == name, ct);
         if (facility is null)
         {
@@ -52,14 +60,16 @@ public static class Query
     }
 
     public static async Task<BookingWithUser> GetBooking(
+        InstrumentationSource instrumentation,
         Guid id,
         BookingRepository bookingRepository,
         UserRepository userRepository,
         CancellationToken ct
     )
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
         var booking = await bookingRepository.GetAsync(b => b.Id == id, ct);
-        
+
         return new BookingWithUser
         {
             Id = booking.Id,
@@ -77,11 +87,13 @@ public static class Query
     public static async Task<List<BookingWithUser>> GetBookings(
         string? userPhone,
         DateTimeOffset? startsAfter,
+        InstrumentationSource instrumentation,
         BookingRepository bookingRepository,
         UserRepository userRepository,
         CancellationToken ct
     )
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
         var all = await bookingRepository.GetListAsync(ct);
 
         if (userPhone is not null)

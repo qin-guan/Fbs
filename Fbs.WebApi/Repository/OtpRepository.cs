@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 namespace Fbs.WebApi.Repository;
 
 public class OtpRepository(
+    InstrumentationSource instrumentation,
     IOptions<GoogleOptions> options,
     SheetsService sheetsService
 ) : IRepository<Otp>
@@ -19,6 +20,8 @@ public class OtpRepository(
 
     public async Task<List<Otp>> GetListAsync(CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+        
         var items = await sheetsService.Spreadsheets.Values.Get(options.Value.SpreadsheetId, "OTPs")
             .ExecuteAsync(cancellationToken);
 
@@ -42,6 +45,8 @@ public class OtpRepository(
     public async Task<Otp?> FindAsync(Expression<Func<Otp, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var items = await GetListAsync(cancellationToken);
         return items.SingleOrDefault(predicate.Compile());
     }
@@ -49,12 +54,16 @@ public class OtpRepository(
     public async Task<Otp> GetAsync(Expression<Func<Otp, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var items = await GetListAsync(cancellationToken);
         return items.Single(predicate.Compile());
     }
 
     public async Task<Otp> InsertAsync(Otp entity, CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var r = sheetsService.Spreadsheets.Values.Append(
             new ValueRange
             {
@@ -73,6 +82,8 @@ public class OtpRepository(
 
     public async Task<Otp> UpdateAsync(Otp entity, CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var request = sheetsService.Spreadsheets.Values.Update(
             new ValueRange
             {
@@ -90,6 +101,7 @@ public class OtpRepository(
 
     public async Task DeleteAsync(Expression<Func<Otp, bool>> predicate, CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
         var entity = await GetAsync(predicate, cancellationToken);
 
         await sheetsService.Spreadsheets.BatchUpdate(new BatchUpdateSpreadsheetRequest
@@ -115,6 +127,8 @@ public class OtpRepository(
 
     private async Task<int?> GetSheetId(CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var sheet = await sheetsService.Spreadsheets.Get(options.Value.SpreadsheetId).ExecuteAsync(cancellationToken);
         return sheet.Sheets.Single(s => s.Properties.Title == "OTPs").Properties.SheetId;
     }

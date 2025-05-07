@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 namespace Fbs.WebApi.Repository;
 
 public class BookingRepository(
+    InstrumentationSource instrumentation,
     IOptions<GoogleOptions> options,
     CalendarService calendarService,
     UserRepository userRepository
@@ -16,6 +17,8 @@ public class BookingRepository(
 {
     public async Task<List<Booking>> GetListAsync(CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+        
         string? token;
         var bookings = new List<Booking>();
 
@@ -38,6 +41,8 @@ public class BookingRepository(
     public async Task<Booking?> FindAsync(Expression<Func<Booking, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var list = await GetListAsync(cancellationToken);
         return list.SingleOrDefault(predicate.Compile());
     }
@@ -45,12 +50,16 @@ public class BookingRepository(
     public async Task<Booking> GetAsync(Expression<Func<Booking, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var list = await GetListAsync(cancellationToken);
         return list.Single(predicate.Compile());
     }
 
     public async Task<Booking> InsertAsync(Booking entity, CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var user = await userRepository.GetAsync(u => u.Phone == entity.UserPhone, cancellationToken);
 
         entity.Id = Guid.NewGuid();
@@ -107,6 +116,8 @@ public class BookingRepository(
 
     public async Task<Booking> UpdateAsync(Booking entity, CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var bookings = await GetListAsync(cancellationToken);
         var booking = bookings.Single(b => b.Id == entity.Id);
 
@@ -173,6 +184,8 @@ public class BookingRepository(
     public async Task DeleteAsync(Expression<Func<Booking, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var booking = await GetAsync(predicate, cancellationToken);
 
         await Task.WhenAll([

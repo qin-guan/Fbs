@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 namespace Fbs.WebApi.Repository;
 
 public class FacilityRepository(
+    InstrumentationSource instrumentation,
     IOptions<GoogleOptions> options,
     SheetsService sheetsService
 ) : IRepository<Facility>
@@ -18,6 +19,8 @@ public class FacilityRepository(
 
     public async Task<List<Facility>> GetListAsync(CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var items = await sheetsService.Spreadsheets.Values.Get(options.Value.SpreadsheetId, "Facilities")
             .ExecuteAsync(cancellationToken);
 
@@ -39,6 +42,8 @@ public class FacilityRepository(
     public async Task<Facility?> FindAsync(Expression<Func<Facility, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var items = await GetListAsync(cancellationToken);
         return items.SingleOrDefault(predicate.Compile());
     }
@@ -46,6 +51,8 @@ public class FacilityRepository(
     public async Task<Facility> GetAsync(Expression<Func<Facility, bool>> predicate,
         CancellationToken cancellationToken = default)
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var items = await GetListAsync(cancellationToken);
         return items.Single(predicate.Compile());
     }

@@ -22,6 +22,7 @@ public class Mutation
 
     [Authorize]
     public async Task<Guid> DeleteBooking(
+        InstrumentationSource instrumentation,
         ClaimsPrincipal claimsPrincipal,
         HtmlEncoder htmlEncoder,
         BookingRepository bookingRepository,
@@ -31,6 +32,8 @@ public class Mutation
         CancellationToken ct
     )
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var phone = claimsPrincipal.FindFirstValue("Phone");
         if (phone is null)
         {
@@ -133,6 +136,7 @@ public class Mutation
 
     [Authorize]
     public async Task<Booking> UpdateBooking(
+        InstrumentationSource instrumentation,
         ClaimsPrincipal claimsPrincipal,
         HtmlEncoder htmlEncoder,
         BookingRepository bookingRepository,
@@ -147,6 +151,8 @@ public class Mutation
         CancellationToken ct
     )
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         var phone = claimsPrincipal.FindFirstValue("Phone");
         if (phone is null)
         {
@@ -269,6 +275,7 @@ public class Mutation
 
     [Authorize]
     public async Task<Booking> InsertBooking(
+        InstrumentationSource instrumentation,
         ClaimsPrincipal claimsPrincipal,
         HtmlEncoder htmlEncoder,
         BookingRepository bookingRepository,
@@ -285,6 +292,8 @@ public class Mutation
         CancellationToken ct
     )
     {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
         if (DateTimeOffset.Now >= startDateTime)
         {
             throw new Exception("Start time must be in the future.");

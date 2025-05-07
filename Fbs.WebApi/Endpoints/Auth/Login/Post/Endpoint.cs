@@ -8,6 +8,7 @@ using Telegram.Bot;
 namespace Fbs.WebApi.Endpoints.Auth.Login.Post;
 
 public class Endpoint(
+    ILogger<Endpoint> logger,
     OtpRepository otpRepository,
     UserRepository userRepository,
     TelegramBotClient client
@@ -64,7 +65,9 @@ public class Endpoint(
                 CreatedAt = DateTimeOffset.UtcNow
             }, ct);
         }
-
+        
+        logger.LogInformation("User {Phone} requested for OTP", user.Phone);
+        
         await client.SendMessage(
             user.TelegramChatId,
             $"Your login OTP is {code}",

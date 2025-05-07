@@ -1,6 +1,7 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
+using Fbs.WebApi;
 using Fbs.WebApi.EventListeners;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
@@ -88,6 +89,8 @@ builder.Services.AddSingleton(sp =>
 
     return service;
 });
+
+builder.Services.AddSingleton<InstrumentationSource>();
 
 builder.Services.AddScoped<FacilityRepository>();
 builder.Services.AddScoped<OtpRepository>();
