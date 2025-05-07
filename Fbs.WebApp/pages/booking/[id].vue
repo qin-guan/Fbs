@@ -149,7 +149,7 @@ function deleteBooking() {
           label="PoC Phone"
           name="pocPhone"
         >
-          <UInput v-model="modifiedBooking.pocPhone" />
+          <PhoneInput v-model="modifiedBooking.pocPhone" />
         </UFormField>
 
         <div class="flex gap-3">

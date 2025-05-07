@@ -79,7 +79,7 @@ public class BookingRepository(
                                Point of contact: {entity.PocName} / {entity.PocPhone}
 
                                Booked by: {user.Unit} / {user.Name}
-                               Number: {user.Phone?[2..]}
+                               Number: {user.Phone}
 
                                Description: 
                                {entity.Description}
@@ -144,7 +144,7 @@ public class BookingRepository(
                            Point of contact: {booking.PocName} / {booking.PocPhone}
 
                            Booked by: {user.Unit} / {user.Name}
-                           Number: {user.Phone?[2..]}
+                           Number: {user.Phone}
 
                            Description: 
                            {booking.Description}

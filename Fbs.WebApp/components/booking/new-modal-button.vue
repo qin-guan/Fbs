@@ -521,7 +521,7 @@ function clickInsertBooking() {
             name="pocPhone"
             required
           >
-            <UInput v-model="formPocPhone" />
+            <PhoneInput v-model="formPocPhone" />
           </UFormField>
         </div>
 

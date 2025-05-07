@@ -13,7 +13,7 @@ const state = reactive({
 })
 
 const schema = v.object({
-  phone: v.pipe(v.string(), v.length(8)),
+  phone: v.pipe(v.string(), v.length(10)),
 })
 
 async function login() {
@@ -24,7 +24,7 @@ async function login() {
       await $fetch(`${api}/Auth/Login`, {
         method: 'POST',
         body: {
-          phone: '65' + state.phone,
+          phone: state.phone,
         },
       })
       state.verify = true
@@ -81,7 +81,7 @@ async function login() {
       await $fetch(`${api}/Auth/Verify`, {
         method: 'POST',
         body: {
-          phone: '65' + state.phone,
+          phone: state.phone,
           code: state.otp.join(''),
         },
         credentials: 'include',
@@ -116,7 +116,7 @@ async function login() {
         label="Phone"
         name="phone"
       >
-        <UInput
+        <PhoneInput
           v-model="state.phone"
           type="tel"
         />
