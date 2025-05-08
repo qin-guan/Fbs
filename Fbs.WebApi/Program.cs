@@ -3,6 +3,7 @@ using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi;
 using Fbs.WebApi.EventListeners;
+using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
 using Fbs.WebApi.Types;
@@ -47,7 +48,7 @@ builder.Services.AddOptions<TelegramOptions>()
 builder.Services.AddAuthenticationCookie(validFor: TimeSpan.FromDays(1), options =>
     {
         if (!builder.Environment.IsProduction()) return;
-        
+
         options.Cookie.Domain = ".from.sg";
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     })
@@ -92,6 +93,7 @@ builder.Services.AddSingleton(sp =>
 
 builder.Services.AddSingleton<InstrumentationSource>();
 
+builder.Services.AddScoped<TraceIdMiddleware>();
 builder.Services.AddScoped<FacilityRepository>();
 builder.Services.AddScoped<OtpRepository>();
 builder.Services.AddScoped<UserRepository>();
@@ -138,12 +140,14 @@ await using (var scope = app.Services.CreateAsyncScope())
     await client.SetWebhook(options.Value.WebhookUrl);
 }
 
+app.UseMiddleware<TraceIdMiddleware>();
+
 app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseFastEndpoints(config => config.Errors.UseProblemDetails(c => { c.IndicateErrorCode = true; }));
+app.UseFastEndpoints(config => { config.Errors.UseProblemDetails(c => { c.IndicateErrorCode = true; }); });
 app.UseSwaggerGen(config => { config.Path = "/openapi/{documentName}.json"; });
 
 app.MapDefaultEndpoints();
