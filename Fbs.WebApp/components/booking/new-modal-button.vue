@@ -546,10 +546,8 @@ function clickInsertBooking() {
           label="User phone"
           name="userPhone"
         >
-          <UFormField
+          <PhoneInput
             v-model="formUserPhone"
-            type="tel"
-            autoresize
           />
         </UFormField>
       </div>
