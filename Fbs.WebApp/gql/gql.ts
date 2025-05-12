@@ -17,7 +17,8 @@ type Documents = {
     "\n    query me {\n      me {\n        phone\n      }\n    }\n  ": typeof types.MeDocument,
     "\n    query meWithName {\n      me {\n        name\n        phone\n      }\n    }\n  ": typeof types.MeWithNameDocument,
     "\n    query meWithEverything {\n      me {\n        id\n        unit\n        name\n        phone\n        telegramChatId\n        row\n      }\n    }\n  ": typeof types.MeWithEverythingDocument,
-    "\n    query facilities {\n      facilities {\n        name\n      }\n    }\n  ": typeof types.FacilitiesDocument,
+    "\n    query facilities {\n      facilities {\n        name\n        group\n      }\n    }\n  ": typeof types.FacilitiesDocument,
+    "\n    query allSlots($startDate: DateTime!, $endDate: DateTime!) {\n      facilities {\n        name\n        group\n        availableTimeSlots(start: $startDate, end: $endDate) {\n          startDateTime\n          endDateTime\n          booking {\n            id\n            conduct\n            description\n            pocName\n            pocPhone\n            user {\n              unit\n            }\n          }\n        }\n      }\n    }\n  ": typeof types.AllSlotsDocument,
     "\n    query slots($facility: String!, $startDate: DateTime!, $endDate: DateTime!) {\n      facilities(name: $facility) {\n        name\n        availableTimeSlots(start: $startDate, end: $endDate) {\n          startDateTime\n          endDateTime\n          booking {\n            conduct\n            description\n            pocName\n            pocPhone\n            user {\n              unit\n            }\n          }\n        }\n      }\n    }\n  ": typeof types.SlotsDocument,
     "\n    query booking($id: UUID!) {\n      booking(id: $id) {\n        id\n        conduct\n        description\n        startDateTime\n        endDateTime\n        facilityName\n        pocName\n        pocPhone\n      }\n    }\n  ": typeof types.BookingDocument,
     "\n    query bookings($userPhone: String, $startsAfter: DateTime) {\n      bookings(userPhone: $userPhone, startsAfter: $startsAfter) {\n        id\n        conduct\n        description\n        startDateTime\n        endDateTime\n        facilityName\n        pocName\n        pocPhone\n      }\n    }\n  ": typeof types.BookingsDocument,
@@ -29,7 +30,8 @@ const documents: Documents = {
     "\n    query me {\n      me {\n        phone\n      }\n    }\n  ": types.MeDocument,
     "\n    query meWithName {\n      me {\n        name\n        phone\n      }\n    }\n  ": types.MeWithNameDocument,
     "\n    query meWithEverything {\n      me {\n        id\n        unit\n        name\n        phone\n        telegramChatId\n        row\n      }\n    }\n  ": types.MeWithEverythingDocument,
-    "\n    query facilities {\n      facilities {\n        name\n      }\n    }\n  ": types.FacilitiesDocument,
+    "\n    query facilities {\n      facilities {\n        name\n        group\n      }\n    }\n  ": types.FacilitiesDocument,
+    "\n    query allSlots($startDate: DateTime!, $endDate: DateTime!) {\n      facilities {\n        name\n        group\n        availableTimeSlots(start: $startDate, end: $endDate) {\n          startDateTime\n          endDateTime\n          booking {\n            id\n            conduct\n            description\n            pocName\n            pocPhone\n            user {\n              unit\n            }\n          }\n        }\n      }\n    }\n  ": types.AllSlotsDocument,
     "\n    query slots($facility: String!, $startDate: DateTime!, $endDate: DateTime!) {\n      facilities(name: $facility) {\n        name\n        availableTimeSlots(start: $startDate, end: $endDate) {\n          startDateTime\n          endDateTime\n          booking {\n            conduct\n            description\n            pocName\n            pocPhone\n            user {\n              unit\n            }\n          }\n        }\n      }\n    }\n  ": types.SlotsDocument,
     "\n    query booking($id: UUID!) {\n      booking(id: $id) {\n        id\n        conduct\n        description\n        startDateTime\n        endDateTime\n        facilityName\n        pocName\n        pocPhone\n      }\n    }\n  ": types.BookingDocument,
     "\n    query bookings($userPhone: String, $startsAfter: DateTime) {\n      bookings(userPhone: $userPhone, startsAfter: $startsAfter) {\n        id\n        conduct\n        description\n        startDateTime\n        endDateTime\n        facilityName\n        pocName\n        pocPhone\n      }\n    }\n  ": types.BookingsDocument,
@@ -67,7 +69,11 @@ export function graphql(source: "\n    query meWithEverything {\n      me {\n   
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n    query facilities {\n      facilities {\n        name\n      }\n    }\n  "): (typeof documents)["\n    query facilities {\n      facilities {\n        name\n      }\n    }\n  "];
+export function graphql(source: "\n    query facilities {\n      facilities {\n        name\n        group\n      }\n    }\n  "): (typeof documents)["\n    query facilities {\n      facilities {\n        name\n        group\n      }\n    }\n  "];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n    query allSlots($startDate: DateTime!, $endDate: DateTime!) {\n      facilities {\n        name\n        group\n        availableTimeSlots(start: $startDate, end: $endDate) {\n          startDateTime\n          endDateTime\n          booking {\n            id\n            conduct\n            description\n            pocName\n            pocPhone\n            user {\n              unit\n            }\n          }\n        }\n      }\n    }\n  "): (typeof documents)["\n    query allSlots($startDate: DateTime!, $endDate: DateTime!) {\n      facilities {\n        name\n        group\n        availableTimeSlots(start: $startDate, end: $endDate) {\n          startDateTime\n          endDateTime\n          booking {\n            id\n            conduct\n            description\n            pocName\n            pocPhone\n            user {\n              unit\n            }\n          }\n        }\n      }\n    }\n  "];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

@@ -35,6 +35,30 @@ export const queries = {
     query facilities {
       facilities {
         name
+        group
+      }
+    }
+  `),
+
+  allSlots: graphql(`
+    query allSlots($startDate: DateTime!, $endDate: DateTime!) {
+      facilities {
+        name
+        group
+        availableTimeSlots(start: $startDate, end: $endDate) {
+          startDateTime
+          endDateTime
+          booking {
+            id
+            conduct
+            description
+            pocName
+            pocPhone
+            user {
+              unit
+            }
+          }
+        }
       }
     }
   `),

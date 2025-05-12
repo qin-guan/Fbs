@@ -16,7 +16,7 @@ public class FacilityTypeExtension(BookingRepository bookingRepository, UserRepo
     {
         if (start >= end || start.Minute % 30 != 0 || end.Minute % 30 != 0)
         {
-            throw new Exception();
+            throw new Exception("Either the start time is greater than end time, or the time values provided are not in the correct intervals.");
         }
 
         var users = await userRepository.GetListAsync(ct);

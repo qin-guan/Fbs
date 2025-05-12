@@ -14,7 +14,8 @@ public class FacilityRepository(
 {
     private readonly string[] _header =
     [
-        "Name"
+        "Name",
+        "Group"
     ];
 
     public async Task<List<Facility>> GetListAsync(CancellationToken cancellationToken = default)
@@ -34,7 +35,8 @@ public class FacilityRepository(
             .Select((row, idx) => new Facility
             {
                 Row = idx + 2,
-                Name = row.ElementAtOrDefault(0) as string
+                Name = row.ElementAtOrDefault(0) as string,
+                Group = row.ElementAtOrDefault(1) as string,
             })
             .ToList();
     }
