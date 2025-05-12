@@ -157,7 +157,8 @@ export const mutations = {
       $pocName: String!
       $pocPhone: String!
       $startDateTime: DateTime!
-      $endDateTime: DateTime!
+      $endDateTime: DateTime!,
+      $userPhone: String
     ) {
 
       insertBooking(
@@ -167,7 +168,8 @@ export const mutations = {
         pocName: $pocName
         pocPhone: $pocPhone
         startDateTime: $startDateTime
-        endDateTime: $endDateTime
+        endDateTime: $endDateTime,
+        userPhone: $userPhone
       ) {
         id
         description

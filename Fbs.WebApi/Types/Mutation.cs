@@ -289,6 +289,7 @@ public class Mutation
         string pocPhone,
         DateTimeOffset startDateTime,
         DateTimeOffset endDateTime,
+        string? userPhone,
         CancellationToken ct
     )
     {
@@ -337,7 +338,7 @@ public class Mutation
             throw new Exception("Overlapping bookings.");
         }
 
-        var phone = claimsPrincipal.FindFirstValue("Phone");
+        var phone = userPhone ?? claimsPrincipal.FindFirstValue("Phone");
         if (phone is null)
         {
             throw new Exception("User does not exist");

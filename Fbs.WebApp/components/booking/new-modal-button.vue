@@ -14,6 +14,7 @@ const formConduct = ref('')
 const formPocName = ref('')
 const formPocPhone = ref('')
 const formDescription = ref('')
+const formUserPhone = ref('')
 const formInsertingBooking = ref(false)
 const formInsertAnother = ref(false)
 
@@ -36,6 +37,10 @@ const facilities = useQuery({
 const me = useQuery({
   query: queries.meWithName,
   variables: {},
+})
+
+const isAdmin = computed(() => {
+  return me.data.value?.me?.phone === '6587784497'
 })
 
 whenever(me.data, (value) => {
@@ -245,6 +250,7 @@ function clickInsertBooking() {
     endDateTime: resolvedSlotSelection.value.end?.toISOString(),
     pocName: formPocName.value,
     pocPhone: formPocPhone.value,
+    userPhone: formUserPhone.value.length > 0 ? formUserPhone.value : undefined,
   })
     .then(({ error }) => {
       if (!error) {
@@ -531,6 +537,18 @@ function clickInsertBooking() {
         >
           <UTextarea
             v-model="formDescription"
+            autoresize
+          />
+        </UFormField>
+
+        <UFormField
+          v-if="isAdmin"
+          label="User phone"
+          name="userPhone"
+        >
+          <UFormField
+            v-model="formUserPhone"
+            type="tel"
             autoresize
           />
         </UFormField>
