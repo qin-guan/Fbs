@@ -23,7 +23,8 @@ public class Endpoint(
         var facility = await facilityRepository.FindAsync(f => f.Name == req.FacilityName, ct);
         if (facility is null)
         {
-            throw new Exception("Facility does not exist.");
+            await SendNotFoundAsync(cancellation: ct);
+            return;
         }
 
         var bookings = await bookingRepository.GetListAsync(ct);
