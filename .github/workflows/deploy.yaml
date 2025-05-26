@@ -8,7 +8,7 @@ on:
 
 env:
   UKC_TOKEN: ${{ secrets.UKC_TOKEN }}
-  UKC_METRO: sin0
+  UKC_METRO: fra0
 
 jobs:
   deploy:
