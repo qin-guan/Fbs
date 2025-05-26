@@ -1,9 +1,11 @@
 <script setup lang="ts">
 useHead({
-  title: '3SIB Facility Booking'
+  title: '3SIB Facility Booking',
 })
 </script>
+
 <template>
+  <Toast />
   <NuxtRouteAnnouncer />
   <NuxtLoadingIndicator />
   <NuxtLayout>

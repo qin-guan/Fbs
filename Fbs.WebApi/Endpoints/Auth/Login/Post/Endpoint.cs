@@ -17,6 +17,7 @@ public class Endpoint(
     public override void Configure()
     {
         Post("/Auth/Login");
+        Description(e => e.ProducesProblemDetails());
         AllowAnonymous();
     }
 
@@ -27,13 +28,13 @@ public class Endpoint(
         {
             case null:
                 AddError(r => r.Phone, "User is not allow-listed.", "EX01");
-                await SendErrorsAsync(cancellation: ct);
-                return;
+                break;
             case { TelegramChatId: null or { Length: 0 } }:
                 AddError(r => r.Phone, "User is not registered on Telegram.", "EX02");
-                await SendErrorsAsync(cancellation: ct);
-                return;
+                break;
         }
+
+        ThrowIfAnyErrors();
 
         var code = RandomNumberGenerator.GetString("1234567890", 6);
         var hash = Convert.ToHexString(
@@ -65,9 +66,9 @@ public class Endpoint(
                 CreatedAt = DateTimeOffset.UtcNow
             }, ct);
         }
-        
+
         logger.LogInformation("User {Phone} requested for OTP", user.Phone);
-        
+
         await client.SendMessage(
             user.TelegramChatId,
             $"Your login OTP is {code}",

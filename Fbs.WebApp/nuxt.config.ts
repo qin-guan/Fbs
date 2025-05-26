@@ -1,17 +1,40 @@
+import tailwindcss from '@tailwindcss/vite'
+import _Aura from '@primeuix/themes/aura'
+import { definePreset } from '@primeuix/themes'
+
+const Aura = definePreset(_Aura, {
+  semantic: {
+    primary: {
+      50: '{orange.50}',
+      100: '{orange.100}',
+      200: '{orange.200}',
+      300: '{orange.300}',
+      400: '{orange.400}',
+      500: '{orange.500}',
+      600: '{orange.600}',
+      700: '{orange.700}',
+      800: '{orange.800}',
+      900: '{orange.900}',
+      950: '{orange.950}',
+    },
+  },
+})
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: [
+    '@nuxt/content',
     '@nuxt/eslint',
     '@nuxt/fonts',
     '@nuxt/icon',
     '@nuxt/image',
     '@nuxt/scripts',
-    '@nuxt/ui-pro',
     '@nuxt/test-utils',
     '@vueuse/nuxt',
+    '@primevue/nuxt-module',
   ],
   ssr: false,
-  devtools: { enabled: true },
+  devtools: { enabled: false },
 
   app: {
     head: {
@@ -32,10 +55,6 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
-  ui: {
-    colorMode: false,
-  },
-
   appConfig: {
     ui: {
       colors: {
@@ -51,6 +70,12 @@ export default defineNuxtConfig({
   },
   compatibilityDate: '2024-11-01',
 
+  vite: {
+    plugins: [
+      tailwindcss(),
+    ],
+  },
+
   eslint: {
     config: {
       stylistic: true,
@@ -61,5 +86,16 @@ export default defineNuxtConfig({
     families: [
       { name: 'Inter', provider: 'google' },
     ],
+  },
+
+  primevue: {
+    options: {
+      theme: {
+        options: {
+          darkModeSelector: 'none',
+        },
+        preset: Aura,
+      },
+    },
   },
 })

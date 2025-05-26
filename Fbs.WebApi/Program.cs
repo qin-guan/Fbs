@@ -1,32 +1,23 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
+using Fbs.ServiceDefaults;
 using Fbs.WebApi;
-using Fbs.WebApi.EventListeners;
 using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
-using Fbs.WebApi.Types;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
-using Telegram.Bot
-
-
+using Telegram.Bot;
+using ZiggyCreatures.Caching.Fusion;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-
-builder.AddGraphQL()
-    .AddDiagnosticEventListener<ExceptionEventListener>()
-    .ModifyRequestOptions(options => { options.IncludeExceptionDetails = true; })
-    .AddAuthorization()
-    .AddTypes()
-    .AddMutationType<Mutation>();
 
 #region Options
 
@@ -57,21 +48,19 @@ builder.Services.AddAuthenticationCookie(validFor: TimeSpan.FromDays(1), options
     .AddAuthorization();
 
 builder.Services.AddHttpClient<TelegramBotClient>("tgwebhook")
-    .AddTypedClient((httpClient, sp) =>
-        new TelegramBotClient(
-            sp.GetRequiredService<IOptions<TelegramOptions>>().Value.Token,
-            httpClient
-        )
-    );
+    .AddTypedClient((httpClient, sp) => new TelegramBotClient(
+        sp.GetRequiredService<IOptions<TelegramOptions>>().Value.Token,
+        httpClient
+    ));
 
 builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
 
-    var credential = GoogleCredential.FromJson(options.Value.ServiceAccountJsonCredential).CreateScoped([
+    var credential = GoogleCredential.FromJson(options.Value.ServiceAccountJsonCredential).CreateScoped(
         "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/calendar.events",
-    ]);
+        "https://www.googleapis.com/auth/calendar.events"
+    );
     var service = new CalendarService(new BaseClientService.Initializer
     {
         HttpClientInitializer = credential
@@ -93,6 +82,7 @@ builder.Services.AddSingleton(sp =>
     return service;
 });
 
+builder.Services.AddFusionCache().AsHybridCache();
 builder.Services.AddSingleton<InstrumentationSource>();
 
 builder.Services.AddScoped<TraceIdMiddleware>();
@@ -100,6 +90,7 @@ builder.Services.AddScoped<FacilityRepository>();
 builder.Services.AddScoped<OtpRepository>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<BookingRepository>();
+builder.Services.AddScoped<NominalRollRepository>();
 
 builder.Services.AddFastEndpoints();
 builder.Services.SwaggerDocument(options =>
@@ -114,6 +105,7 @@ builder.Services.AddCors(options =>
         if (builder.Environment.IsDevelopment())
         {
             policy.WithOrigins("http://localhost:3000");
+            policy.WithOrigins("https://*.asse.devtunnels.ms");
         }
         else
         {
@@ -154,7 +146,5 @@ app.UseSwaggerGen(config => { config.Path = "/openapi/{documentName}.json"; });
 
 app.MapDefaultEndpoints();
 app.MapScalarApiReference();
-
-app.MapGraphQL();
 
 app.RunWithGraphQLCommands(args);

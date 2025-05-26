@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@nuxt/ui-pro";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --font-display: "Inter", "sans-serif";

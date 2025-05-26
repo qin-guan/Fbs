@@ -5,12 +5,11 @@ definePageMeta({
 </script>
 
 <template>
-  <UPageHero
-    title="Faster facility bookings"
-    description="No more WhatsApp chats!"
-    :links="[{
-      label: 'Get started',
-      to: '/login',
-    }]"
-  />
+  <div>
+    <section>
+      <h1>
+        Faster facility bookings
+      </h1>
+    </section>
+  </div>
 </template>
