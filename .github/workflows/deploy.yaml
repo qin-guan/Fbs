@@ -44,6 +44,7 @@ jobs:
           run: |
             kraft cloud deploy \
               --rollout remove \
+              --timeout 15m \
               -g 3sib-fbs \
               -M 1024 \
               -e TZ="Asia/Singapore" \
