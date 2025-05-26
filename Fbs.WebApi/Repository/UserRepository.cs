@@ -3,6 +3,7 @@ using Fbs.WebApi.Entities;
 using Fbs.WebApi.Options;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace Fbs.WebApi.Repository;
@@ -10,6 +11,7 @@ namespace Fbs.WebApi.Repository;
 public class UserRepository(
     InstrumentationSource instrumentation,
     IOptions<GoogleOptions> options,
+    HybridCache cache,
     SheetsService sheetsService
 ) : IRepository<User>
 {
@@ -22,8 +24,13 @@ public class UserRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var items = await sheetsService.Spreadsheets.Values.Get(options.Value.SpreadsheetId, "Users")
-            .ExecuteAsync(cancellationToken);
+        var items = await cache.GetOrCreateAsync(
+            "Users",
+            (sheetsService, options),
+            async (state, ct) =>
+                await sheetsService.Spreadsheets.Values.Get(options.Value.SpreadsheetId, "Users")
+                    .ExecuteAsync(ct),
+            cancellationToken: cancellationToken);
 
         if (!items.Values.First().SequenceEqual(_header))
         {
@@ -83,6 +90,8 @@ public class UserRepository(
         request.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
         await request.ExecuteAsync(cancellationToken);
 
+        await cache.RemoveAsync("Users", cancellationToken);
+
         return entity;
     }
 
@@ -110,6 +119,8 @@ public class UserRepository(
                 }
             ]
         }, options.Value.SpreadsheetId).ExecuteAsync(cancellationToken);
+        
+        await cache.RemoveAsync("Users", cancellationToken);
     }
 
     private async Task<int?> GetSheetId(CancellationToken cancellationToken = default)

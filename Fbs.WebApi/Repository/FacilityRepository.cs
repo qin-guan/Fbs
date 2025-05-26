@@ -2,12 +2,14 @@ using System.Linq.Expressions;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Options;
 using Google.Apis.Sheets.v4;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace Fbs.WebApi.Repository;
 
 public class FacilityRepository(
     InstrumentationSource instrumentation,
+    HybridCache cache,
     IOptions<GoogleOptions> options,
     SheetsService sheetsService
 ) : IRepository<Facility>
@@ -15,15 +17,21 @@ public class FacilityRepository(
     private readonly string[] _header =
     [
         "Name",
-        "Group"
+        "Group",
+        "Scope"
     ];
 
     public async Task<List<Facility>> GetListAsync(CancellationToken cancellationToken = default)
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var items = await sheetsService.Spreadsheets.Values.Get(options.Value.SpreadsheetId, "Facilities")
-            .ExecuteAsync(cancellationToken);
+        var items = await cache.GetOrCreateAsync(
+            "Facilities",
+            (sheetsService, options),
+            async (state, ct) =>
+                await state.sheetsService.Spreadsheets.Values.Get(state.options.Value.SpreadsheetId, "Facilities")
+                    .ExecuteAsync(ct),
+            cancellationToken: cancellationToken);
 
         if (!items.Values.First().SequenceEqual(_header))
         {
@@ -37,6 +45,7 @@ public class FacilityRepository(
                 Row = idx + 2,
                 Name = row.ElementAtOrDefault(0) as string,
                 Group = row.ElementAtOrDefault(1) as string,
+                Scope = row.ElementAtOrDefault(2) as string,
             })
             .ToList();
     }

@@ -1,47 +1,41 @@
 <script setup lang="ts">
-import { useQuery } from '@urql/vue'
-
-const me = useQuery({
-  query: queries.me,
-  variables: {},
-})
+const { data: me } = useMe()
 </script>
 
 <template>
-  <UApp>
-    <UHeader title="3SIB Facility Booking">
-      <template #right>
-        <UButton
-          v-if="me.data.value?.me?.phone"
-          variant="ghost"
-          to="/booking"
-        >
-          My bookings
-        </UButton>
-        <UButton
-          v-else
-          variant="ghost"
-          to="/login"
-        >
-          Login
-        </UButton>
-      </template>
-    </UHeader>
+  <div class="h-full flex flex-col">
+    <header class="mx-auto h-12 flex justify-between items-center container px-3">
+      <div>
+        <NuxtLink to="/">3SIB Facility Bookings</NuxtLink>
+      </div>
 
-    <UMain class="flex flex-col">
+      <div>
+        <Button
+          v-slot="slotProps"
+          as-child
+          link
+        >
+          <NuxtLink
+            v-if="me?.phone"
+            to="/booking"
+            :class="slotProps.class"
+          >
+            Dashboard
+          </NuxtLink>
+
+          <NuxtLink
+            v-else
+            to="/auth/login"
+            :class="slotProps.class"
+          >
+            Login
+          </NuxtLink>
+        </Button>
+      </div>
+    </header>
+
+    <main class="flex flex-col flex-1">
       <slot />
-    </UMain>
-
-    <UFooter>
-      <template #right>
-        <div class="flex gap-6 items-center">
-          <span>Built by</span>
-          <NuxtImg
-            src="/images/logo.png"
-            class="h-10 w-auto"
-          />
-        </div>
-      </template>
-    </UFooter>
-  </UApp>
+    </main>
+  </div>
 </template>

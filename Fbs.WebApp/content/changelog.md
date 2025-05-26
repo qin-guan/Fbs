@@ -1,0 +1,15 @@
+### 26/05/2025
+
+#### What's new
+
+- Improved user interface
+- Improved booking selection
+
+#### What's fixed
+
+- Intermittent login bugs
+- Various bug fixes
+
+### 22/05/2025
+
+- Fixed bugs

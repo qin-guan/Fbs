@@ -4,12 +4,14 @@ using Fbs.WebApi.Options;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using MemoryPack;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace Fbs.WebApi.Repository;
 
 public class BookingRepository(
     InstrumentationSource instrumentation,
+    HybridCache cache,
     IOptions<GoogleOptions> options,
     CalendarService calendarService,
     UserRepository userRepository
@@ -18,24 +20,27 @@ public class BookingRepository(
     public async Task<List<Booking>> GetListAsync(CancellationToken cancellationToken = default)
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
-        
-        string? token;
-        var bookings = new List<Booking>();
 
-        do
+        return await cache.GetOrCreateAsync("Bookings", (calendarService), async (state, ct) =>
         {
-            var items = await calendarService.Events.List(options.Value.CalendarId).ExecuteAsync(cancellationToken);
-            token = items.NextPageToken;
+            string? token;
+            var bookings = new List<Booking>();
 
-            bookings.AddRange(
-                items.Items
-                    .Select(item => item.ExtendedProperties.Shared["Data"])
-                    .Select(Convert.FromBase64String)
-                    .Select(item => MemoryPackSerializer.Deserialize<Booking>(item))!
-            );
-        } while (token is not null);
+            do
+            {
+                var items = await state.Events.List(options.Value.CalendarId).ExecuteAsync(ct);
+                token = items.NextPageToken;
+                
+                bookings.AddRange(
+                    items.Items
+                        .Select(item => item.ExtendedProperties.Shared["Data"])
+                        .Select(Convert.FromBase64String)
+                        .Select(item => MemoryPackSerializer.Deserialize<Booking>(item))!
+                );
+            } while (token is not null);
 
-        return bookings;
+            return bookings;
+        }, cancellationToken: cancellationToken);
     }
 
     public async Task<Booking?> FindAsync(Expression<Func<Booking, bool>> predicate,
@@ -70,39 +75,38 @@ public class BookingRepository(
             throw new Exception("Event information is too long.");
         }
 
-        var @event =
-            new Event
+        var @event = new Event
+        {
+            Id = entity.Id.ToString("N"),
+            Summary = $"{user.Unit} {entity.Conduct}",
+            Start = new EventDateTime
             {
-                Id = entity.Id.ToString("N"),
-                Summary = $"{user.Unit} {entity.Conduct}",
-                Start = new EventDateTime
-                {
-                    DateTimeDateTimeOffset = entity.StartDateTime,
-                },
-                End = new EventDateTime
-                {
-                    DateTimeDateTimeOffset = entity.EndDateTime,
-                },
-                Location = entity.FacilityName,
-                Description = $"""
-                               Point of contact: {entity.PocName} / {entity.PocPhone}
+                DateTimeDateTimeOffset = entity.StartDateTime,
+            },
+            End = new EventDateTime
+            {
+                DateTimeDateTimeOffset = entity.EndDateTime,
+            },
+            Location = entity.FacilityName,
+            Description = $"""
+                           Point of contact: {entity.PocName} / {entity.PocPhone}
 
-                               Booked by: {user.Unit} / {user.Name}
-                               Number: {user.Phone}
+                           Booked by: {user.Unit} / {user.Name}
+                           Number: {user.Phone}
 
-                               Description: 
-                               {entity.Description}
-                               """,
-                ExtendedProperties = new Event.ExtendedPropertiesData
+                           Description: 
+                           {entity.Description}
+                           """,
+            ExtendedProperties = new Event.ExtendedPropertiesData
+            {
+                Shared = new Dictionary<string, string>()
                 {
-                    Shared = new Dictionary<string, string>()
                     {
-                        {
-                            "Data", data
-                        }
+                        "Data", data
                     }
                 }
-            };
+            }
+        };
 
         await Task.WhenAll([
             calendarService.Events.Insert(@event, options.Value.CalendarId)
@@ -110,6 +114,8 @@ public class BookingRepository(
             calendarService.Events.Insert(@event, options.Value.CarbonCopyCalendarId)
                 .ExecuteAsync(cancellationToken)
         ]);
+
+        await cache.RemoveAsync("Bookings", cancellationToken);
 
         return entity;
     }
@@ -178,6 +184,8 @@ public class BookingRepository(
                 .ExecuteAsync(cancellationToken)
         ]);
 
+        await cache.RemoveAsync("Bookings", cancellationToken);
+
         return booking;
     }
 
@@ -194,5 +202,7 @@ public class BookingRepository(
             calendarService.Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
                 .ExecuteAsync(cancellationToken)
         ]);
+
+        await cache.RemoveAsync("Bookings", cancellationToken);
     }
 }

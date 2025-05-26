@@ -6,6 +6,8 @@ public class Facility : Entity
 {
     public string? Name { get; set; }
     public string? Group { get; set; }
+    public string? Scope { get; set; }
 
     public override string? GetId() => Name;
+    public bool AvailableForAll => Scope == "All";
 }

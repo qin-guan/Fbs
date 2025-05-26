@@ -16,3 +16,15 @@ foreach (var proc in Process.GetProcessesByName("npm run dev"))
     Console.WriteLine($"Killing {proc.ProcessName} {proc.Id}");
     proc.Kill(true);
 }
+
+foreach (var proc in Process.GetProcessesByName("Fbs.WebApi"))
+{
+    Console.WriteLine($"Killing {proc.ProcessName} {proc.Id}");
+    proc.Kill(true);
+}
+
+foreach (var proc in Process.GetProcessesByName("Aspire.Dashboard"))
+{
+    Console.WriteLine($"Killing {proc.ProcessName} {proc.Id}");
+    proc.Kill(true);
+}

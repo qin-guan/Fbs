@@ -2,6 +2,6 @@ namespace Fbs.WebApi.Options;
 
 public class TelegramOptions
 {
-    public string Token { get; set; }
-    public string WebhookUrl { get; set; }
+    public required string Token { get; set; }
+    public required string WebhookUrl { get; set; }
 }

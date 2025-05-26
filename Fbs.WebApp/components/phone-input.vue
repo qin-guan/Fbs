@@ -1,17 +1,19 @@
 <script setup lang="ts">
 const model = defineModel<string>()
 
-const normalized = computed({
-  get: () => model.value?.substring(2),
-  set: (value) => {
+const bind = computed({
+  get() {
+    return model.value?.substring(2)
+  },
+  set(value) {
     model.value = '65' + value
   },
 })
 </script>
 
 <template>
-  <UInput
-    v-model="normalized"
+  <InputText
     v-bind="$attrs"
+    v-model="bind"
   />
 </template>
