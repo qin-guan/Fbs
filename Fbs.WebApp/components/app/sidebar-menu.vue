@@ -24,6 +24,10 @@ const items: MenuItem[] = [
     label: 'Help',
     items: [
       {
+        label: 'FAQs',
+        route: '/faqs',
+      },
+      {
         label: 'Contact us',
         target: '_blank',
         route: 'https://t.me/shadypastures',
