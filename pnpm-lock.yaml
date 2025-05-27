@@ -8,6 +8,9 @@ importers:
 
   Fbs.WebApp:
     dependencies:
+      '@growthbook/growthbook':
+        specifier: ^1.5.1
+        version: 1.5.1
       '@internationalized/date':
         specifier: ^3.8.1
         version: 3.8.1
@@ -561,6 +564,10 @@ packages:
 
   '@fastify/busboy@3.1.1':
     resolution: {integrity: sha512-5DGmA8FTdB2XbDeEwc/5ZXBl6UbBAyBOOLlPuBnZ/N1SwdH9Ii+cOX3tBROlDgcTXxjOYnLMVoKk9+FXAw0CJw==}
+
+  '@growthbook/growthbook@1.5.1':
+    resolution: {integrity: sha512-t0cj+3i2YtZ4Y/v1xl2fThogLMvjjUy3fx7ywGoLPgKZdhYy2HSXUGY1lLM/I0FMTEd2L2lkJHEzeUKpW6Ew3g==}
+    engines: {node: '>=10'}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -2687,6 +2694,10 @@ packages:
   diff@7.0.0:
     resolution: {integrity: sha512-PJWHUb1RFevKCwaFA9RlG5tCd+FO5iRh9A8HEtkmBH2Li03iJriB6m6JIN4rGz3K3JLawI7/veA1xzRKP6ISBw==}
     engines: {node: '>=0.3.1'}
+
+  dom-mutator@0.6.0:
+    resolution: {integrity: sha512-iCt9o0aYfXMUkz/43ZOAUFQYotjGB+GNbYJiJdz4TgXkyToXbbRy5S6FbTp72lRBtfpUMwEc1KmpFEU4CZeoNg==}
+    engines: {node: '>=10'}
 
   dom-serializer@2.0.0:
     resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
@@ -6289,6 +6300,10 @@ snapshots:
 
   '@fastify/busboy@3.1.1': {}
 
+  '@growthbook/growthbook@1.5.1':
+    dependencies:
+      dom-mutator: 0.6.0
+
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.6':
@@ -8933,6 +8948,8 @@ snapshots:
   dfa@1.2.0: {}
 
   diff@7.0.0: {}
+
+  dom-mutator@0.6.0: {}
 
   dom-serializer@2.0.0:
     dependencies:

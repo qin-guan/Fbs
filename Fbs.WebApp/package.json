@@ -10,6 +10,7 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@growthbook/growthbook": "^1.5.1",
     "@internationalized/date": "^3.8.1",
     "@microsoft/kiota-abstractions": "^1.0.0-preview.93",
     "@microsoft/kiota-authentication-azure": "1.0.0-preview.93",

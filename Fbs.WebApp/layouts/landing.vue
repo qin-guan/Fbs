@@ -34,8 +34,17 @@ const { data: me } = useMe()
       </div>
     </header>
 
-    <main class="flex flex-col flex-1">
-      <slot />
+    <main class="flex flex-col flex-1 container mx-auto p-3">
+      <LazyMessage
+        v-if="$growthbook.isOn('banner')"
+        severity="warn"
+      >
+        {{ $growthbook.getFeatureValue('banner', "This should not be here!") }}
+      </LazyMessage>
+
+      <div class="flex flex-1">
+        <slot />
+      </div>
     </main>
   </div>
 </template>
