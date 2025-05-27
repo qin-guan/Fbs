@@ -1,5 +1,4 @@
 using Fbs.WebApi.Repository;
-using MemoryPack;
 
 namespace Fbs.WebApi.Entities;
 

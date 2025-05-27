@@ -45,7 +45,11 @@ public class FacilityRepository(
                 Row = idx + 2,
                 Name = row.ElementAtOrDefault(0) as string,
                 Group = row.ElementAtOrDefault(1) as string,
-                Scope = row.ElementAtOrDefault(2) as string,
+                Scope = (row.ElementAtOrDefault(2) as string)?
+                    .Split(",")
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList(),
             })
             .ToList();
     }
