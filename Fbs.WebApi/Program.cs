@@ -127,12 +127,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// await using (var scope = app.Services.CreateAsyncScope())
-// {
-//     var client = scope.ServiceProvider.GetRequiredService<TelegramBotClient>();
-//     var options = scope.ServiceProvider.GetRequiredService<IOptions<TelegramOptions>>();
-//     await client.SetWebhook(options.Value.WebhookUrl);
-// }
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var client = scope.ServiceProvider.GetRequiredService<TelegramBotClient>();
+    var options = scope.ServiceProvider.GetRequiredService<IOptions<TelegramOptions>>();
+    await client.SetWebhook(options.Value.WebhookUrl);
+}
 
 app.UseMiddleware<TraceIdMiddleware>();
 
