@@ -1,5 +1,3 @@
-using FastEndpoints;
-
 namespace Fbs.WebApi.Endpoints.Booking.Post;
 
 public class Request

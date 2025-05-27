@@ -1,6 +1,5 @@
 using FastEndpoints;
 using FastEndpoints.Security;
-using Fbs.WebApi.Dtos;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Repository;
 

@@ -1,6 +1,5 @@
 using FastEndpoints;
 using FastEndpoints.Security;
-using Fbs.WebApi.Dtos;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Repository;
 
@@ -20,10 +19,25 @@ public class Endpoint(
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
+        var phone = User.ClaimValue("Phone");
+        
         var facility = await facilityRepository.FindAsync(f => f.Name == req.FacilityName, ct);
-        if (facility is null)
+        if (facility?.Scope is null)
         {
             await SendNotFoundAsync(cancellation: ct);
+            return;
+        }
+
+        var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
+        if (user.Unit is null)
+        {
+            throw new Exception("User must have unit specified in order to book facilities.");
+        }
+
+        if (!facility.AvailableForAll && !facility.Scope.Contains(user.Unit))
+        {
+            AddError(r => r.FacilityName, $"You do not have permission to book this facility");
+            await SendErrorsAsync(cancellation: ct);
             return;
         }
 
@@ -41,7 +55,6 @@ public class Endpoint(
             return;
         }
 
-        var phone = User.ClaimValue("Phone");
         var booking = new Entities.Booking
         {
             StartDateTime = req.StartDateTime,
