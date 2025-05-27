@@ -7,6 +7,7 @@ definePageMeta({
 
 const router = useRouter()
 const { height } = useWindowSize()
+
 const { Alt_n, slash } = useMagicKeys({
   passive: false,
   onEventFired(e) {
@@ -15,6 +16,8 @@ const { Alt_n, slash } = useMagicKeys({
     }
   },
 })
+
+const searchVisible = ref(false)
 const tableHeight = computed(() => `${height.value - 48}px`)
 
 const { data: facilities, isPending: facilitiesIsPending } = useFacilities()
@@ -65,7 +68,7 @@ function clearFilters() {
               </template>
             </Button>
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex flex-row-reverse md:flex-row items-center gap-3">
             <Button
               v-slot="slotProps"
               size="small"
@@ -81,7 +84,19 @@ function clearFilters() {
                 </Badge>
               </NuxtLink>
             </Button>
-            <IconField>
+
+            <Button
+              class="md:hidden!"
+              variant="text"
+              severity="secondary"
+              @click="searchVisible = true"
+            >
+              <template #icon>
+                <Icon name="i-lucide-search" />
+              </template>
+            </Button>
+
+            <IconField class="hidden md:flex">
               <InputIcon>
                 <Icon name="i-lucide-search" />
               </InputIcon>
@@ -99,6 +114,27 @@ function clearFilters() {
         </div>
       </template>
     </AppNavbar>
+
+    <Dialog
+      v-model:visible="searchVisible"
+      position="top"
+      :modal="true"
+      :draggable="false"
+      :pt="{ content: { class: 'p-0!' } }"
+    >
+      <template #header>
+        <IconField class="mr-5">
+          <InputIcon>
+            <Icon name="i-lucide-search" />
+          </InputIcon>
+          <InputText
+            v-model="filters['global'].value"
+            size="small"
+            placeholder="Keyword Search"
+          />
+        </IconField>
+      </template>
+    </Dialog>
 
     <DataTable
       v-model:filters="filters"
