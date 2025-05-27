@@ -28,6 +28,7 @@ public class BookingDeletedEventHandler(
         var users = await userRepository.GetListAsync(ct);
         var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, ct);
         var subscribedUsers = users
+            .Where(u => !string.IsNullOrWhiteSpace(u.TelegramChatId))
             .Where(u => u.Phone != booking.UserPhone)
             .Where(u =>
                 (u.NotificationGroup == "All") ||
