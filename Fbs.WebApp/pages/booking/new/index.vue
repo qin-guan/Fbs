@@ -29,9 +29,38 @@ const facilityTypes = computed(() => {
   return facilities.value?.map(f => f.group).filter((v, i, a) => a.indexOf(v) === i)
 })
 
+const { $driver } = useNuxtApp()
+const onboarded = useLocalStorage<boolean>('new-index-onboarded', false)
+
 const facilityType = useRouteQuery('facility-type')
 const startDate = useRouteQuery('start-date')
 const view = useRouteQuery('view', 'day')
+
+onMounted(() => {
+  if (!onboarded.value) {
+    $driver.setConfig({
+      showProgress: true,
+      allowClose: false,
+      steps: [
+        { element: '#facility-type', popover: { title: 'Facility type', description: 'Facilities are grouped into different types. Select one to view its schedule.' } },
+        { element: '.vuecal__header', popover: { title: 'Date and time', description: 'Toggle the schedule for different date and times here.' } },
+        { element: '.vuecal__schedule--cell', popover: { title: 'Schedule', description: 'The facility schedule will show up here.' } },
+        { element: '.vuecal__time-column', popover: { title: 'Scroll', description: `If you're using a mobile device, use this area to scroll the timeline view.` } },
+        {
+          element: '#confirm-selection', popover: {
+            title: 'Confirm selection',
+            description: 'Once you have selected a time slot, click this button to confirm your booking.',
+            onNextClick() {
+              onboarded.value = true
+              $driver.moveNext()
+            },
+          },
+        },
+      ],
+    })
+    $driver.drive()
+  }
+})
 
 const facilitiesUnderFacilityType = computed(() => {
   if (facilitiesIsPending.value) {
@@ -132,16 +161,6 @@ async function onEventCreate({ event, resolve, ...rest }) {
     id: 'new-booking',
     title: 'New booking',
   })
-
-  // await router.push({
-  //   path: '/booking/new/confirm',
-  //   query: {
-  //     ['start-date']: event.start,
-  //     ['end-date']: event.end,
-  //     ['facility-name']: facilitiesUnderFacilityType.value?.[event.schedule - 1]?.name,
-  //     ['original-query']: window.location.search,
-  //   },
-  // })
 }
 
 async function eventDoubleClick({ event }) {
@@ -241,9 +260,7 @@ function onViewChange({ start, id }) {
         <label for="facility-type">Facility Type</label>
       </FloatLabel>
 
-      <div
-        class="flex flex-1 relative"
-      >
+      <div class="flex flex-1 relative">
         <div class="absolute inset-0">
           <VueCal
             ref="cal"
@@ -259,6 +276,7 @@ function onViewChange({ start, id }) {
       </div>
 
       <Button
+        id="confirm-selection"
         fluid
         label="Confirm selection"
         :disabled="!selection?.start"

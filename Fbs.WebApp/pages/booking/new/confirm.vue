@@ -7,6 +7,9 @@ definePageMeta({
   layout: 'app',
 })
 
+const { $driver } = useNuxtApp()
+const onboarded = useLocalStorage<boolean>('new-confirm-onboarded', false)
+
 const router = useRouter()
 const { data: nominalRoll, isPending: nominalRollIsPending } = useNominalRollMapping()
 const nominalRollMiniSearch = useNominalRollMiniSearch()
@@ -14,6 +17,27 @@ const { mutate: createMutate, isPending: createIsPending } = useCreateBookingMut
 
 const route = useRoute()
 const toast = useToast()
+
+onMounted(() => {
+  if (!onboarded.value) {
+    $driver.setConfig({
+      showProgress: true,
+      allowClose: false,
+      steps: [
+        { element: '#poc-rank-and-name', popover: { title: 'Autocomplete', description: 'Choose from the list of existing POCs, or enter your own!' } },
+        {
+          element: '#crumbs', popover: {
+            title: 'Going back', description: 'Click to go back to the previous page!', onNextClick() {
+              onboarded.value = true
+              $driver.moveNext()
+            },
+          },
+        },
+      ],
+    })
+    $driver.drive()
+  }
+})
 
 const { data: prefilledData, error: prefilledDataError } = useQuery({
   queryKey: ['bookings', 'new', route.query],
@@ -115,7 +139,7 @@ function onFormSubmit({ valid, states }) {
             :pt="{ root: { style: 'padding: 0;' } }"
             :model="[
               { label: 'Bookings', route: '/booking' },
-              { label: 'New', route: `/booking/new${prefilledData?.originalQuery}` },
+              { label: 'New', route: `/booking/new${prefilledData?.originalQuery}`, id: 'crumbs' },
               { label: prefilledData?.facilityName },
             ]"
           >
@@ -127,6 +151,7 @@ function onFormSubmit({ valid, states }) {
                 custom
               >
                 <a
+                  :id="item.id"
                   :href="href"
                   v-bind="props.action"
                   @click="navigate"
@@ -217,6 +242,7 @@ function onFormSubmit({ valid, states }) {
         </Message>
 
         <FloatLabel
+          id="poc-rank-and-name"
           variant="on"
         >
           <AutoComplete
@@ -271,9 +297,7 @@ function onFormSubmit({ valid, states }) {
           <label for="description">Description</label>
         </FloatLabel>
 
-        <FloatLabel
-          variant="on"
-        >
+        <FloatLabel variant="on">
           <DatePicker
             v-model="prefilledData.startDateTime"
             name="start"
@@ -285,9 +309,7 @@ function onFormSubmit({ valid, states }) {
           <label for="start">Start</label>
         </FloatLabel>
 
-        <FloatLabel
-          variant="on"
-        >
+        <FloatLabel variant="on">
           <DatePicker
             v-model="prefilledData.endDateTime"
             name="end"
