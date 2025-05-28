@@ -3,7 +3,15 @@ const model = defineModel<string>()
 
 const bind = computed({
   get() {
-    return model.value?.substring(2)
+    if (!model.value) {
+      return ''
+    }
+
+    if (model.value.startsWith('65')) {
+      return model.value?.substring(2)
+    }
+
+    return model.value
   },
   set(value) {
     model.value = '65' + value
