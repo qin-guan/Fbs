@@ -111,9 +111,9 @@ async function onFormSubmit({ valid, values }: FormSubmitEvent) {
       <div class="text-center mt-5">
         <p class="text-sm text-gray-501">
           You are already logged in as
-          <span class="font-semibold text-gray-901">
+          <NuxtLink to="/booking" class="font-semibold text-gray-901">
             {{ me?.phone }}
-          </span>
+          </NuxtLink>
         </p>
       </div>
     </div>
