@@ -1,3 +1,8 @@
+### 28/05/2025
+
+- POC Phone field bug fixes
+- Onboarding driver for booking creation
+
 ### 26/05/2025
 
 #### What's new
