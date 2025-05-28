@@ -22,7 +22,6 @@ onMounted(() => {
   if (!onboarded.value) {
     $driver.setConfig({
       showProgress: true,
-      allowClose: false,
       steps: [
         { element: '#poc-rank-and-name', popover: { title: 'Autocomplete', description: 'Choose from the list of existing POCs, or enter your own!' } },
         {
@@ -34,6 +33,9 @@ onMounted(() => {
           },
         },
       ],
+      onCloseClick() {
+        onboarded.value = true
+      },
     })
     $driver.drive()
   }

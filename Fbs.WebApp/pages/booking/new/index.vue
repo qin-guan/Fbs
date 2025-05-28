@@ -40,7 +40,6 @@ onMounted(() => {
   if (!onboarded.value) {
     $driver.setConfig({
       showProgress: true,
-      allowClose: false,
       steps: [
         { element: '#facility-type', popover: { title: 'Facility type', description: 'Facilities are grouped into different types. Select one to view its schedule.' } },
         { element: '.vuecal__header', popover: { title: 'Date and time', description: 'Toggle the schedule for different date and times here.' } },
@@ -57,6 +56,9 @@ onMounted(() => {
           },
         },
       ],
+      onCloseClick() {
+        onboarded.value = true
+      },
     })
     $driver.drive()
   }
