@@ -138,6 +138,7 @@ function clearFilters() {
 
     <DataTable
       v-model:filters="filters"
+			striped-rows
       show-gridlines
       :value="bookings"
       data-key="id"
