@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="compose.yaml" />
+  </Folder>
+  <Project Path="Fbs.AppHost/Fbs.AppHost.csproj" />
+  <Project Path="Fbs.ServiceDefaults/Fbs.ServiceDefaults.csproj" />
+  <Project Path="Fbs.WebApi/Fbs.WebApi.csproj" />
+</Solution>
