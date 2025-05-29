@@ -8,7 +8,7 @@ definePageMeta({
   <div>
     <section>
       <h1>
-        Faster facility bookings
+        This page needs a new designer!!!
       </h1>
     </section>
   </div>
