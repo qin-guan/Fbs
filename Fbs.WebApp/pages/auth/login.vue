@@ -8,6 +8,7 @@ definePageMeta({
 })
 
 const { data: me } = useMe()
+const showSignUpOnTelegramButton = ref(false)
 
 const router = useRouter()
 const toast = useToast()
@@ -42,6 +43,11 @@ async function onFormSubmit({ valid, values }: FormSubmitEvent) {
     onError(error) {
       const e = error as FastEndpointsProblemDetails
       for (const error of e.errors ?? []) {
+        console.log(error)
+        if (error.code === 'EX02') {
+          showSignUpOnTelegramButton.value = true
+        }
+
         toast.add({
           severity: 'error',
           summary: 'Error',
@@ -100,6 +106,20 @@ async function onFormSubmit({ valid, values }: FormSubmitEvent) {
         </div>
 
         <Button
+          v-if="showSignUpOnTelegramButton"
+          v-slot="slotProps"
+          outlined
+          as-child
+        >
+          <a
+            target="_blank"
+            v-bind="slotProps"
+            href="https://t.me/temasek_facility_booking_bot"
+          >
+            Sign up on Telegram</a>
+        </Button>
+
+        <Button
           :loading="isPendingLogin"
           type="submit"
           label="Login"
@@ -111,7 +131,10 @@ async function onFormSubmit({ valid, values }: FormSubmitEvent) {
       <div class="text-center mt-5">
         <p class="text-sm text-gray-501">
           You are already logged in as
-          <NuxtLink to="/booking" class="font-semibold text-gray-901">
+          <NuxtLink
+            to="/booking"
+            class="font-semibold text-gray-901"
+          >
             {{ me?.phone }}
           </NuxtLink>
         </p>
