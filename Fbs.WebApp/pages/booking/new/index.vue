@@ -14,7 +14,12 @@ tomorrow.setDate(today.getDate() + 1)
 
 const router = useRouter()
 const cal = useTemplateRef('cal')
+
 const selection = ref<{ start: Date, end: Date, facilityName: string }>()
+const confirmation = ref({
+  message: '',
+  visible: false,
+})
 const helpVisible = ref(false)
 
 const { data: help } = await useLazyAsyncData(() => queryCollection('content').path('/help').first())
@@ -128,9 +133,25 @@ function onReady({ view }) {
   view.scrollToCurrentTime()
 }
 
-function confirmSelection() {
+function confirmSelection(fromDialog: boolean) {
   if (!selection.value) {
     return
+  }
+
+  const showEigerConfirmation = selection.value.facilityName === 'Eiger' || selection.value.facilityName === 'Temasek Square'
+  if (showEigerConfirmation && !fromDialog) {
+    confirmation.value = {
+      visible: true,
+      message: 'Eiger refers to the running route. Temasek Square refers to the center parade square area. Did you select the correct facility?',
+    }
+    return
+  }
+
+  if (fromDialog) {
+    confirmation.value = {
+      visible: false,
+      message: '',
+    }
   }
 
   router.push({
@@ -182,6 +203,26 @@ function onViewChange({ start, id }) {
 
 <template>
   <div class="h-full flex flex-col">
+    <Dialog
+      v-model:visible="confirmation.visible"
+      modal
+      header="Are you sure?"
+    >
+      <span>{{ confirmation.message }}</span>
+      <template #footer>
+        <Button
+          label="No"
+          autofocus
+          outlined
+          @click="confirmation.visible = false"
+        />
+        <Button
+          label="Yes"
+          @click="confirmSelection(true)"
+        />
+      </template>
+    </Dialog>
+
     <AppNavbar>
       <template #content>
         <div class="flex justify-between items-center mr-3">
@@ -282,7 +323,7 @@ function onViewChange({ start, id }) {
         fluid
         label="Confirm selection"
         :disabled="!selection?.start"
-        @click="confirmSelection"
+        @click="confirmSelection(false)"
       />
     </div>
   </div>
