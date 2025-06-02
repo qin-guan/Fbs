@@ -115,7 +115,7 @@ const calOptions = computed(() => {
     events,
     onReady,
     onEventCreate,
-		onEventResizeEnd: onEventCreate,
+		onEventResizeEnd,
     style: 'flex: 1',
   }
 })
@@ -163,6 +163,25 @@ function confirmSelection(fromDialog: boolean) {
       ['facility-name']: selection.value.facilityName,
       ['original-query']: window.location.search,
     },
+  })
+}
+
+async function onEventResizeEnd({ event, resolve, ...rest }) {
+  const facilityName = facilitiesUnderFacilityType.value?.[event.schedule - 1]?.name
+  if (!facilityName) {
+    throw new Error('Invalid facility name')
+  }
+
+  selection.value = {
+    start: event.start,
+    end: event.end,
+    facilityName,
+  }
+
+  resolve({
+    ...event,
+    id: 'new-booking',
+    title: 'New booking',
   })
 }
 
