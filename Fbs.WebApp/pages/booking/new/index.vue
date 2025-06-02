@@ -166,7 +166,7 @@ function confirmSelection(fromDialog: boolean) {
   })
 }
 
-async function onEventResizeEnd({ event, resolve, ...rest }) {
+async function onEventResizeEnd({ event, ...rest }) {
   const facilityName = facilitiesUnderFacilityType.value?.[event.schedule - 1]?.name
   if (!facilityName) {
     throw new Error('Invalid facility name')
@@ -178,11 +178,7 @@ async function onEventResizeEnd({ event, resolve, ...rest }) {
     facilityName,
   }
 
-  resolve({
-    ...event,
-    id: 'new-booking',
-    title: 'New booking',
-  })
+  return !rest.overlaps.length
 }
 
 async function onEventCreate({ event, resolve, ...rest }) {
