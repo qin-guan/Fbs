@@ -1,3 +1,9 @@
+### 02/06/2025
+
+#### What's fixed
+
+- Timeline dragging does not reflect correct values if resized
+
 ### 28/05/2025
 
 - POC Phone field bug fixes
