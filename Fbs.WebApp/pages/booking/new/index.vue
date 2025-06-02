@@ -115,6 +115,7 @@ const calOptions = computed(() => {
     events,
     onReady,
     onEventCreate,
+		onEventResizeEnd: onEventCreate,
     style: 'flex: 1',
   }
 })
