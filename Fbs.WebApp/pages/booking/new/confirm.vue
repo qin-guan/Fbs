@@ -99,7 +99,7 @@ function onFormSubmit({ valid, states }) {
   createMutate({
     conduct: states.conduct.value,
     pocName: states.pocName.value,
-    pocPhone: states.pocPhone.value,
+    pocPhone: '65' + states.pocPhone.value,
     description: states.description.value,
     startDateTime: prefilledData.value.startDateTime,
     endDateTime: prefilledData.value.endDateTime,
