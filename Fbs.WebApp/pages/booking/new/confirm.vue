@@ -190,7 +190,7 @@ function onFormSubmit({ valid, states }) {
         :initial-values="{
           conduct: '',
           pocName: '',
-          pocPhone: '',
+          pocPhone: '65',
           description: '',
         }"
         @submit="onFormSubmit"
