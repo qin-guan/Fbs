@@ -68,7 +68,7 @@ function searchItems(event) {
 
 function optionSelect(form, { value }) {
   if (!nominalRoll.value) return
-  form.pocPhone.value = Object.entries(nominalRoll.value).find(e => e[1] == value)?.[0] ?? ''
+  form.pocPhone.value = Object.entries(nominalRoll.value).find(e => e[1] == value)?.[0].slice(2) ?? ''
 }
 
 function resolver({ values }: FormResolverOptions) {
@@ -86,7 +86,7 @@ function resolver({ values }: FormResolverOptions) {
     errors.pocPhone = [{ message: 'POC Phone is required.' }]
   }
 
-  if (values.pocPhone?.length !== 10) {
+  if (values.pocPhone?.length !== 8) {
     errors.pocPhone = [{ message: 'POC Phone is not valid.' }]
   }
 
@@ -190,7 +190,7 @@ function onFormSubmit({ valid, states }) {
         :initial-values="{
           conduct: '',
           pocName: '',
-          pocPhone: '65',
+          pocPhone: '',
           description: '',
         }"
         @submit="onFormSubmit"
@@ -273,7 +273,7 @@ function onFormSubmit({ valid, states }) {
           name="pocPhone"
         >
           <FloatLabel variant="on">
-            <PhoneInput
+            <InputText
               v-model="$field.value"
               type="tel"
               fluid
