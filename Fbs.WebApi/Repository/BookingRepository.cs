@@ -28,31 +28,23 @@ public class BookingRepository(
             string? token = null;
             var bookings = new List<Booking>();
 
-            logger.LogInformation("Fetching bookings with token {Token}", token);
-
             do
             {
-                var items = await state.Events.List(options.Value.CalendarId).ExecuteAsync(ct);
-                token = items.NextPageToken;
+                var request = state.Events.List(options.Value.CalendarId);
+                if (token is not null)
+                {
+                    request.PageToken = token;
+                }
 
-                logger.LogInformation("Helps {Helps}", JsonSerializer.Serialize(items));
+                var items = await request.ExecuteAsync(ct);
+                token = items.NextPageToken;
 
                 bookings.AddRange(
                     items.Items
                         .Select(item => item.ExtendedProperties.Shared["Data"])
-                        .Select(data =>
-                        {
-                            logger.LogInformation("Converting event shared data {Data}", data);
-                            return Convert.FromBase64String(data);
-                        })
-                        .Select(item =>
-                        {
-                            logger.LogInformation("Deserializing MemoryPack");
-                            return MemoryPackSerializer.Deserialize<Booking>(item);
-                        })!
+                        .Select(Convert.FromBase64String)
+                        .Select(item => MemoryPackSerializer.Deserialize<Booking>(item))!
                 );
-
-                break;
             } while (token is not null);
 
             return bookings;
