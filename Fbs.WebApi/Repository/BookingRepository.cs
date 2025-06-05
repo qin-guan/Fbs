@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Text.Json;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Options;
 using Google.Apis.Calendar.v3;
@@ -34,6 +35,8 @@ public class BookingRepository(
                 var items = await state.Events.List(options.Value.CalendarId).ExecuteAsync(ct);
                 token = items.NextPageToken;
 
+                logger.LogInformation("Helps {Helps}", JsonSerializer.Serialize(items));
+
                 bookings.AddRange(
                     items.Items
                         .Select(item => item.ExtendedProperties.Shared["Data"])
@@ -48,6 +51,8 @@ public class BookingRepository(
                             return MemoryPackSerializer.Deserialize<Booking>(item);
                         })!
                 );
+
+                break;
             } while (token is not null);
 
             return bookings;
