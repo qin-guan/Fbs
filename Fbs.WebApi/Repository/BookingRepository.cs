@@ -14,7 +14,8 @@ public class BookingRepository(
     HybridCache cache,
     IOptions<GoogleOptions> options,
     CalendarService calendarService,
-    UserRepository userRepository
+    UserRepository userRepository,
+    ILogger<BookingRepository> logger
 ) : IRepository<Booking>
 {
     public async Task<List<Booking>> GetListAsync(CancellationToken cancellationToken = default)
@@ -23,14 +24,16 @@ public class BookingRepository(
 
         return await cache.GetOrCreateAsync("Bookings", (calendarService), async (state, ct) =>
         {
-            string? token;
+            string? token = null;
             var bookings = new List<Booking>();
+
+            logger.LogInformation("Fetching bookings with token {Token}", token);
 
             do
             {
                 var items = await state.Events.List(options.Value.CalendarId).ExecuteAsync(ct);
                 token = items.NextPageToken;
-                
+
                 bookings.AddRange(
                     items.Items
                         .Select(item => item.ExtendedProperties.Shared["Data"])
