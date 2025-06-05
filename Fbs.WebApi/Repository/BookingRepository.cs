@@ -37,8 +37,16 @@ public class BookingRepository(
                 bookings.AddRange(
                     items.Items
                         .Select(item => item.ExtendedProperties.Shared["Data"])
-                        .Select(Convert.FromBase64String)
-                        .Select(item => MemoryPackSerializer.Deserialize<Booking>(item))!
+                        .Select(data =>
+                        {
+                            logger.LogInformation("Converting event shared data {Data}", data);
+                            return Convert.FromBase64String(data);
+                        })
+                        .Select(item =>
+                        {
+                            logger.LogInformation("Deserializing MemoryPack");
+                            return MemoryPackSerializer.Deserialize<Booking>(item);
+                        })!
                 );
             } while (token is not null);
 
