@@ -32,8 +32,7 @@ export const useNominalRollMiniSearch = createSharedComposable(() => {
       idField: 'phone',
       fields: ['name', 'phone'],
       searchOptions: {
-        boost: { name: 10 },
-        fuzzy: 5,
+        boost: { name: 2 }
       },
     })
 
