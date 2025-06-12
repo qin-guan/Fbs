@@ -16,7 +16,6 @@ export function useMe() {
     return useQuery({
         queryKey: ['me'],
         queryFn: () => $api.auth.me.get(),
-        retry: false,
         onSuccess(data) {
             if (window.clarity) {
                 window.clarity("identify", data.phone)

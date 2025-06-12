@@ -47,7 +47,7 @@ public class BookingRepository(
 
                 foreach (var i in converted)
                 {
-                    var original = items.Items.First(item => item.Id == i.Id.ToString());
+                    var original = items.Items.First(item => item.Id == i.Id.ToString("N"));
                     if (original.Start.DateTimeDateTimeOffset != i.StartDateTime)
                     {
                         logger.LogError("Event has mismatching start date. Metadata: {Metadata}. Event: {Event}",
