@@ -39,12 +39,29 @@ public class BookingRepository(
                 var items = await request.ExecuteAsync(ct);
                 token = items.NextPageToken;
 
-                bookings.AddRange(
-                    items.Items
-                        .Select(item => item.ExtendedProperties.Shared["Data"])
-                        .Select(Convert.FromBase64String)
-                        .Select(item => MemoryPackSerializer.Deserialize<Booking>(item))!
-                );
+                var converted = items.Items
+                    .Select(item => item.ExtendedProperties.Shared["Data"])
+                    .Select(Convert.FromBase64String)
+                    .Select(item => MemoryPackSerializer.Deserialize<Booking>(item))
+                    .ToList();
+
+                foreach (var i in converted)
+                {
+                    var original = items.Items.First(item => item.Id == i.Id.ToString());
+                    if (original.Start.DateTimeDateTimeOffset != i.StartDateTime)
+                    {
+                        logger.LogError("Event has mismatching start date. Metadata: {Metadata}. Event: {Event}",
+                            i.StartDateTime, original.Start.DateTimeDateTimeOffset);
+                    }
+
+                    if (original.End.DateTimeDateTimeOffset != i.EndDateTime)
+                    {
+                        logger.LogError("Event has mismatching end date. Metadata: {Metadata}. Event: {Event}",
+                            i.EndDateTime, original.End.DateTimeDateTimeOffset);
+                    }
+                }
+
+                bookings.AddRange(converted);
             } while (token is not null);
 
             return bookings;
