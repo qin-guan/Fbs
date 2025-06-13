@@ -17,3 +17,15 @@ updates:
           - "major"
     schedule:
       interval: "daily"
+  - package-ecosystem: "npm" # See documentation for possible values
+    directory: "/" # Location of package manifests
+    groups:
+      minor:
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        update-types:
+          - "major"
+    schedule:
+      interval: "daily"
