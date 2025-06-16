@@ -313,7 +313,6 @@ function onViewChange({ start, id }) {
           v-model="facilityType"
           :options="facilityTypes"
           placeholder="Select a facility type"
-          filter
           fluid
         />
         <label for="facility-type">Facility Type</label>
