@@ -14,7 +14,7 @@
         <PackageReference Include="FastEndpoints.Security" Version="6.2.0" />
         <PackageReference Include="FastEndpoints.Swagger" Version="6.2.0" />
         <PackageReference Include="Google.Apis.Calendar.v3" Version="1.69.0.3746" />
-        <PackageReference Include="Google.Apis.Sheets.v4" Version="1.70.0.3806" />
+        <PackageReference Include="Google.Apis.Sheets.v4" Version="1.70.0.3819" />
         <PackageReference Include="HotChocolate.AspNetCore.CommandLine" Version="15.1.6" />
         <PackageReference Include="MemoryPack" Version="1.21.4" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
