@@ -17,9 +17,9 @@
         <PackageReference Include="Google.Apis.Sheets.v4" Version="1.70.0.3819" />
         <PackageReference Include="HotChocolate.AspNetCore.CommandLine" Version="15.1.7" />
         <PackageReference Include="MemoryPack" Version="1.21.4" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
-        <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.6.0" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.5.3" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.7.0" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.5.6" />
         <PackageReference Include="Telegram.Bot" Version="22.6.0" />
         <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.3.0" />
     </ItemGroup>
