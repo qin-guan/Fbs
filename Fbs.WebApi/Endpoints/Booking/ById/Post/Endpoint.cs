@@ -6,7 +6,8 @@ using Fbs.WebApi.Repository;
 namespace Fbs.WebApi.Endpoints.Booking.ById.Post;
 
 public class Endpoint(
-    BookingRepository bookingRepository
+    BookingRepository bookingRepository,
+    UserRepository userRepository
 ) : Endpoint<Request, Entities.Booking>
 {
     public override void Configure()
@@ -28,7 +29,10 @@ public class Endpoint(
             throw new Exception("Booking does not exist.");
         }
 
-        if (booking.UserPhone != phone)
+        var bookingCreatedBy = await userRepository.FindAsync(u => u.Phone == booking.UserPhone, ct);
+        var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
+
+        if (bookingCreatedBy?.Unit != currentUser?.Unit)
         {
             throw new Exception("You are not allowed to update this booking.");
         }
