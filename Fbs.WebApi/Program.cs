@@ -147,4 +147,4 @@ app.UseSwaggerGen(config => { config.Path = "/openapi/{documentName}.json"; });
 app.MapDefaultEndpoints();
 app.MapScalarApiReference();
 
-app.RunWithGraphQLCommands(args);
+await app.RunAsync();
