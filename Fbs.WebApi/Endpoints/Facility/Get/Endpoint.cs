@@ -37,6 +37,6 @@ public class Endpoint(
             Scope = f.Scope
         });
         
-        await SendOkAsync(dtos, ct);
+        await Send.OkAsync(dtos, ct);
     }
 }

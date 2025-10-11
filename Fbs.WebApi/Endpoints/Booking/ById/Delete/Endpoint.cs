@@ -21,14 +21,14 @@ public class Endpoint(
         var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
         if (booking is null)
         {
-            await SendNotFoundAsync(ct);
+            await Send.NotFoundAsync(ct);
             return;
         }
 
         var phone = User.ClaimValue("Phone");
         if (phone != booking.UserPhone)
         {
-            await SendForbiddenAsync(ct);
+            await Send.ForbiddenAsync(ct);
             return;
         }
 
@@ -46,6 +46,6 @@ public class Endpoint(
             UserPhone = booking.UserPhone
         }, Mode.WaitForAll, ct);
 
-        await SendNoContentAsync(ct);
+        await Send.NoContentAsync(ct);
     }
 }

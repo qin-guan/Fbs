@@ -24,7 +24,7 @@ public class Endpoint(
         var facility = await facilityRepository.FindAsync(f => f.Name == req.FacilityName, ct);
         if (facility?.Scope is null)
         {
-            await SendNotFoundAsync(cancellation: ct);
+            await Send.NotFoundAsync(cancellation: ct);
             return;
         }
 
@@ -37,7 +37,7 @@ public class Endpoint(
         if (!facility.AvailableForAll && !facility.Scope.Contains(user.Unit))
         {
             AddError(r => r.FacilityName, $"You do not have permission to book this facility");
-            await SendErrorsAsync(cancellation: ct);
+            await Send.ErrorsAsync(cancellation: ct);
             return;
         }
 
@@ -51,7 +51,7 @@ public class Endpoint(
         if (overlapping is not null)
         {
             AddError(r => r.EndDateTime, $"Overlaps with booking {overlapping.Id}");
-            await SendErrorsAsync(cancellation: ct);
+            await Send.ErrorsAsync(cancellation: ct);
             return;
         }
 
@@ -82,7 +82,7 @@ public class Endpoint(
             UserPhone = booking.UserPhone
         }, Mode.WaitForAll, ct);
 
-        await SendCreatedAtAsync<Booking.ById.Get.Endpoint>(
+        await Send.CreatedAtAsync<Booking.ById.Get.Endpoint>(
             new
             {
                 booking.Id

@@ -14,6 +14,6 @@ public class Endpoint(HybridCache cache) : EndpointWithoutRequest
     public override async Task HandleAsync(CancellationToken ct)
     {
         await cache.RemoveAsync(["Facilities", "Bookings", "Nominal Roll", "Users"], ct);
-        await SendOkAsync(ct);
+        await Send.OkAsync(ct);
     }
 }

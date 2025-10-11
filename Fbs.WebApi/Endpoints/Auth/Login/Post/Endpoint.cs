@@ -47,7 +47,7 @@ public class Endpoint(
         var existingOtp = await otpRepository.FindAsync(o => o.Phone == req.Phone, ct);
         if (existingOtp is not null && existingOtp.CreatedAt + TimeSpan.FromSeconds(60) > DateTimeOffset.UtcNow)
         {
-            await SendUnauthorizedAsync(ct);
+            await Send.UnauthorizedAsync(ct);
             return;
         }
 

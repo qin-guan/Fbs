@@ -24,7 +24,7 @@ public class Endpoint(
         var otp = await otpRepository.FindAsync(o => o.Phone == req.Phone, ct);
         if (otp is null or { Code: null })
         {
-            await SendUnauthorizedAsync(ct);
+            await Send.UnauthorizedAsync(ct);
             return;
         }
 
@@ -33,14 +33,14 @@ public class Endpoint(
         var valid = CryptographicOperations.FixedTimeEquals(Convert.FromHexString(otp.Code), hash);
         if (!valid)
         {
-            await SendUnauthorizedAsync(ct);
+            await Send.UnauthorizedAsync(ct);
             return;
         }
 
         var user = await userRepository.FindAsync(u => u.Phone == req.Phone);
         if (user is null or { Phone: null })
         {
-            await SendUnauthorizedAsync(ct);
+            await Send.UnauthorizedAsync(ct);
             return;
         }
 

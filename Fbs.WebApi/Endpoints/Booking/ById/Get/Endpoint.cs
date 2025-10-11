@@ -19,12 +19,12 @@ public class Endpoint(
         var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
         if (booking is null)
         {
-            await SendNotFoundAsync(ct);
+            await Send.NotFoundAsync(ct);
             return;
         }
         
         var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, ct);
-        await SendOkAsync(new BookingWithUser
+        await Send.OkAsync(new BookingWithUser
         {
             Id = booking.Id,
             FacilityName = booking.FacilityName,

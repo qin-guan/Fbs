@@ -108,6 +108,6 @@ public class Endpoint(
             }
         }
 
-        await SendOkAsync(ct);
+        await Send.OkAsync(ct);
     }
 }

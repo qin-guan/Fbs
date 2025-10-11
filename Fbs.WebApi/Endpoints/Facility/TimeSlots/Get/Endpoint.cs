@@ -61,6 +61,6 @@ public class Endpoint(
             });
         } while (!ct.IsCancellationRequested && current < req.EndTime);
 
-        await SendOkAsync(slots, ct);
+        await Send.OkAsync(slots, ct);
     }
 }

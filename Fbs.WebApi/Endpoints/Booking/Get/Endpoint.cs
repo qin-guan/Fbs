@@ -44,6 +44,6 @@ public class Endpoint(
             User = users.Single(u => u.Phone == booking.UserPhone),
         });
 
-        await SendOkAsync(withUser.OrderByDescending(b => b.StartDateTime), ct);
+        await Send.OkAsync(withUser.OrderByDescending(b => b.StartDateTime), ct);
     }
 }

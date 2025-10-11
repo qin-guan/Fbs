@@ -18,6 +18,6 @@ public class Endpoint(
     {
         var phone = User.ClaimValue("Phone");
         var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
-        await SendOkAsync(user, ct);
+        await Send.OkAsync(user, ct);
     }
 }

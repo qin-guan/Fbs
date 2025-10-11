@@ -58,7 +58,7 @@ public class Endpoint(
             UserPhone = booking.UserPhone
         }, Mode.WaitForAll, ct);
 
-        await SendCreatedAtAsync<Booking.ById.Get.Endpoint>(
+        await Send.CreatedAtAsync<Booking.ById.Get.Endpoint>(
             new
             {
                 booking.Id

@@ -12,7 +12,7 @@ public class Endpoint(NominalRollRepository nominalRoll): EndpointWithoutRequest
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        await SendOkAsync(
+        await Send.OkAsync(
             (await nominalRoll.GetListAsync(ct)).DistinctBy(n => n.Phone),
             ct
         );
