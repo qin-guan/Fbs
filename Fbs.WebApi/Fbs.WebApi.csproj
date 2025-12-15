@@ -10,16 +10,16 @@
 
     <ItemGroup>
         <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
-        <PackageReference Include="FastEndpoints" Version="7.0.1" />
-        <PackageReference Include="FastEndpoints.Security" Version="7.0.1" />
-        <PackageReference Include="FastEndpoints.Swagger" Version="7.0.1" />
-        <PackageReference Include="Google.Apis.Calendar.v3" Version="1.69.0.3746" />
-        <PackageReference Include="Google.Apis.Sheets.v4" Version="1.70.0.3819" />
+        <PackageReference Include="FastEndpoints" Version="7.1.1" />
+        <PackageReference Include="FastEndpoints.Security" Version="7.1.1" />
+        <PackageReference Include="FastEndpoints.Swagger" Version="7.1.1" />
+        <PackageReference Include="Google.Apis.Calendar.v3" Version="1.73.0.3979" />
+        <PackageReference Include="Google.Apis.Sheets.v4" Version="1.72.0.3966" />
         <PackageReference Include="MemoryPack" Version="1.21.4" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.11" />
         <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.10.0" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.9.0" />
-        <PackageReference Include="Telegram.Bot" Version="22.7.2" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.11.6" />
+        <PackageReference Include="Telegram.Bot" Version="22.7.6" />
         <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.4.0" />
     </ItemGroup>
 
