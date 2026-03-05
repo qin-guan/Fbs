@@ -20,7 +20,7 @@ public class Endpoint(
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
         var phone = User.ClaimValue("Phone");
-        
+
         var facility = await facilityRepository.FindAsync(f => f.Name == req.FacilityName, ct);
         if (facility?.Scope is null)
         {
@@ -40,6 +40,10 @@ public class Endpoint(
             await Send.ErrorsAsync(cancellation: ct);
             return;
         }
+
+        AddError(r => r.FacilityName, "Facility bookings have been temporarily disabled! Please check back in at another time.");
+        await Send.ErrorsAsync(cancellation: ct);
+        return;
 
         var bookings = await bookingRepository.GetListAsync(ct);
         var overlapping = bookings.FirstOrDefault(b =>
