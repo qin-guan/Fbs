@@ -11,6 +11,7 @@ using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using System.Text;
 using Telegram.Bot;
 using ZiggyCreatures.Caching.Fusion;
 
@@ -55,8 +56,9 @@ builder.Services.AddHttpClient<TelegramBotClient>("tgwebhook")
 builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
+    var serviceAccountJsonCredential = Encoding.UTF8.GetString(Convert.FromBase64String(options.Value.ServiceAccountJsonCredential));
 
-    var credential = GoogleCredential.FromJson(options.Value.ServiceAccountJsonCredential).CreateScoped(
+    var credential = GoogleCredential.FromJson(serviceAccountJsonCredential).CreateScoped(
         "https://www.googleapis.com/auth/calendar",
         "https://www.googleapis.com/auth/calendar.events"
     );
@@ -71,8 +73,9 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
+    var serviceAccountJsonCredential = Encoding.UTF8.GetString(Convert.FromBase64String(options.Value.ServiceAccountJsonCredential));
 
-    var credential = GoogleCredential.FromJson(options.Value.ServiceAccountJsonCredential);
+    var credential = GoogleCredential.FromJson(serviceAccountJsonCredential);
     var service = new SheetsService(new BaseClientService.Initializer
     {
         HttpClientInitializer = credential

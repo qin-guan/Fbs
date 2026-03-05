@@ -2,5 +2,6 @@
   <Folder Name="/Solution Items/">
     <File Path="compose.yaml" />
   </Folder>
+  <Project Path="Fbs.ServiceDefaults/Fbs.ServiceDefaults.csproj" Id="eba2cf49-a221-4e7e-a80f-5a31c0f6036c" />
   <Project Path="Fbs.WebApi/Fbs.WebApi.csproj" />
 </Solution>
