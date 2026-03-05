@@ -8,3 +8,5 @@ riderModule.iml
 node_modules/
 .unikraft/
 .vs/
+*.db
+MigrateBookings.csproj

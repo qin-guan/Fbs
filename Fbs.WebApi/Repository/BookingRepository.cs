@@ -1,10 +1,8 @@
 using System.Linq.Expressions;
-using System.Text.Json;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Options;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
-using MemoryPack;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
@@ -13,6 +11,7 @@ namespace Fbs.WebApi.Repository;
 public class BookingRepository(
     InstrumentationSource instrumentation,
     HybridCache cache,
+    IFreeSql freeSql,
     IOptions<GoogleOptions> options,
     CalendarService calendarService,
     UserRepository userRepository,
@@ -23,48 +22,9 @@ public class BookingRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        return await cache.GetOrCreateAsync("Bookings", (calendarService), async (state, ct) =>
+        return await cache.GetOrCreateAsync("Bookings", freeSql, async (state, ct) =>
         {
-            string? token = null;
-            var bookings = new List<Booking>();
-
-            do
-            {
-                var request = state.Events.List(options.Value.CalendarId);
-                if (token is not null)
-                {
-                    request.PageToken = token;
-                }
-
-                var items = await request.ExecuteAsync(ct);
-                token = items.NextPageToken;
-
-                var converted = items.Items
-                    .Select(item => item.ExtendedProperties.Shared["Data"])
-                    .Select(Convert.FromBase64String)
-                    .Select(item => MemoryPackSerializer.Deserialize<Booking>(item))
-                    .ToList();
-
-                foreach (var i in converted)
-                {
-                    var original = items.Items.First(item => item.Id == i.Id.ToString("N"));
-                    if (original.Start.DateTimeDateTimeOffset != i.StartDateTime)
-                    {
-                        logger.LogError("Event has mismatching start date. Metadata: {Metadata}. Event: {Event}",
-                            i.StartDateTime, original.Start.DateTimeDateTimeOffset);
-                    }
-
-                    if (original.End.DateTimeDateTimeOffset != i.EndDateTime)
-                    {
-                        logger.LogError("Event has mismatching end date. Metadata: {Metadata}. Event: {Event}",
-                            i.EndDateTime, original.End.DateTimeDateTimeOffset);
-                    }
-                }
-
-                bookings.AddRange(converted);
-            } while (token is not null);
-
-            return bookings;
+            return await state.Select<Booking>().ToListAsync(ct);
         }, cancellationToken: cancellationToken);
     }
 
@@ -93,52 +53,19 @@ public class BookingRepository(
         var user = await userRepository.GetAsync(u => u.Phone == entity.UserPhone, cancellationToken);
 
         entity.Id = Guid.NewGuid();
-        var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(entity));
 
-        if (data.Length > 1000)
+        await freeSql.Insert(entity).ExecuteAffrowsAsync(cancellationToken);
+
+        try
         {
-            throw new Exception("Event information is too long.");
+            var @event = CreateCalendarEvent(entity, user);
+            await calendarService.Events.Insert(@event, options.Value.CarbonCopyCalendarId)
+                .ExecuteAsync(cancellationToken);
         }
-
-        var @event = new Event
+        catch (Exception ex)
         {
-            Id = entity.Id.ToString("N"),
-            Summary = $"{user.Unit} {entity.Conduct}",
-            Start = new EventDateTime
-            {
-                DateTimeDateTimeOffset = entity.StartDateTime,
-            },
-            End = new EventDateTime
-            {
-                DateTimeDateTimeOffset = entity.EndDateTime,
-            },
-            Location = entity.FacilityName,
-            Description = $"""
-                           Point of contact: {entity.PocName} / {entity.PocPhone}
-
-                           Booked by: {user.Unit} / {user.Name}
-                           Number: {user.Phone}
-
-                           Description: 
-                           {entity.Description}
-                           """,
-            ExtendedProperties = new Event.ExtendedPropertiesData
-            {
-                Shared = new Dictionary<string, string>()
-                {
-                    {
-                        "Data", data
-                    }
-                }
-            }
-        };
-
-        await Task.WhenAll([
-            calendarService.Events.Insert(@event, options.Value.CalendarId)
-                .ExecuteAsync(cancellationToken),
-            calendarService.Events.Insert(@event, options.Value.CarbonCopyCalendarId)
-                .ExecuteAsync(cancellationToken)
-        ]);
+            logger.LogWarning(ex, "Failed to sync booking {BookingId} to Google Calendar carbon copy", entity.Id);
+        }
 
         await cache.RemoveAsync("Bookings", cancellationToken);
 
@@ -149,8 +76,9 @@ public class BookingRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var bookings = await GetListAsync(cancellationToken);
-        var booking = bookings.Single(b => b.Id == entity.Id);
+        var booking = await freeSql.Select<Booking>()
+            .Where(b => b.Id == entity.Id)
+            .FirstAsync(cancellationToken);
 
         booking.StartDateTime = entity.StartDateTime;
         booking.EndDateTime = entity.EndDateTime;
@@ -161,15 +89,54 @@ public class BookingRepository(
         booking.PocPhone = entity.PocPhone;
         booking.UserPhone = entity.UserPhone;
 
-        var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(booking));
+        await freeSql.Update<Booking>()
+            .SetSource(booking)
+            .ExecuteAffrowsAsync(cancellationToken);
 
-        if (data.Length > 1000)
+        try
         {
-            throw new Exception("Event information is too long.");
+            var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, cancellationToken);
+            var @event = CreateCalendarEvent(booking, user);
+            await calendarService.Events.Update(@event, options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to sync booking {BookingId} update to Google Calendar carbon copy", booking.Id);
         }
 
-        var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, cancellationToken);
-        var @event = new Event
+        await cache.RemoveAsync("Bookings", cancellationToken);
+
+        return booking;
+    }
+
+    public async Task DeleteAsync(Expression<Func<Booking, bool>> predicate,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var booking = await GetAsync(predicate, cancellationToken);
+
+        await freeSql.Delete<Booking>()
+            .Where(b => b.Id == booking.Id)
+            .ExecuteAffrowsAsync(cancellationToken);
+
+        try
+        {
+            await calendarService.Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to sync booking {BookingId} deletion to Google Calendar carbon copy", booking.Id);
+        }
+
+        await cache.RemoveAsync("Bookings", cancellationToken);
+    }
+
+    private static Event CreateCalendarEvent(Booking booking, Entities.User user)
+    {
+        return new Event
         {
             Id = booking.Id.ToString("N"),
             Summary = $"{user.Unit} {booking.Conduct}",
@@ -191,43 +158,6 @@ public class BookingRepository(
                            Description: 
                            {booking.Description}
                            """,
-            ExtendedProperties = new Event.ExtendedPropertiesData
-            {
-                Shared = new Dictionary<string, string>()
-                {
-                    {
-                        "Data", data
-                    }
-                }
-            }
         };
-
-        await Task.WhenAll([
-            calendarService.Events.Update(@event, options.Value.CalendarId, booking.Id.ToString("N"))
-                .ExecuteAsync(cancellationToken),
-            calendarService.Events.Update(@event, options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
-                .ExecuteAsync(cancellationToken)
-        ]);
-
-        await cache.RemoveAsync("Bookings", cancellationToken);
-
-        return booking;
-    }
-
-    public async Task DeleteAsync(Expression<Func<Booking, bool>> predicate,
-        CancellationToken cancellationToken = default)
-    {
-        using var activity = instrumentation.ActivitySource.StartActivity();
-
-        var booking = await GetAsync(predicate, cancellationToken);
-
-        await Task.WhenAll([
-            calendarService.Events.Delete(options.Value.CalendarId, booking.Id.ToString("N"))
-                .ExecuteAsync(cancellationToken),
-            calendarService.Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
-                .ExecuteAsync(cancellationToken)
-        ]);
-
-        await cache.RemoveAsync("Bookings", cancellationToken);
     }
 }

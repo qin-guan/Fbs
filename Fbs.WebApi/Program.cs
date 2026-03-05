@@ -2,6 +2,7 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi;
+using Fbs.WebApi.Entities;
 using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
@@ -32,6 +33,12 @@ builder.Services.AddOptions<TelegramOptions>()
     .Validate(options =>
         !string.IsNullOrWhiteSpace(options.Token) &&
         !string.IsNullOrWhiteSpace(options.WebhookUrl)
+    );
+
+builder.Services.AddOptions<DatabaseOptions>()
+    .Bind(builder.Configuration.GetSection("Database"))
+    .Validate(options =>
+        !string.IsNullOrWhiteSpace(options.ConnectionString)
     );
 
 #endregion
@@ -82,6 +89,22 @@ builder.Services.AddSingleton(sp =>
     });
 
     return service;
+});
+
+builder.Services.AddSingleton<IFreeSql>(sp =>
+{
+    var dbOptions = sp.GetRequiredService<IOptions<DatabaseOptions>>();
+    var freeSql = new FreeSql.FreeSqlBuilder()
+        .UseConnectionString(FreeSql.DataType.Sqlite, dbOptions.Value.ConnectionString)
+        .UseAutoSyncStructure(true)
+        .Build();
+
+    freeSql.CodeFirst.ConfigEntity<Booking>(a =>
+    {
+        a.Property(b => b.Row).IsIgnore(true);
+    });
+
+    return freeSql;
 });
 
 builder.Services.AddFusionCache().AsHybridCache();
