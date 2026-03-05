@@ -17,7 +17,6 @@ public class Endpoint(
     public override void Configure()
     {
         Get("/Migration/FromGoogleCalendar");
-        AllowAnonymous();
         Tags("Migration");
     }
 

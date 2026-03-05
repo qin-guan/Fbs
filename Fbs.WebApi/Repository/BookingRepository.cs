@@ -59,10 +59,8 @@ public class BookingRepository(
         try
         {
             var @event = CreateCalendarEvent(entity, user);
-            await Task.WhenAll([
-                calendarService.Events.Insert(@event, options.Value.CarbonCopyCalendarId)
-                    .ExecuteAsync(cancellationToken)
-            ]);
+            await calendarService.Events.Insert(@event, options.Value.CarbonCopyCalendarId)
+                .ExecuteAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -99,10 +97,8 @@ public class BookingRepository(
         {
             var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, cancellationToken);
             var @event = CreateCalendarEvent(booking, user);
-            await Task.WhenAll([
-                calendarService.Events.Update(@event, options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
-                    .ExecuteAsync(cancellationToken)
-            ]);
+            await calendarService.Events.Update(@event, options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -127,10 +123,8 @@ public class BookingRepository(
 
         try
         {
-            await Task.WhenAll([
-                calendarService.Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
-                    .ExecuteAsync(cancellationToken)
-            ]);
+            await calendarService.Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken);
         }
         catch (Exception ex)
         {

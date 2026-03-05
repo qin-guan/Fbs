@@ -104,8 +104,6 @@ builder.Services.AddSingleton<IFreeSql>(sp =>
         a.Property(b => b.Row).IsIgnore(true);
     });
 
-    freeSql.CodeFirst.SyncStructure<Booking>();
-
     return freeSql;
 });
 
