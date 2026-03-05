@@ -1,7 +1,6 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
-using Fbs.ServiceDefaults;
 using Fbs.WebApi;
 using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Options;
