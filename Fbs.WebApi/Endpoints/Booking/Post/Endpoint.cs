@@ -41,10 +41,6 @@ public class Endpoint(
             return;
         }
 
-        AddError(r => r.FacilityName, "Facility bookings have been temporarily disabled! Please check back in at another time.");
-        await Send.ErrorsAsync(cancellation: ct);
-        return;
-
         var bookings = await bookingRepository.GetListAsync(ct);
         var overlapping = bookings.FirstOrDefault(b =>
             b.FacilityName == facility.Name &&
