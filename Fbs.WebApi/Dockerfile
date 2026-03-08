@@ -1,10 +1,10 @@
-﻿FROM mcr.microsoft.com/dotnet/nightly/aspnet:11.0-preview AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10 AS base
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-FROM mcr.microsoft.com/dotnet/nightly/sdk:11.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:11 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Fbs.WebApi/Fbs.WebApi.csproj", "Fbs.WebApi/"]
