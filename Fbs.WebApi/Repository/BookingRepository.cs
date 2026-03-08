@@ -48,8 +48,15 @@ public class BookingRepository(
                             return null;
                         }
 
-                        booking.StartDateTime = item.Start?.DateTimeDateTimeOffset;
-                        booking.EndDateTime = item.End?.DateTimeDateTimeOffset;
+                        var eventStartDateTime = item.Start?.DateTimeDateTimeOffset;
+                        var eventEndDateTime = item.End?.DateTimeDateTimeOffset;
+                        if (eventStartDateTime is null || eventEndDateTime is null)
+                        {
+                            return null;
+                        }
+
+                        booking.StartDateTime = eventStartDateTime;
+                        booking.EndDateTime = eventEndDateTime;
                         return booking;
                     })
                     .OfType<Booking>()
