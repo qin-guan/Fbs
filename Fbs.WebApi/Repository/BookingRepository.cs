@@ -15,8 +15,7 @@ public class BookingRepository(
     HybridCache cache,
     IOptions<GoogleOptions> options,
     CalendarService calendarService,
-    UserRepository userRepository,
-    ILogger<BookingRepository> logger
+    UserRepository userRepository
 ) : IRepository<Booking>
 {
     public async Task<List<Booking>> GetListAsync(CancellationToken cancellationToken = default)
@@ -40,26 +39,28 @@ public class BookingRepository(
                 token = items.NextPageToken;
 
                 var converted = items.Items
-                    .Select(item => item.ExtendedProperties.Shared["Data"])
-                    .Select(Convert.FromBase64String)
-                    .Select(item => MemoryPackSerializer.Deserialize<Booking>(item))
+                    .Select(item =>
+                    {
+                        var booking = MemoryPackSerializer.Deserialize<Booking>(
+                            Convert.FromBase64String(item.ExtendedProperties.Shared["Data"]));
+                        if (booking is null)
+                        {
+                            return null;
+                        }
+
+                        var eventStartDateTime = item.Start?.DateTimeDateTimeOffset;
+                        var eventEndDateTime = item.End?.DateTimeDateTimeOffset;
+                        if (eventStartDateTime is null || eventEndDateTime is null)
+                        {
+                            return null;
+                        }
+
+                        booking.StartDateTime = eventStartDateTime;
+                        booking.EndDateTime = eventEndDateTime;
+                        return booking;
+                    })
+                    .OfType<Booking>()
                     .ToList();
-
-                foreach (var i in converted)
-                {
-                    var original = items.Items.First(item => item.Id == i.Id.ToString("N"));
-                    if (original.Start.DateTimeDateTimeOffset != i.StartDateTime)
-                    {
-                        logger.LogError("Event has mismatching start date. Metadata: {Metadata}. Event: {Event}",
-                            i.StartDateTime, original.Start.DateTimeDateTimeOffset);
-                    }
-
-                    if (original.End.DateTimeDateTimeOffset != i.EndDateTime)
-                    {
-                        logger.LogError("Event has mismatching end date. Metadata: {Metadata}. Event: {Event}",
-                            i.EndDateTime, original.End.DateTimeDateTimeOffset);
-                    }
-                }
 
                 bookings.AddRange(converted);
             } while (token is not null);
