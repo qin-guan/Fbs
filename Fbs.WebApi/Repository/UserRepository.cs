@@ -56,7 +56,7 @@ public class UserRepository(
                         Phone = row.ElementAtOrDefault(2) as string,
                         TelegramChatId = row.ElementAtOrDefault(3) as string,
                         NotificationGroup = row.ElementAtOrDefault(4) as string,
-                        IsAdmin = row.ElementAtOrDefault(5) == "TRUE",
+                        IsAdmin = (row.ElementAtOrDefault(5) as string) == "TRUE",
                     }
             )
             .ToList();
