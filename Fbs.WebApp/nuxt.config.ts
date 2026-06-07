@@ -55,6 +55,10 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css', 'driver.js/dist/driver.css'],
 
+  content: {
+    experimental: { sqliteConnector: 'native' },
+  },
+
   appConfig: {
     ui: {
       colors: {
