@@ -2,44 +2,68 @@
 import type { MenuItem } from 'primevue/menuitem'
 
 const { visible } = useSidebar()
+const { data: me } = useMe()
 
-const items: MenuItem[] = [
-  {
-    label: 'Bookings',
-    route: '/booking',
-  },
-  {
-    label: 'New booking',
-    route: '/booking/new',
-  },
-  {
-    label: 'My profile',
-    route: '/profile',
-  },
-  {
-    label: `What's new`,
-    route: '/changelog',
-  },
-  {
-    label: 'Help',
-    items: [
-      {
-        label: 'FAQs',
-        route: '/faqs',
-      },
-      {
-        label: 'Contact us',
-        target: '_blank',
-        route: 'https://t.me/shadypastures',
-      },
-      {
-        label: 'jialat liao',
-        target: '_blank',
-        route: 'https://www.cmpb.gov.sg/life-in-ns/saf/where-to-seek-help/',
-      },
-    ],
-  },
-]
+const items = computed<MenuItem[]>(() => {
+  const baseItems: MenuItem[] = [
+    {
+      label: 'Bookings',
+      route: '/booking',
+    },
+    {
+      label: 'New booking',
+      route: '/booking/new',
+    },
+    {
+      label: 'My profile',
+      route: '/profile',
+    },
+    {
+      label: `What's new`,
+      route: '/changelog',
+    },
+    {
+      label: 'Help',
+      items: [
+        {
+          label: 'FAQs',
+          route: '/faqs',
+        },
+        {
+          label: 'Contact us',
+          target: '_blank',
+          route: 'https://t.me/shadypastures',
+        },
+        {
+          label: 'jialat liao',
+          target: '_blank',
+          route: 'https://www.cmpb.gov.sg/life-in-ns/saf/where-to-seek-help/',
+        },
+      ],
+    },
+  ]
+
+  if (me.value?.isAdmin) {
+    baseItems.push({
+      separator: true,
+    })
+    baseItems.push({
+      label: 'God Mode',
+      items: [
+        {
+          label: 'All Bookings',
+          route: '/admin/bookings',
+        },
+        {
+          label: 'Manage Users',
+          route: '/admin/users',
+        },
+      ],
+    })
+  }
+
+  return baseItems
+})
 </script>
 
 <template>
