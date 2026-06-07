@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 
+const client = $fetch.create({
+  baseURL: 'https://3sib-fbs-api.from.sg',
+  credentials: 'include'
+})
+
 export function useAdminBookings() {
   return useQuery({
     queryKey: ['admin-bookings'],
