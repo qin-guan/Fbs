@@ -3,7 +3,6 @@ import type { FbsWebApiEntitiesUser } from '~/api/models'
 
 definePageMeta({
   layout: 'app',
-  middleware: 'admin',
 })
 
 const toast = useToast()

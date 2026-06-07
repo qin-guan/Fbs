@@ -4,7 +4,6 @@ import type { FbsWebApiDtosBookingWithUser } from '~/api/models'
 
 definePageMeta({
   layout: 'app',
-  middleware: 'admin',
 })
 
 const router = useRouter()
