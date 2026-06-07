@@ -8,7 +8,7 @@ const client = $fetch.create({
 export function useAdminBookings() {
   return useQuery({
     queryKey: ['admin-bookings'],
-    queryFn: () => $fetch('/Admin/Bookings', {
+    queryFn: () => client('/Admin/Bookings', {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -21,7 +21,7 @@ export function useAdminDeleteBookingMutation() {
 
   return useMutation({
     mutationFn: (bookingId: string) =>
-      $fetch(`/Admin/Bookings/${bookingId}`, {
+      client(`/Admin/Bookings/${bookingId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
@@ -39,7 +39,7 @@ export function useAdminUpdateBookingMutation() {
 
   return useMutation({
     mutationFn: ({ bookingId, data }: { bookingId: string; data: any }) =>
-      $fetch(`/Admin/Bookings/${bookingId}`, {
+      client(`/Admin/Bookings/${bookingId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -56,7 +56,7 @@ export function useAdminUpdateBookingMutation() {
 export function useAdminUsers() {
   return useQuery({
     queryKey: ['admin-users'],
-    queryFn: () => $fetch('/Admin/Users', {
+    queryFn: () => client('/Admin/Users', {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -69,7 +69,7 @@ export function useToggleAdminMutation() {
 
   return useMutation({
     mutationFn: (phone: string) =>
-      $fetch(`/Admin/Users/${phone}/Admin`, {
+      client(`/Admin/Users/${phone}/Admin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
