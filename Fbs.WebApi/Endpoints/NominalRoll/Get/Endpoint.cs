@@ -3,7 +3,8 @@ using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.NominalRoll.Get;
 
-public class Endpoint(NominalRollRepository nominalRoll): EndpointWithoutRequest<IEnumerable<Entities.NominalRoll>>
+public class Endpoint(NominalRollRepository nominalRoll)
+    : EndpointWithoutRequest<IEnumerable<Entities.NominalRoll>>
 {
     public override void Configure()
     {
@@ -12,9 +13,6 @@ public class Endpoint(NominalRollRepository nominalRoll): EndpointWithoutRequest
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        await Send.OkAsync(
-            (await nominalRoll.GetListAsync(ct)).DistinctBy(n => n.Phone),
-            ct
-        );
+        await Send.OkAsync((await nominalRoll.GetListAsync(ct)).DistinctBy(n => n.Phone), ct);
     }
 }

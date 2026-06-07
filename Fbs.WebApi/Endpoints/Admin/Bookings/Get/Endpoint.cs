@@ -5,10 +5,8 @@ using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Admin.Bookings.Get;
 
-public class Endpoint(
-    UserRepository userRepository,
-    BookingRepository bookingRepository
-) : EndpointWithoutRequest<IEnumerable<BookingWithUser>>
+public class Endpoint(UserRepository userRepository, BookingRepository bookingRepository)
+    : EndpointWithoutRequest<IEnumerable<BookingWithUser>>
 {
     public override void Configure()
     {
@@ -32,7 +30,7 @@ public class Endpoint(
 
         var all = await bookingRepository.GetListAsync(ct);
         var users = await userRepository.GetListAsync(ct);
-        
+
         var withUser = all.Select(booking => new BookingWithUser
         {
             Id = booking.Id,

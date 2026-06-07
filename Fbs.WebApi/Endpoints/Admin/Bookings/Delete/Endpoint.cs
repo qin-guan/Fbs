@@ -11,10 +11,8 @@ public class Request
     public Guid Id { get; set; }
 }
 
-public class Endpoint(
-    BookingRepository bookingRepository,
-    UserRepository userRepository
-) : Endpoint<Request, BookingWithUser>
+public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
+    : Endpoint<Request, BookingWithUser>
 {
     public override void Configure()
     {
@@ -43,19 +41,23 @@ public class Endpoint(
         }
 
         await bookingRepository.DeleteAsync(b => b.Id == booking.Id, ct);
-        
-        await PublishAsync(new BookingDeletedEvent
-        {
-            Id = booking.Id,
-            FacilityName = booking.FacilityName,
-            Conduct = booking.Conduct,
-            Description = booking.Description,
-            PocName = booking.PocName,
-            PocPhone = booking.PocPhone,
-            StartDateTime = booking.StartDateTime,
-            EndDateTime = booking.EndDateTime,
-            UserPhone = booking.UserPhone
-        }, Mode.WaitForAll, ct);
+
+        await PublishAsync(
+            new BookingDeletedEvent
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                UserPhone = booking.UserPhone,
+            },
+            Mode.WaitForAll,
+            ct
+        );
 
         await Send.NoContentAsync(ct);
     }

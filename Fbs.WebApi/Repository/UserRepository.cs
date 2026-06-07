@@ -17,7 +17,12 @@ public class UserRepository(
 {
     private readonly string[] _header =
     [
-        "Unit", "Name", "Phone", "TelegramChatId", "NotificationGroup"
+        "Unit",
+        "Name",
+        "Phone",
+        "TelegramChatId",
+        "NotificationGroup",
+        "IsAdmin",
     ];
 
     public async Task<List<User>> GetListAsync(CancellationToken cancellationToken = default)
@@ -28,31 +33,39 @@ public class UserRepository(
             "Users",
             (sheetsService, options),
             async (state, ct) =>
-                await sheetsService.Spreadsheets.Values.Get(options.Value.SpreadsheetId, "Users")
+                await sheetsService
+                    .Spreadsheets.Values.Get(options.Value.SpreadsheetId, "Users")
                     .ExecuteAsync(ct),
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken
+        );
 
         if (!items.Values.First().SequenceEqual(_header))
         {
             throw new Exception("Unexpected headers for Users sheet");
         }
 
-        return items.Values
-            .Skip(1)
-            .Select((row, idx) => new User
-            {
-                Row = idx + 2,
-                Unit = row.ElementAtOrDefault(0) as string,
-                Name = row.ElementAtOrDefault(1) as string,
-                Phone = row.ElementAtOrDefault(2) as string,
-                TelegramChatId = row.ElementAtOrDefault(3) as string,
-                NotificationGroup = row.ElementAtOrDefault(4) as string,
-            })
+        return items
+            .Values.Skip(1)
+            .Select(
+                (row, idx) =>
+                    new User
+                    {
+                        Row = idx + 2,
+                        Unit = row.ElementAtOrDefault(0) as string,
+                        Name = row.ElementAtOrDefault(1) as string,
+                        Phone = row.ElementAtOrDefault(2) as string,
+                        TelegramChatId = row.ElementAtOrDefault(3) as string,
+                        NotificationGroup = row.ElementAtOrDefault(4) as string,
+                        IsAdmin = row.ElementAtOrDefault(5) == "TRUE",
+                    }
+            )
             .ToList();
     }
 
-    public async Task<User?> FindAsync(Expression<Func<User, bool>> predicate,
-        CancellationToken cancellationToken = default)
+    public async Task<User?> FindAsync(
+        Expression<Func<User, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
@@ -60,8 +73,10 @@ public class UserRepository(
         return items.SingleOrDefault(predicate.Compile());
     }
 
-    public async Task<User> GetAsync(Expression<Func<User, bool>> predicate,
-        CancellationToken cancellationToken = default)
+    public async Task<User> GetAsync(
+        Expression<Func<User, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
@@ -81,13 +96,27 @@ public class UserRepository(
         var request = sheetsService.Spreadsheets.Values.Update(
             new ValueRange
             {
-                Values = [[entity.Unit, entity.Name, entity.Phone, entity.TelegramChatId, entity.NotificationGroup]]
+                Values =
+                [
+                    [
+                        entity.Unit,
+                        entity.Name,
+                        entity.Phone,
+                        entity.TelegramChatId,
+                        entity.NotificationGroup,
+                        entity.IsAdmin.ToString().ToUpper(),
+                    ],
+                ],
             },
             options.Value.SpreadsheetId,
-            $"Users!A{entity.Row}:E{entity.Row}"
+            $"Users!A{entity.Row}:F{entity.Row}"
         );
 
-        request.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+        request.ValueInputOption = SpreadsheetsResource
+            .ValuesResource
+            .UpdateRequest
+            .ValueInputOptionEnum
+            .RAW;
         await request.ExecuteAsync(cancellationToken);
 
         await cache.RemoveAsync("Users", cancellationToken);
@@ -95,31 +124,39 @@ public class UserRepository(
         return entity;
     }
 
-    public async Task DeleteAsync(Expression<Func<User, bool>> predicate, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(
+        Expression<Func<User, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
         var entity = await GetAsync(predicate, cancellationToken);
 
-        await sheetsService.Spreadsheets.BatchUpdate(new BatchUpdateSpreadsheetRequest
-        {
-            Requests =
-            [
-                new Request
+        await sheetsService
+            .Spreadsheets.BatchUpdate(
+                new BatchUpdateSpreadsheetRequest
                 {
-                    DeleteDimension = new DeleteDimensionRequest
-                    {
-                        Range = new DimensionRange
+                    Requests =
+                    [
+                        new Request
                         {
-                            SheetId = await GetSheetId(cancellationToken),
-                            Dimension = "ROWS",
-                            StartIndex = entity.Row - 1,
-                            EndIndex = entity.Row
-                        }
-                    }
-                }
-            ]
-        }, options.Value.SpreadsheetId).ExecuteAsync(cancellationToken);
-        
+                            DeleteDimension = new DeleteDimensionRequest
+                            {
+                                Range = new DimensionRange
+                                {
+                                    SheetId = await GetSheetId(cancellationToken),
+                                    Dimension = "ROWS",
+                                    StartIndex = entity.Row - 1,
+                                    EndIndex = entity.Row,
+                                },
+                            },
+                        },
+                    ],
+                },
+                options.Value.SpreadsheetId
+            )
+            .ExecuteAsync(cancellationToken);
+
         await cache.RemoveAsync("Users", cancellationToken);
     }
 
@@ -127,7 +164,9 @@ public class UserRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var sheet = await sheetsService.Spreadsheets.Get(options.Value.SpreadsheetId).ExecuteAsync(cancellationToken);
+        var sheet = await sheetsService
+            .Spreadsheets.Get(options.Value.SpreadsheetId)
+            .ExecuteAsync(cancellationToken);
         return sheet.Sheets.Single(s => s.Properties.Title == "Users").Properties.SheetId;
     }
 }

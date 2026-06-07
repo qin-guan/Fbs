@@ -3,7 +3,7 @@ using FluentValidation;
 
 namespace Fbs.WebApi.Endpoints.Booking.Post;
 
-public class Validator: Validator<Request>
+public class Validator : Validator<Request>
 {
     public Validator()
     {
@@ -18,13 +18,11 @@ public class Validator: Validator<Request>
         RuleFor(r => r.StartDateTime)
             .Must(s => s.Minute % 30 == 0)
             .WithMessage("Duration must be in 30 minute intervals");
-        
+
         RuleFor(r => r.EndDateTime)
             .Must(s => s.Minute % 30 == 0)
             .WithMessage("Duration must be in 30 minute intervals");
 
-        RuleFor(r => r.Conduct)
-            .NotEmpty()
-            .MaximumLength(100);
+        RuleFor(r => r.Conduct).NotEmpty().MaximumLength(100);
     }
 }

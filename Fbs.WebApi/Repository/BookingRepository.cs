@@ -22,55 +22,63 @@ public class BookingRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        return await cache.GetOrCreateAsync("Bookings", (calendarService), async (state, ct) =>
-        {
-            string? token = null;
-            var bookings = new List<Booking>();
-
-            do
+        return await cache.GetOrCreateAsync(
+            "Bookings",
+            (calendarService),
+            async (state, ct) =>
             {
-                var request = state.Events.List(options.Value.CalendarId);
-                if (token is not null)
+                string? token = null;
+                var bookings = new List<Booking>();
+
+                do
                 {
-                    request.PageToken = token;
-                }
-
-                var items = await request.ExecuteAsync(ct);
-                token = items.NextPageToken;
-
-                var converted = items.Items
-                    .Select(item =>
+                    var request = state.Events.List(options.Value.CalendarId);
+                    if (token is not null)
                     {
-                        var booking = MemoryPackSerializer.Deserialize<Booking>(
-                            Convert.FromBase64String(item.ExtendedProperties.Shared["Data"]));
-                        if (booking is null)
+                        request.PageToken = token;
+                    }
+
+                    var items = await request.ExecuteAsync(ct);
+                    token = items.NextPageToken;
+
+                    var converted = items
+                        .Items.Select(item =>
                         {
-                            return null;
-                        }
+                            var booking = MemoryPackSerializer.Deserialize<Booking>(
+                                Convert.FromBase64String(item.ExtendedProperties.Shared["Data"])
+                            );
+                            if (booking is null)
+                            {
+                                return null;
+                            }
 
-                        var eventStartDateTime = item.Start?.DateTimeDateTimeOffset;
-                        var eventEndDateTime = item.End?.DateTimeDateTimeOffset;
-                        if (eventStartDateTime is null || eventEndDateTime is null)
-                        {
-                            return null;
-                        }
+                            var eventStartDateTime = item.Start?.DateTimeDateTimeOffset;
+                            var eventEndDateTime = item.End?.DateTimeDateTimeOffset;
+                            if (eventStartDateTime is null || eventEndDateTime is null)
+                            {
+                                return null;
+                            }
 
-                        booking.StartDateTime = eventStartDateTime;
-                        booking.EndDateTime = eventEndDateTime;
-                        return booking;
-                    })
-                    .OfType<Booking>()
-                    .ToList();
+                            booking.StartDateTime = eventStartDateTime;
+                            booking.EndDateTime = eventEndDateTime;
+                            return booking;
+                        })
+                        .OfType<Booking>()
+                        .ToList();
 
-                bookings.AddRange(converted);
-            } while (token is not null);
+                    bookings.AddRange(converted);
+                } while (token is not null);
 
-            return bookings;
-        }, cancellationToken: cancellationToken);
+                return bookings;
+            },
+            cancellationToken: cancellationToken
+        );
     }
 
-    public async Task<Booking?> FindAsync(Expression<Func<Booking, bool>> predicate,
-        CancellationToken cancellationToken = default)
+    public async Task<Booking?> FindAsync(
+        Expression<Func<Booking, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
@@ -78,8 +86,10 @@ public class BookingRepository(
         return list.SingleOrDefault(predicate.Compile());
     }
 
-    public async Task<Booking> GetAsync(Expression<Func<Booking, bool>> predicate,
-        CancellationToken cancellationToken = default)
+    public async Task<Booking> GetAsync(
+        Expression<Func<Booking, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
@@ -87,11 +97,17 @@ public class BookingRepository(
         return list.Single(predicate.Compile());
     }
 
-    public async Task<Booking> InsertAsync(Booking entity, CancellationToken cancellationToken = default)
+    public async Task<Booking> InsertAsync(
+        Booking entity,
+        CancellationToken cancellationToken = default
+    )
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var user = await userRepository.GetAsync(u => u.Phone == entity.UserPhone, cancellationToken);
+        var user = await userRepository.GetAsync(
+            u => u.Phone == entity.UserPhone,
+            cancellationToken
+        );
 
         entity.Id = Guid.NewGuid();
         var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(entity));
@@ -105,40 +121,31 @@ public class BookingRepository(
         {
             Id = entity.Id.ToString("N"),
             Summary = $"{user.Unit} {entity.Conduct}",
-            Start = new EventDateTime
-            {
-                DateTimeDateTimeOffset = entity.StartDateTime,
-            },
-            End = new EventDateTime
-            {
-                DateTimeDateTimeOffset = entity.EndDateTime,
-            },
+            Start = new EventDateTime { DateTimeDateTimeOffset = entity.StartDateTime },
+            End = new EventDateTime { DateTimeDateTimeOffset = entity.EndDateTime },
             Location = entity.FacilityName,
             Description = $"""
-                           Point of contact: {entity.PocName} / {entity.PocPhone}
+                Point of contact: {entity.PocName} / {entity.PocPhone}
 
-                           Booked by: {user.Unit} / {user.Name}
-                           Number: {user.Phone}
+                Booked by: {user.Unit} / {user.Name}
+                Number: {user.Phone}
 
-                           Description: 
-                           {entity.Description}
-                           """,
+                Description: 
+                {entity.Description}
+                """,
             ExtendedProperties = new Event.ExtendedPropertiesData
             {
-                Shared = new Dictionary<string, string>()
-                {
-                    {
-                        "Data", data
-                    }
-                }
-            }
+                Shared = new Dictionary<string, string>() { { "Data", data } },
+            },
         };
 
         await Task.WhenAll([
-            calendarService.Events.Insert(@event, options.Value.CalendarId)
+            calendarService
+                .Events.Insert(@event, options.Value.CalendarId)
                 .ExecuteAsync(cancellationToken),
-            calendarService.Events.Insert(@event, options.Value.CarbonCopyCalendarId)
-                .ExecuteAsync(cancellationToken)
+            calendarService
+                .Events.Insert(@event, options.Value.CarbonCopyCalendarId)
+                .ExecuteAsync(cancellationToken),
         ]);
 
         await cache.RemoveAsync("Bookings", cancellationToken);
@@ -146,7 +153,10 @@ public class BookingRepository(
         return entity;
     }
 
-    public async Task<Booking> UpdateAsync(Booking entity, CancellationToken cancellationToken = default)
+    public async Task<Booking> UpdateAsync(
+        Booking entity,
+        CancellationToken cancellationToken = default
+    )
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
@@ -169,45 +179,39 @@ public class BookingRepository(
             throw new Exception("Event information is too long.");
         }
 
-        var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, cancellationToken);
+        var user = await userRepository.GetAsync(
+            u => u.Phone == booking.UserPhone,
+            cancellationToken
+        );
         var @event = new Event
         {
             Id = booking.Id.ToString("N"),
             Summary = $"{user.Unit} {booking.Conduct}",
-            Start = new EventDateTime
-            {
-                DateTimeDateTimeOffset = booking.StartDateTime,
-            },
-            End = new EventDateTime
-            {
-                DateTimeDateTimeOffset = booking.EndDateTime,
-            },
+            Start = new EventDateTime { DateTimeDateTimeOffset = booking.StartDateTime },
+            End = new EventDateTime { DateTimeDateTimeOffset = booking.EndDateTime },
             Location = booking.FacilityName,
             Description = $"""
-                           Point of contact: {booking.PocName} / {booking.PocPhone}
+                Point of contact: {booking.PocName} / {booking.PocPhone}
 
-                           Booked by: {user.Unit} / {user.Name}
-                           Number: {user.Phone}
+                Booked by: {user.Unit} / {user.Name}
+                Number: {user.Phone}
 
-                           Description: 
-                           {booking.Description}
-                           """,
+                Description: 
+                {booking.Description}
+                """,
             ExtendedProperties = new Event.ExtendedPropertiesData
             {
-                Shared = new Dictionary<string, string>()
-                {
-                    {
-                        "Data", data
-                    }
-                }
-            }
+                Shared = new Dictionary<string, string>() { { "Data", data } },
+            },
         };
 
         await Task.WhenAll([
-            calendarService.Events.Update(@event, options.Value.CalendarId, booking.Id.ToString("N"))
+            calendarService
+                .Events.Update(@event, options.Value.CalendarId, booking.Id.ToString("N"))
                 .ExecuteAsync(cancellationToken),
-            calendarService.Events.Update(@event, options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
-                .ExecuteAsync(cancellationToken)
+            calendarService
+                .Events.Update(@event, options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken),
         ]);
 
         await cache.RemoveAsync("Bookings", cancellationToken);
@@ -215,18 +219,22 @@ public class BookingRepository(
         return booking;
     }
 
-    public async Task DeleteAsync(Expression<Func<Booking, bool>> predicate,
-        CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(
+        Expression<Func<Booking, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
         var booking = await GetAsync(predicate, cancellationToken);
 
         await Task.WhenAll([
-            calendarService.Events.Delete(options.Value.CalendarId, booking.Id.ToString("N"))
+            calendarService
+                .Events.Delete(options.Value.CalendarId, booking.Id.ToString("N"))
                 .ExecuteAsync(cancellationToken),
-            calendarService.Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
-                .ExecuteAsync(cancellationToken)
+            calendarService
+                .Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken),
         ]);
 
         await cache.RemoveAsync("Bookings", cancellationToken);

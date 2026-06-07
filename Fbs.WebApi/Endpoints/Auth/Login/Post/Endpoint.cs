@@ -38,14 +38,14 @@ public class Endpoint(
 
         var code = RandomNumberGenerator.GetString("1234567890", 6);
         var hash = Convert.ToHexString(
-            SCryptGenerate(
-                Encoding.Default.GetBytes(code),
-                Encoding.Default.GetBytes(req.Phone)
-            )
+            SCryptGenerate(Encoding.Default.GetBytes(code), Encoding.Default.GetBytes(req.Phone))
         );
 
         var existingOtp = await otpRepository.FindAsync(o => o.Phone == req.Phone, ct);
-        if (existingOtp is not null && existingOtp.CreatedAt + TimeSpan.FromSeconds(60) > DateTimeOffset.UtcNow)
+        if (
+            existingOtp is not null
+            && existingOtp.CreatedAt + TimeSpan.FromSeconds(60) > DateTimeOffset.UtcNow
+        )
         {
             await Send.UnauthorizedAsync(ct);
             return;
@@ -59,12 +59,15 @@ public class Endpoint(
         }
         else
         {
-            await otpRepository.InsertAsync(new Entities.Otp
-            {
-                Phone = req.Phone,
-                Code = hash,
-                CreatedAt = DateTimeOffset.UtcNow
-            }, ct);
+            await otpRepository.InsertAsync(
+                new Entities.Otp
+                {
+                    Phone = req.Phone,
+                    Code = hash,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                },
+                ct
+            );
         }
 
         logger.LogInformation("User {Phone} requested for OTP", user.Phone);

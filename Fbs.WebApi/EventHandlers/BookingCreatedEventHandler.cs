@@ -14,14 +14,14 @@ public class BookingCreatedEventHandler(
 ) : IEventHandler<BookingCreatedEvent>
 {
     private const string PurpleLightLyrics = """
-                                             <i>
-                                             Purple light
-                                             In the valley
-                                             That is where, I wanna be
-                                             Infantry, best companions
-                                             (With my rifle and my buddy and me)
-                                             </i>
-                                             """;
+        <i>
+        Purple light
+        In the valley
+        That is where, I wanna be
+        Infantry, best companions
+        (With my rifle and my buddy and me)
+        </i>
+        """;
 
     public async Task HandleAsync(BookingCreatedEvent booking, CancellationToken ct)
     {
@@ -31,77 +31,89 @@ public class BookingCreatedEventHandler(
             .Where(u => !string.IsNullOrWhiteSpace(u.TelegramChatId))
             .Where(u => u.Phone != booking.UserPhone)
             .Where(u =>
-                (u.NotificationGroup == "All") ||
-                (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
+                (u.NotificationGroup == "All")
+                || (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
             );
 
         await botClient.SendMessage(
             user.TelegramChatId!,
             $"""
-             <b>CREATED</b> booking for <b>{booking.FacilityName}</b>!
-             
-             <u>Conduct</u>
-             {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+            <b>CREATED</b> booking for <b>{booking.FacilityName}</b>!
 
-             <u>From</u>
-             {booking.StartDateTime?.ToLocalTime():f}
+            <u>Conduct</u>
+            {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
 
-             <u>To</u>
-             {booking.EndDateTime?.ToLocalTime():f}
+            <u>From</u>
+            {booking.StartDateTime?.ToLocalTime():f}
 
-             <u>Point of contact</u>
-             Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
-             Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+            <u>To</u>
+            {booking.EndDateTime?.ToLocalTime():f}
 
-             <u>Booked by</u>
-             Unit: {user.Unit}
-             Name: {user.Name}
-             Contact: {user.Phone}
+            <u>Point of contact</u>
+            Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
+            Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
 
-             <u>Description</u>
-             {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
+            <u>Booked by</u>
+            Unit: {user.Unit}
+            Name: {user.Name}
+            Contact: {user.Phone}
 
-             <u>Confirmation</u>
-             {booking.Id}
-             """,
+            <u>Description</u>
+            {(
+                string.IsNullOrWhiteSpace(booking.Description)
+                    ? PurpleLightLyrics
+                    : htmlEncoder.Encode(booking.Description)
+            )}
+
+            <u>Confirmation</u>
+            {booking.Id}
+            """,
             ParseMode.Html,
             cancellationToken: ct
         );
 
-        await Parallel.ForEachAsync(subscribedUsers, ct, async (u, ct2) =>
-        {
-            await botClient.SendMessage(
-                u.TelegramChatId!,
-                $"""
-                 <b>CREATED</b> booking for <b>{booking.FacilityName}</b>!
+        await Parallel.ForEachAsync(
+            subscribedUsers,
+            ct,
+            async (u, ct2) =>
+            {
+                await botClient.SendMessage(
+                    u.TelegramChatId!,
+                    $"""
+                    <b>CREATED</b> booking for <b>{booking.FacilityName}</b>!
 
-                 <u>Conduct</u>
-                 {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+                    <u>Conduct</u>
+                    {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
 
-                 <u>From</u>
-                 {booking.StartDateTime?.ToLocalTime():f}
+                    <u>From</u>
+                    {booking.StartDateTime?.ToLocalTime():f}
 
-                 <u>To</u>
-                 {booking.EndDateTime?.ToLocalTime():f}
+                    <u>To</u>
+                    {booking.EndDateTime?.ToLocalTime():f}
 
-                 <u>Point of contact</u>
-                 Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
-                 Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+                    <u>Point of contact</u>
+                    Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
+                    Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
 
-                 <u>Booked by</u>
-                 Unit: {user.Unit}
-                 Name: {user.Name}
-                 Contact: {user.Phone}
+                    <u>Booked by</u>
+                    Unit: {user.Unit}
+                    Name: {user.Name}
+                    Contact: {user.Phone}
 
-                 <u>Description</u>
-                 {(string.IsNullOrWhiteSpace(booking.Description) ? PurpleLightLyrics : htmlEncoder.Encode(booking.Description))}
+                    <u>Description</u>
+                    {(
+                        string.IsNullOrWhiteSpace(booking.Description)
+                            ? PurpleLightLyrics
+                            : htmlEncoder.Encode(booking.Description)
+                    )}
 
-                 <u>Confirmation</u>
-                 {booking.Id}
-                 """,
-                ParseMode.Html,
-                cancellationToken: ct2
-            );
-        });
+                    <u>Confirmation</u>
+                    {booking.Id}
+                    """,
+                    ParseMode.Html,
+                    cancellationToken: ct2
+                );
+            }
+        );
     }
 }

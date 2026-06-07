@@ -5,9 +5,7 @@ using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Auth.Me.Get;
 
-public class Endpoint(
-    UserRepository userRepository
-) : EndpointWithoutRequest<User>
+public class Endpoint(UserRepository userRepository) : EndpointWithoutRequest<User>
 {
     public override void Configure()
     {

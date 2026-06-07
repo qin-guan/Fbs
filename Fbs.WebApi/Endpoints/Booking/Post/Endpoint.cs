@@ -43,9 +43,9 @@ public class Endpoint(
 
         var bookings = await bookingRepository.GetListAsync(ct);
         var overlapping = bookings.FirstOrDefault(b =>
-            b.FacilityName == facility.Name &&
-            b.StartDateTime < req.EndDateTime &&
-            b.EndDateTime > req.StartDateTime
+            b.FacilityName == facility.Name
+            && b.StartDateTime < req.EndDateTime
+            && b.EndDateTime > req.StartDateTime
         );
 
         if (overlapping is not null)
@@ -64,29 +64,30 @@ public class Endpoint(
             FacilityName = req.FacilityName,
             PocName = req.PocName,
             PocPhone = req.PocPhone,
-            UserPhone = phone
+            UserPhone = phone,
         };
 
         await bookingRepository.InsertAsync(booking, ct);
 
-        await PublishAsync(new BookingCreatedEvent
-        {
-            Id = booking.Id,
-            FacilityName = booking.FacilityName,
-            Conduct = booking.Conduct,
-            Description = booking.Description,
-            PocName = booking.PocName,
-            PocPhone = booking.PocPhone,
-            StartDateTime = booking.StartDateTime,
-            EndDateTime = booking.EndDateTime,
-            UserPhone = booking.UserPhone
-        }, Mode.WaitForAll, ct);
+        await PublishAsync(
+            new BookingCreatedEvent
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                UserPhone = booking.UserPhone,
+            },
+            Mode.WaitForAll,
+            ct
+        );
 
         await Send.CreatedAtAsync<Booking.ById.Get.Endpoint>(
-            new
-            {
-                booking.Id
-            },
+            new { booking.Id },
             booking,
             verb: Http.GET,
             cancellation: ct

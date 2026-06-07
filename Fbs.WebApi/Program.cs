@@ -1,3 +1,4 @@
+using System.Text;
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
@@ -11,7 +12,6 @@ using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
-using System.Text;
 using Telegram.Bot;
 using ZiggyCreatures.Caching.Fusion;
 
@@ -21,51 +21,62 @@ builder.AddServiceDefaults();
 
 #region Options
 
-builder.Services.AddOptions<GoogleOptions>()
+builder
+    .Services.AddOptions<GoogleOptions>()
     .Bind(builder.Configuration.GetSection("Google"))
-    .Validate(options =>
-        !string.IsNullOrWhiteSpace(options.ServiceAccountJsonCredential)
-    );
+    .Validate(options => !string.IsNullOrWhiteSpace(options.ServiceAccountJsonCredential));
 
-builder.Services.AddOptions<TelegramOptions>()
+builder
+    .Services.AddOptions<TelegramOptions>()
     .Bind(builder.Configuration.GetSection("Telegram"))
     .Validate(options =>
-        !string.IsNullOrWhiteSpace(options.Token) &&
-        !string.IsNullOrWhiteSpace(options.WebhookUrl)
+        !string.IsNullOrWhiteSpace(options.Token) && !string.IsNullOrWhiteSpace(options.WebhookUrl)
     );
 
 #endregion
 
 #region Services
 
-builder.Services.AddAuthenticationCookie(validFor: TimeSpan.FromDays(1), options =>
-    {
-        if (!builder.Environment.IsProduction()) return;
+builder
+    .Services.AddAuthenticationCookie(
+        validFor: TimeSpan.FromDays(1),
+        options =>
+        {
+            if (!builder.Environment.IsProduction())
+                return;
 
-        options.Cookie.Domain = ".from.sg";
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    })
+            options.Cookie.Domain = ".from.sg";
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        }
+    )
     .AddAuthorization();
 
-builder.Services.AddHttpClient<TelegramBotClient>("tgwebhook")
-    .AddTypedClient((httpClient, sp) => new TelegramBotClient(
-        sp.GetRequiredService<IOptions<TelegramOptions>>().Value.Token,
-        httpClient
-    ));
+builder
+    .Services.AddHttpClient<TelegramBotClient>("tgwebhook")
+    .AddTypedClient(
+        (httpClient, sp) =>
+            new TelegramBotClient(
+                sp.GetRequiredService<IOptions<TelegramOptions>>().Value.Token,
+                httpClient
+            )
+    );
 
 builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
-    var serviceAccountJsonCredential = Encoding.UTF8.GetString(Convert.FromBase64String(options.Value.ServiceAccountJsonCredential));
-
-    var credential = GoogleCredential.FromJson(serviceAccountJsonCredential).CreateScoped(
-        "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/calendar.events"
+    var serviceAccountJsonCredential = Encoding.UTF8.GetString(
+        Convert.FromBase64String(options.Value.ServiceAccountJsonCredential)
     );
-    var service = new CalendarService(new BaseClientService.Initializer
-    {
-        HttpClientInitializer = credential
-    });
+
+    var credential = GoogleCredential
+        .FromJson(serviceAccountJsonCredential)
+        .CreateScoped(
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/calendar.events"
+        );
+    var service = new CalendarService(
+        new BaseClientService.Initializer { HttpClientInitializer = credential }
+    );
 
     return service;
 });
@@ -73,13 +84,14 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton(sp =>
 {
     var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
-    var serviceAccountJsonCredential = Encoding.UTF8.GetString(Convert.FromBase64String(options.Value.ServiceAccountJsonCredential));
+    var serviceAccountJsonCredential = Encoding.UTF8.GetString(
+        Convert.FromBase64String(options.Value.ServiceAccountJsonCredential)
+    );
 
     var credential = GoogleCredential.FromJson(serviceAccountJsonCredential);
-    var service = new SheetsService(new BaseClientService.Initializer
-    {
-        HttpClientInitializer = credential
-    });
+    var service = new SheetsService(
+        new BaseClientService.Initializer { HttpClientInitializer = credential }
+    );
 
     return service;
 });
@@ -143,8 +155,17 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseFastEndpoints(config => { config.Errors.UseProblemDetails(c => { c.IndicateErrorCode = true; }); });
-app.UseSwaggerGen(config => { config.Path = "/openapi/{documentName}.json"; });
+app.UseFastEndpoints(config =>
+{
+    config.Errors.UseProblemDetails(c =>
+    {
+        c.IndicateErrorCode = true;
+    });
+});
+app.UseSwaggerGen(config =>
+{
+    config.Path = "/openapi/{documentName}.json";
+});
 
 app.MapDefaultEndpoints();
 app.MapScalarApiReference();

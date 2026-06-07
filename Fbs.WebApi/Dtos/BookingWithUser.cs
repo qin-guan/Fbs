@@ -12,6 +12,6 @@ public class BookingWithUser
     public string? PocPhone { get; set; }
     public DateTimeOffset? StartDateTime { get; set; }
     public DateTimeOffset? EndDateTime { get; set; }
-    
+
     public User? User { get; set; }
 }

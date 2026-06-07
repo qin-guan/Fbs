@@ -9,9 +9,7 @@ public class Request
     public string Phone { get; set; } = string.Empty;
 }
 
-public class Endpoint(
-    UserRepository userRepository
-) : Endpoint<Request, Entities.User>
+public class Endpoint(UserRepository userRepository) : Endpoint<Request, Entities.User>
 {
     public override void Configure()
     {

@@ -28,7 +28,10 @@ public class Endpoint(
             return;
         }
 
-        var hash = SCryptGenerate(Encoding.Default.GetBytes(req.Code), Encoding.Default.GetBytes(req.Phone));
+        var hash = SCryptGenerate(
+            Encoding.Default.GetBytes(req.Code),
+            Encoding.Default.GetBytes(req.Phone)
+        );
 
         var valid = CryptographicOperations.FixedTimeEquals(Convert.FromHexString(otp.Code), hash);
         if (!valid)
@@ -45,10 +48,13 @@ public class Endpoint(
         }
 
         await otpRepository.DeleteAsync(o => o.Phone == req.Phone, ct);
-        
+
         logger.LogInformation("User {Phone} verified OTP", user.Phone);
 
-        await CookieAuth.SignInAsync(u => { u["Phone"] = user.Phone; });
+        await CookieAuth.SignInAsync(u =>
+        {
+            u["Phone"] = user.Phone;
+        });
     }
 
     private static byte[] SCryptGenerate(byte[] password, byte[] salt)

@@ -5,10 +5,8 @@ using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Booking.ById.Post;
 
-public class Endpoint(
-    BookingRepository bookingRepository,
-    UserRepository userRepository
-) : Endpoint<Request, Entities.Booking>
+public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
+    : Endpoint<Request, Entities.Booking>
 {
     public override void Configure()
     {
@@ -29,7 +27,10 @@ public class Endpoint(
             throw new Exception("Booking does not exist.");
         }
 
-        var bookingCreatedBy = await userRepository.FindAsync(u => u.Phone == booking.UserPhone, ct);
+        var bookingCreatedBy = await userRepository.FindAsync(
+            u => u.Phone == booking.UserPhone,
+            ct
+        );
         var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
 
         if (bookingCreatedBy?.Unit != currentUser?.Unit)
@@ -45,24 +46,25 @@ public class Endpoint(
 
         await bookingRepository.UpdateAsync(booking, ct);
 
-        await PublishAsync(new BookingUpdatedEvent
-        {
-            Id = booking.Id,
-            FacilityName = booking.FacilityName,
-            Conduct = booking.Conduct,
-            Description = booking.Description,
-            PocName = booking.PocName,
-            PocPhone = booking.PocPhone,
-            StartDateTime = booking.StartDateTime,
-            EndDateTime = booking.EndDateTime,
-            UserPhone = booking.UserPhone
-        }, Mode.WaitForAll, ct);
+        await PublishAsync(
+            new BookingUpdatedEvent
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                UserPhone = booking.UserPhone,
+            },
+            Mode.WaitForAll,
+            ct
+        );
 
         await Send.CreatedAtAsync<Booking.ById.Get.Endpoint>(
-            new
-            {
-                booking.Id
-            },
+            new { booking.Id },
             booking,
             verb: Http.GET,
             cancellation: ct

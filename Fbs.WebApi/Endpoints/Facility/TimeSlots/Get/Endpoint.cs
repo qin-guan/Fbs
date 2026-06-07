@@ -17,10 +17,15 @@ public class Endpoint(
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
-        if (req.StartTime >= req.EndTime || req.StartTime.Minute % 30 != 0 || req.EndTime.Minute % 30 != 0)
+        if (
+            req.StartTime >= req.EndTime
+            || req.StartTime.Minute % 30 != 0
+            || req.EndTime.Minute % 30 != 0
+        )
         {
             throw new Exception(
-                "Either the start time is greater than end time, or the time values provided are not in the correct intervals.");
+                "Either the start time is greater than end time, or the time values provided are not in the correct intervals."
+            );
         }
 
         var facility = await facilityRepository.GetAsync(f => f.Name == req.Name, ct);
@@ -52,13 +57,17 @@ public class Endpoint(
             var newEnd = current.AddMinutes(30);
             current = current.AddMinutes(30);
 
-            var overlaps = overlapping.SingleOrDefault(b => b.StartDateTime < newEnd && b.EndDateTime > newCurrent);
-            slots.Add(new TimeSlot
-            {
-                StartDateTime = newCurrent,
-                EndDateTime = newEnd,
-                Booking = overlaps
-            });
+            var overlaps = overlapping.SingleOrDefault(b =>
+                b.StartDateTime < newEnd && b.EndDateTime > newCurrent
+            );
+            slots.Add(
+                new TimeSlot
+                {
+                    StartDateTime = newCurrent,
+                    EndDateTime = newEnd,
+                    Booking = overlaps,
+                }
+            );
         } while (!ct.IsCancellationRequested && current < req.EndTime);
 
         await Send.OkAsync(slots, ct);

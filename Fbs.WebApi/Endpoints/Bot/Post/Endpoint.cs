@@ -32,10 +32,16 @@ public class Endpoint(
 
                 if (normalizedPhoneNumber.Length is not 10)
                 {
-                    logger.LogWarning("Normalized phone number length is incorrect for {Phone}", normalizedPhoneNumber);
+                    logger.LogWarning(
+                        "Normalized phone number length is incorrect for {Phone}",
+                        normalizedPhoneNumber
+                    );
                 }
 
-                var user = await userRepository.FindAsync(u => u.Phone == normalizedPhoneNumber, ct);
+                var user = await userRepository.FindAsync(
+                    u => u.Phone == normalizedPhoneNumber,
+                    ct
+                );
                 if (user is null)
                 {
                     await client.SendMessage(
@@ -59,12 +65,12 @@ public class Endpoint(
                 await client.SendMessage(
                     req.Message.Chat,
                     $"""
-                     You've been successfully registered as {user.Name}!
+                    You've been successfully registered as {user.Name}!
 
-                     You may now use Telegram to authenticate with the Facility Booking System.
+                    You may now use Telegram to authenticate with the Facility Booking System.
 
-                     Make a booking <a href="https://3sib-fbs.from.sg">here</a>.
-                     """,
+                    Make a booking <a href="https://3sib-fbs.from.sg">here</a>.
+                    """,
                     ParseMode.Html,
                     replyMarkup: new ReplyKeyboardRemove(),
                     cancellationToken: ct
@@ -82,10 +88,7 @@ public class Endpoint(
                     Please link your Telegram account clicking the button below =)
                     """,
                     ParseMode.Html,
-                    replyMarkup: new[]
-                    {
-                        KeyboardButton.WithRequestContact("Link account")
-                    },
+                    replyMarkup: new[] { KeyboardButton.WithRequestContact("Link account") },
                     cancellationToken: ct
                 );
 

@@ -6,8 +6,10 @@ public class Request
 {
     [QueryParam]
     public DateTimeOffset StartTime { get; set; }
+
     [QueryParam]
     public DateTimeOffset EndTime { get; set; }
+
     [RouteParam]
     public string Name { get; set; }
 }
