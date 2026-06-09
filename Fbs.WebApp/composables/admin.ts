@@ -1,13 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import type {
   FbsWebApiDtosBookingWithUser,
-  FbsWebApiEndpointsBookingByIdPostRequest,
   FbsWebApiEntitiesBooking,
   FbsWebApiEntitiesUser,
 } from '~/api/models'
 
 export interface AdminUser extends FbsWebApiEntitiesUser {
   isAdmin?: boolean | null
+}
+
+export interface AdminBookingUpdateRequest {
+  id: string
+  conduct?: string | null
+  description?: string | null
+  pocName?: string | null
+  pocPhone?: string | null
 }
 
 function createAdminClient() {
@@ -31,12 +38,21 @@ export function useAdminBookings() {
 }
 
 export function useAdminBooking(id: MaybeRef<string>) {
-  const bookings = useAdminBookings()
+  const client = createAdminClient()
+  const queryClient = useQueryClient()
 
-  return {
-    ...bookings,
-    data: computed(() => bookings.data.value?.find(booking => booking.id === toValue(id))),
-  }
+  return useQuery<FbsWebApiDtosBookingWithUser>({
+    queryKey: computed(() => ['admin-bookings', toValue(id)]),
+    queryFn: () => client<FbsWebApiDtosBookingWithUser>(`/Admin/Bookings/${toValue(id)}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }),
+    initialData: () => {
+      return queryClient.getQueryData<FbsWebApiDtosBookingWithUser[]>(['admin-bookings'])
+        ?.find(booking => booking.id === toValue(id))
+    },
+  })
 }
 
 export function useAdminDeleteBookingMutation() {
@@ -51,9 +67,11 @@ export function useAdminDeleteBookingMutation() {
           'Content-Type': 'application/json',
         },
       }),
-    onSuccess() {
+    onSuccess(_, bookingId) {
       queryClient.invalidateQueries({ queryKey: ['admin-bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-bookings', bookingId] })
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', bookingId] })
     },
   })
 }
@@ -63,7 +81,7 @@ export function useAdminUpdateBookingMutation() {
   const client = createAdminClient()
 
   return useMutation({
-    mutationFn: ({ bookingId, data }: { bookingId: string; data: FbsWebApiEndpointsBookingByIdPostRequest }) =>
+    mutationFn: ({ bookingId, data }: { bookingId: string; data: AdminBookingUpdateRequest }) =>
       client<FbsWebApiEntitiesBooking>(`/Admin/Bookings/${bookingId}`, {
         method: 'PUT',
         headers: {
@@ -71,9 +89,11 @@ export function useAdminUpdateBookingMutation() {
         },
         body: data,
       }),
-    onSuccess() {
+    onSuccess(_, variables) {
       queryClient.invalidateQueries({ queryKey: ['admin-bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-bookings', variables.bookingId] })
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', variables.bookingId] })
     },
   })
 }

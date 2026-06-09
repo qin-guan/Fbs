@@ -8,6 +8,7 @@ namespace Fbs.WebApi.Endpoints.Admin.Bookings.Delete;
 
 public class Request
 {
+    [RouteParam]
     public Guid Id { get; set; }
 }
 

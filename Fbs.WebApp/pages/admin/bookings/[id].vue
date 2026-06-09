@@ -23,6 +23,15 @@ const filteredItemsName = computed(() => {
   return filteredItemsPhone.value.map(i => nominalRoll.value?.[i]).filter(Boolean)
 })
 
+const canSave = computed(() => {
+  return Boolean(
+    updateValues.value.id
+    && updateValues.value.conduct?.trim()
+    && updateValues.value.pocName?.trim()
+    && normalizePhone(updateValues.value.pocPhone),
+  )
+})
+
 watch(booking, (newBooking) => {
   if (!newBooking) return
   updateValues.value = { ...newBooking }
@@ -60,11 +69,21 @@ function formatTime(value?: Date | string | null) {
 
 function updateBooking() {
   if (!updateValues.value.id) return
+  if (!canSave.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Missing required booking details.',
+      detail: 'Conduct, POC name, and POC phone are required.',
+      life: 4000,
+    })
+    return
+  }
 
   updateMutate(
     {
       bookingId: updateValues.value.id,
       data: {
+        id: updateValues.value.id,
         conduct: updateValues.value.conduct,
         description: updateValues.value.description,
         pocName: updateValues.value.pocName,
@@ -325,6 +344,7 @@ function confirmDelete() {
                 label="Save"
                 icon="i-lucide-save"
                 :loading="updateIsPending"
+                :disabled="!canSave || deleteIsPending"
               />
             </div>
           </form>

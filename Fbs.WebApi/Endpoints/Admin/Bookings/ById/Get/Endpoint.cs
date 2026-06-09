@@ -1,26 +1,22 @@
 using FastEndpoints;
 using FastEndpoints.Security;
-using Fbs.WebApi.Events;
+using Fbs.WebApi.Dtos;
 using Fbs.WebApi.Repository;
 
-namespace Fbs.WebApi.Endpoints.Admin.Bookings.Put;
+namespace Fbs.WebApi.Endpoints.Admin.Bookings.ById.Get;
 
 public class Request
 {
     [RouteParam]
     public Guid Id { get; set; }
-    public string? Conduct { get; set; }
-    public string? Description { get; set; }
-    public string? PocName { get; set; }
-    public string? PocPhone { get; set; }
 }
 
 public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
-    : Endpoint<Request, Entities.Booking>
+    : Endpoint<Request, BookingWithUser>
 {
     public override void Configure()
     {
-        Put("/Admin/Bookings/{Id:guid}");
+        Get("/Admin/Bookings/{Id:guid}");
         AllowAnonymous();
     }
 
@@ -35,24 +31,20 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
         var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
         if (currentUser?.IsAdmin != true)
         {
-            throw new Exception("You do not have permission to edit bookings.");
+            throw new Exception("You do not have permission to access this booking.");
         }
 
         var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
         if (booking is null)
         {
-            throw new Exception("Booking does not exist.");
+            await Send.NotFoundAsync(ct);
+            return;
         }
 
-        booking.Conduct = req.Conduct;
-        booking.Description = req.Description;
-        booking.PocName = req.PocName;
-        booking.PocPhone = req.PocPhone;
+        var bookedBy = await userRepository.FindAsync(u => u.Phone == booking.UserPhone, ct);
 
-        await bookingRepository.UpdateAsync(booking, ct);
-
-        await PublishAsync(
-            new BookingUpdatedEvent
+        await Send.OkAsync(
+            new BookingWithUser
             {
                 Id = booking.Id,
                 FacilityName = booking.FacilityName,
@@ -62,12 +54,9 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
                 PocPhone = booking.PocPhone,
                 StartDateTime = booking.StartDateTime,
                 EndDateTime = booking.EndDateTime,
-                UserPhone = booking.UserPhone,
+                User = bookedBy,
             },
-            Mode.WaitForAll,
             ct
         );
-
-        await Send.OkAsync(booking, ct);
     }
 }
