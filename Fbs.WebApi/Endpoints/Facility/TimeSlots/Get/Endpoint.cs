@@ -31,6 +31,7 @@ public class Endpoint(
         var facility = await facilityRepository.GetAsync(f => f.Name == req.Name, ct);
 
         var users = await userRepository.GetListAsync(ct);
+        var usersDict = users.ToDictionary(u => u.Phone!);
         var bookings = await bookingRepository.GetListAsync(ct);
         var overlapping = bookings
             .Where(b => b.FacilityName == facility.Name)
@@ -45,7 +46,7 @@ public class Endpoint(
                 PocPhone = booking.PocPhone,
                 StartDateTime = booking.StartDateTime,
                 EndDateTime = booking.EndDateTime,
-                User = users.Single(u => u.Phone == booking.UserPhone),
+                User = usersDict[booking.UserPhone ?? string.Empty],
             })
             .ToList();
 
