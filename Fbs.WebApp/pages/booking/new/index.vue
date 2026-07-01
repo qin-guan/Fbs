@@ -353,4 +353,8 @@ function onViewChange({ start, id }) {
 :deep(.vuecal__event-placeholder) {
   background-color: var(--p-primary-color);
 }
+
+:deep(.vuecal__event) {
+  touch-action: none;
+}
 </style>
