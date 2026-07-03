@@ -115,7 +115,8 @@ const calOptions = computed(() => {
     events,
     onReady,
     onEventCreate,
-		onEventResizeEnd,
+    onEventResizeEnd,
+    onEventDrop,
     style: 'flex: 1',
   }
 })
@@ -181,6 +182,21 @@ async function onEventResizeEnd({ event, ...rest }) {
   return !rest.overlaps.length
 }
 
+async function onEventDrop({ event, ...rest }) {
+  const facilityName = facilitiesUnderFacilityType.value?.[event.schedule - 1]?.name
+  if (!facilityName) {
+    throw new Error('Invalid facility name')
+  }
+
+  selection.value = {
+    start: event.start,
+    end: event.end,
+    facilityName,
+  }
+
+  return !rest.overlaps.length
+}
+
 async function onEventCreate({ event, resolve, ...rest }) {
   cal.value.view.deleteEvent({ id: 'new-booking' }, 3)
 
@@ -199,6 +215,8 @@ async function onEventCreate({ event, resolve, ...rest }) {
     ...event,
     id: 'new-booking',
     title: 'New booking',
+    resizable: true,
+    draggable: true,
   })
 }
 
@@ -356,5 +374,41 @@ function onViewChange({ start, id }) {
 
 :deep(.vuecal__event) {
   touch-action: none;
+}
+
+:deep(.vuecal__event-resizer) {
+  height: 12px;
+  background-color: rgba(255, 255, 255, 0.45);
+  opacity: 0.85 !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, opacity 0.2s;
+  z-index: 10;
+}
+
+:deep(.vuecal__event-resizer:hover) {
+  background-color: rgba(255, 255, 255, 0.6);
+  opacity: 1 !important;
+}
+
+/* Grab handle lines */
+:deep(.vuecal__event-resizer::before) {
+  content: "";
+  width: 16px;
+  height: 2px;
+  background-color: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* Expanded touch target for mobile/touch screens */
+:deep(.vuecal__event-resizer::after) {
+  content: "";
+  position: absolute;
+  top: -16px;
+  bottom: -16px;
+  left: 0;
+  right: 0;
 }
 </style>
