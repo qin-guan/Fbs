@@ -40,3 +40,13 @@ Start the AppHost project:
 ```powershell
 dotnet run --project ./Fbs.AppHost/Fbs.AppHost.csproj;
 ```
+
+## Kotlin Spring Boot API module
+
+A Kotlin rewrite of `Fbs.WebApi` is available in `./Fbs.WebApi.Kotlin`.
+
+```bash
+cd ./Fbs.WebApi.Kotlin
+./gradlew build
+./gradlew bootRun
+```

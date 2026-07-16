@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: fbs-webapi-kotlin
+
+server:
+  port: 8080
+
+fbs:
+  google:
+    service-account-json-credential: ""
+    spreadsheet-id: ""
+    calendar-id: ""
+    carbon-copy-calendar-id: ""
+  telegram:
+    token: ""
+    webhook-url: ""
+  auth-cookie:
+    name: fbs_auth
+    secret: change-me
+    domain:
+    secure: false
+    max-age-days: 1
+  cors:
+    origins:
+      - http://localhost:3000
+      - https://*.asse.devtunnels.ms
+      - https://*.3sib-fbs.pages.dev
+      - https://3sib-fbs.pages.dev
+      - https://*.3sib-fbs.from.sg
+      - https://3sib-fbs.from.sg
