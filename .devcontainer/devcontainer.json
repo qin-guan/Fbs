@@ -1,0 +1,22 @@
+{
+	"name": "Java 21 & Node.js",
+	"image": "mcr.microsoft.com/devcontainers/java:21",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "lts"
+		}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"vscjava.vscode-java-pack",
+				"vscjava.vscode-gradle",
+				"mathiasfrohlich.Kotlin",
+				"fwcd.kotlin",
+				"Vue.volar"
+			]
+		}
+	},
+	"forwardPorts": [8080, 3000],
+	"postCreateCommand": "npm install -g pnpm"
+}
