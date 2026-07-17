@@ -3,4 +3,4 @@
     image: fbs.webapi
     build:
       context: .
-      dockerfile: Fbs.WebApi/Dockerfile
+      dockerfile: Dockerfile
