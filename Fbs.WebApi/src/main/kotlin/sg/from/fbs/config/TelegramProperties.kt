@@ -7,5 +7,4 @@ import org.springframework.context.annotation.Configuration
 @ConfigurationProperties(prefix = "telegram")
 class TelegramProperties {
     var token = ""
-    var webhookUrl = ""
 }

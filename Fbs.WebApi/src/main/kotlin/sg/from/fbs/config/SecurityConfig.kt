@@ -70,8 +70,16 @@ class AuthFilter : OncePerRequestFilter() {
             "/Bot",
             "/Cache/Purge"
         )
+        val publicDocumentationEndpoints = listOf(
+            "/scalar",
+            "/v3/api-docs",
+            "/v3/api-docs.yaml"
+        )
 
         val isPublic = publicEndpoints.any { request.requestURI.startsWith(it) } ||
+            publicDocumentationEndpoints.any {
+                request.requestURI == it || request.requestURI.startsWith(it + "/")
+            } ||
             (request.requestURI.startsWith("/Admin/Users/") && request.method == "POST")
 
         var phone: String? = null

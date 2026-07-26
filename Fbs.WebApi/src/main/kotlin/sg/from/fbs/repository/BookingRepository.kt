@@ -1,8 +1,6 @@
 package sg.from.fbs.repository
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.databind.json.JsonMapper
 import com.google.api.client.util.DateTime
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.model.Event
@@ -22,13 +20,12 @@ import org.springframework.context.annotation.Lazy
 class BookingRepository(
     private val calendarService: Calendar,
     private val options: GoogleProperties,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val objectMapper: JsonMapper
 ) {
     @Autowired
     @Lazy
     lateinit var self: BookingRepository
-
-    private val objectMapper: ObjectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
 
     @Cacheable("Bookings")
     fun getList(): List<Booking> {
