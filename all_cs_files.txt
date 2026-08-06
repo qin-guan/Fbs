@@ -1,0 +1,2837 @@
+==== Fbs.WebApi/EventHandlers/BookingDeletedEventHandler.cs ====
+using System.Text.Encodings.Web;
+using FastEndpoints;
+using Fbs.WebApi.Events;
+using Fbs.WebApi.Repository;
+using Telegram.Bot;
+using Telegram.Bot.Types.Enums;
+
+namespace Fbs.WebApi.EventHandlers;
+
+public class BookingDeletedEventHandler(
+    UserRepository userRepository,
+    HtmlEncoder htmlEncoder,
+    TelegramBotClient botClient
+) : IEventHandler<BookingDeletedEvent>
+{
+    private const string PurpleLightLyrics = """
+        <i>
+        Purple light
+        In the valley
+        That is where, I wanna be
+        Infantry, best companions
+        (With my rifle and my buddy and me)
+        </i>
+        """;
+
+    public async Task HandleAsync(BookingDeletedEvent booking, CancellationToken ct)
+    {
+        var users = await userRepository.GetListAsync(ct);
+        var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, ct);
+        var subscribedUsers = users
+            .Where(u => !string.IsNullOrWhiteSpace(u.TelegramChatId))
+            .Where(u => u.Phone != booking.UserPhone)
+            .Where(u =>
+                (u.NotificationGroup == "All")
+                || (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
+            );
+
+        await botClient.SendMessage(
+            user.TelegramChatId!,
+            $"""
+            <b>CANCELLED</b> booking for <b>{booking.FacilityName}</b>!
+
+            <u>Conduct</u>
+            {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+
+            <u>From</u>
+            {booking.StartDateTime?.ToLocalTime():f}
+
+            <u>To</u>
+            {booking.EndDateTime?.ToLocalTime():f}
+
+            <u>Point of contact</u>
+            Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
+            Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+
+            <u>Cancelled by</u>
+            Unit: {user.Unit}
+            Name: {user.Name}
+            Contact: {user.Phone}
+
+            <u>Description</u>
+            {(
+                string.IsNullOrWhiteSpace(booking.Description)
+                    ? PurpleLightLyrics
+                    : htmlEncoder.Encode(booking.Description)
+            )}
+
+            <u>Confirmation</u>
+            {booking.Id}
+            """,
+            ParseMode.Html,
+            cancellationToken: ct
+        );
+
+        await Parallel.ForEachAsync(
+            subscribedUsers,
+            ct,
+            async (u, ct2) =>
+            {
+                await botClient.SendMessage(
+                    u.TelegramChatId!,
+                    $"""
+                    <b>CANCELLED</b> booking for <b>{booking.FacilityName}</b>!
+
+                    <u>Conduct</u>
+                    {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+
+                    <u>From</u>
+                    {booking.StartDateTime?.ToLocalTime():f}
+
+                    <u>To</u>
+                    {booking.EndDateTime?.ToLocalTime():f}
+
+                    <u>Point of contact</u>
+                    Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
+                    Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+
+                    <u>Cancelled by</u>
+                    Unit: {user.Unit}
+                    Name: {user.Name}
+                    Contact: {user.Phone}
+
+                    <u>Description</u>
+                    {(
+                        string.IsNullOrWhiteSpace(booking.Description)
+                            ? PurpleLightLyrics
+                            : htmlEncoder.Encode(booking.Description)
+                    )}
+
+                    <u>Confirmation</u>
+                    {booking.Id}
+                    """,
+                    ParseMode.Html,
+                    cancellationToken: ct2
+                );
+            }
+        );
+    }
+}
+==== Fbs.WebApi/EventHandlers/BookingUpdatedEventHandler.cs ====
+using System.Text.Encodings.Web;
+using FastEndpoints;
+using Fbs.WebApi.Events;
+using Fbs.WebApi.Repository;
+using Telegram.Bot;
+using Telegram.Bot.Types.Enums;
+
+namespace Fbs.WebApi.EventHandlers;
+
+public class BookingUpdatedEventHandler(
+    UserRepository userRepository,
+    HtmlEncoder htmlEncoder,
+    TelegramBotClient botClient
+) : IEventHandler<BookingUpdatedEvent>
+{
+    private const string PurpleLightLyrics = """
+        <i>
+        Purple light
+        In the valley
+        That is where, I wanna be
+        Infantry, best companions
+        (With my rifle and my buddy and me)
+        </i>
+        """;
+
+    public async Task HandleAsync(BookingUpdatedEvent booking, CancellationToken ct)
+    {
+        var users = await userRepository.GetListAsync(ct);
+        var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, ct);
+        var subscribedUsers = users
+            .Where(u => !string.IsNullOrWhiteSpace(u.TelegramChatId))
+            .Where(u => u.Phone != booking.UserPhone)
+            .Where(u =>
+                (u.NotificationGroup == "All")
+                || (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
+            );
+
+        await botClient.SendMessage(
+            user.TelegramChatId!,
+            $"""
+            <b>UPDATED</b> booking for <b>{booking.FacilityName}</b>!
+
+            <u>Conduct</u>
+            {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+
+            <u>From</u>
+            {booking.StartDateTime?.ToLocalTime():f}
+
+            <u>To</u>
+            {booking.EndDateTime?.ToLocalTime():f}
+
+            <u>Point of contact</u>
+            Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
+            Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+
+            <u>Booked by</u>
+            Unit: {user.Unit}
+            Name: {user.Name}
+            Contact: {user.Phone}
+
+            <u>Description</u>
+            {(
+                string.IsNullOrWhiteSpace(booking.Description)
+                    ? PurpleLightLyrics
+                    : htmlEncoder.Encode(booking.Description)
+            )}
+
+            <u>Confirmation</u>
+            {booking.Id}
+            """,
+            ParseMode.Html,
+            cancellationToken: ct
+        );
+
+        await Parallel.ForEachAsync(
+            subscribedUsers,
+            ct,
+            async (u, ct2) =>
+            {
+                await botClient.SendMessage(
+                    u.TelegramChatId!,
+                    $"""
+                    <b>UPDATED</b> booking for <b>{booking.FacilityName}</b>!
+
+                    <u>Conduct</u>
+                    {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+
+                    <u>From</u>
+                    {booking.StartDateTime?.ToLocalTime():f}
+
+                    <u>To</u>
+                    {booking.EndDateTime?.ToLocalTime():f}
+
+                    <u>Point of contact</u>
+                    Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
+                    Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+
+                    <u>Updated by</u>
+                    Unit: {user.Unit}
+                    Name: {user.Name}
+                    Contact: {user.Phone}
+
+                    <u>Description</u>
+                    {(
+                        string.IsNullOrWhiteSpace(booking.Description)
+                            ? PurpleLightLyrics
+                            : htmlEncoder.Encode(booking.Description)
+                    )}
+
+                    <u>Confirmation</u>
+                    {booking.Id}
+                    """,
+                    ParseMode.Html,
+                    cancellationToken: ct2
+                );
+            }
+        );
+    }
+}
+==== Fbs.WebApi/EventHandlers/BookingCreatedEventHandler.cs ====
+using System.Text.Encodings.Web;
+using FastEndpoints;
+using Fbs.WebApi.Events;
+using Fbs.WebApi.Repository;
+using Telegram.Bot;
+using Telegram.Bot.Types.Enums;
+
+namespace Fbs.WebApi.EventHandlers;
+
+public class BookingCreatedEventHandler(
+    UserRepository userRepository,
+    HtmlEncoder htmlEncoder,
+    TelegramBotClient botClient
+) : IEventHandler<BookingCreatedEvent>
+{
+    private const string PurpleLightLyrics = """
+        <i>
+        Purple light
+        In the valley
+        That is where, I wanna be
+        Infantry, best companions
+        (With my rifle and my buddy and me)
+        </i>
+        """;
+
+    public async Task HandleAsync(BookingCreatedEvent booking, CancellationToken ct)
+    {
+        var users = await userRepository.GetListAsync(ct);
+        var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, ct);
+        var subscribedUsers = users
+            .Where(u => !string.IsNullOrWhiteSpace(u.TelegramChatId))
+            .Where(u => u.Phone != booking.UserPhone)
+            .Where(u =>
+                (u.NotificationGroup == "All")
+                || (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
+            );
+
+        await botClient.SendMessage(
+            user.TelegramChatId!,
+            $"""
+            <b>CREATED</b> booking for <b>{booking.FacilityName}</b>!
+
+            <u>Conduct</u>
+            {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+
+            <u>From</u>
+            {booking.StartDateTime?.ToLocalTime():f}
+
+            <u>To</u>
+            {booking.EndDateTime?.ToLocalTime():f}
+
+            <u>Point of contact</u>
+            Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
+            Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+
+            <u>Booked by</u>
+            Unit: {user.Unit}
+            Name: {user.Name}
+            Contact: {user.Phone}
+
+            <u>Description</u>
+            {(
+                string.IsNullOrWhiteSpace(booking.Description)
+                    ? PurpleLightLyrics
+                    : htmlEncoder.Encode(booking.Description)
+            )}
+
+            <u>Confirmation</u>
+            {booking.Id}
+            """,
+            ParseMode.Html,
+            cancellationToken: ct
+        );
+
+        await Parallel.ForEachAsync(
+            subscribedUsers,
+            ct,
+            async (u, ct2) =>
+            {
+                await botClient.SendMessage(
+                    u.TelegramChatId!,
+                    $"""
+                    <b>CREATED</b> booking for <b>{booking.FacilityName}</b>!
+
+                    <u>Conduct</u>
+                    {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+
+                    <u>From</u>
+                    {booking.StartDateTime?.ToLocalTime():f}
+
+                    <u>To</u>
+                    {booking.EndDateTime?.ToLocalTime():f}
+
+                    <u>Point of contact</u>
+                    Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
+                    Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+
+                    <u>Booked by</u>
+                    Unit: {user.Unit}
+                    Name: {user.Name}
+                    Contact: {user.Phone}
+
+                    <u>Description</u>
+                    {(
+                        string.IsNullOrWhiteSpace(booking.Description)
+                            ? PurpleLightLyrics
+                            : htmlEncoder.Encode(booking.Description)
+                    )}
+
+                    <u>Confirmation</u>
+                    {booking.Id}
+                    """,
+                    ParseMode.Html,
+                    cancellationToken: ct2
+                );
+            }
+        );
+    }
+}
+==== Fbs.WebApi/Options/TelegramOptions.cs ====
+namespace Fbs.WebApi.Options;
+
+public class TelegramOptions
+{
+    public required string Token { get; set; }
+    public required string WebhookUrl { get; set; }
+}
+==== Fbs.WebApi/Options/GoogleOptions.cs ====
+namespace Fbs.WebApi.Options;
+
+public class GoogleOptions
+{
+    public required string ServiceAccountJsonCredential { get; set; }
+    public required string SpreadsheetId { get; set; }
+    public required string CalendarId { get; set; }
+
+    /// <summary>
+    /// This is another calendar that will be in sync with the main storage calendar,
+    /// but accepts manual changes, since embedded data is not read from the events in this calendar
+    /// </summary>
+    public required string CarbonCopyCalendarId { get; set; }
+}
+==== Fbs.WebApi/Events/BookingUpdatedEvent.cs ====
+namespace Fbs.WebApi.Events;
+
+public class BookingUpdatedEvent
+{
+    public Guid Id { get; set; }
+    public string? FacilityName { get; set; }
+    public string? Conduct { get; set; }
+    public string? Description { get; set; }
+    public string? PocName { get; set; }
+    public string? PocPhone { get; set; }
+    public DateTimeOffset? StartDateTime { get; set; }
+    public DateTimeOffset? EndDateTime { get; set; }
+    public string? UserPhone { get; set; }
+}
+==== Fbs.WebApi/Events/BookingCreatedEvent.cs ====
+namespace Fbs.WebApi.Events;
+
+public class BookingCreatedEvent
+{
+    public Guid Id { get; set; }
+    public string? FacilityName { get; set; }
+    public string? Conduct { get; set; }
+    public string? Description { get; set; }
+    public string? PocName { get; set; }
+    public string? PocPhone { get; set; }
+    public DateTimeOffset? StartDateTime { get; set; }
+    public DateTimeOffset? EndDateTime { get; set; }
+    public string? UserPhone { get; set; }
+}
+==== Fbs.WebApi/Events/BookingDeletedEvent.cs ====
+namespace Fbs.WebApi.Events;
+
+public class BookingDeletedEvent
+{
+    public Guid Id { get; set; }
+    public string? FacilityName { get; set; }
+    public string? Conduct { get; set; }
+    public string? Description { get; set; }
+    public string? PocName { get; set; }
+    public string? PocPhone { get; set; }
+    public DateTimeOffset? StartDateTime { get; set; }
+    public DateTimeOffset? EndDateTime { get; set; }
+    public string? UserPhone { get; set; }
+}
+==== Fbs.WebApi/Program.cs ====
+using System.Text;
+using FastEndpoints;
+using FastEndpoints.Security;
+using FastEndpoints.Swagger;
+using Fbs.WebApi;
+using Fbs.WebApi.Middleware;
+using Fbs.WebApi.Options;
+using Fbs.WebApi.Repository;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Calendar.v3;
+using Google.Apis.Services;
+using Google.Apis.Sheets.v4;
+using Microsoft.Extensions.Options;
+using Scalar.AspNetCore;
+using Telegram.Bot;
+using ZiggyCreatures.Caching.Fusion;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.AddServiceDefaults();
+
+#region Options
+
+builder
+    .Services.AddOptions<GoogleOptions>()
+    .Bind(builder.Configuration.GetSection("Google"))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.ServiceAccountJsonCredential));
+
+builder
+    .Services.AddOptions<TelegramOptions>()
+    .Bind(builder.Configuration.GetSection("Telegram"))
+    .Validate(options =>
+        !string.IsNullOrWhiteSpace(options.Token) && !string.IsNullOrWhiteSpace(options.WebhookUrl)
+    );
+
+#endregion
+
+#region Services
+
+builder
+    .Services.AddAuthenticationCookie(
+        validFor: TimeSpan.FromDays(1),
+        options =>
+        {
+            if (!builder.Environment.IsProduction())
+                return;
+
+            options.Cookie.Domain = ".from.sg";
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        }
+    )
+    .AddAuthorization();
+
+builder
+    .Services.AddHttpClient<TelegramBotClient>("tgwebhook")
+    .AddTypedClient(
+        (httpClient, sp) =>
+            new TelegramBotClient(
+                sp.GetRequiredService<IOptions<TelegramOptions>>().Value.Token,
+                httpClient
+            )
+    );
+
+builder.Services.AddSingleton(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
+    var serviceAccountJsonCredential = Encoding.UTF8.GetString(
+        Convert.FromBase64String(options.Value.ServiceAccountJsonCredential)
+    );
+
+    var credential = GoogleCredential
+        .FromJson(serviceAccountJsonCredential)
+        .CreateScoped(
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/calendar.events"
+        );
+    var service = new CalendarService(
+        new BaseClientService.Initializer { HttpClientInitializer = credential }
+    );
+
+    return service;
+});
+
+builder.Services.AddSingleton(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
+    var serviceAccountJsonCredential = Encoding.UTF8.GetString(
+        Convert.FromBase64String(options.Value.ServiceAccountJsonCredential)
+    );
+
+    var credential = GoogleCredential.FromJson(serviceAccountJsonCredential);
+    var service = new SheetsService(
+        new BaseClientService.Initializer { HttpClientInitializer = credential }
+    );
+
+    return service;
+});
+
+builder.Services.AddFusionCache().AsHybridCache();
+builder.Services.AddSingleton<InstrumentationSource>();
+
+builder.Services.AddScoped<TraceIdMiddleware>();
+builder.Services.AddScoped<FacilityRepository>();
+builder.Services.AddScoped<OtpRepository>();
+builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<BookingRepository>();
+builder.Services.AddScoped<NominalRollRepository>();
+
+builder.Services.AddFastEndpoints();
+builder.Services.SwaggerDocument(options =>
+{
+    options.EndpointFilter = ep => ep.EndpointTags?.Contains("Telegram") is false or null;
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.WithOrigins("http://localhost:3000");
+            policy.WithOrigins("https://*.asse.devtunnels.ms");
+        }
+        else
+        {
+            policy.WithOrigins("https://*.3sib-fbs.pages.dev");
+            policy.WithOrigins("https://3sib-fbs.pages.dev");
+            policy.WithOrigins("https://*.3sib-fbs.from.sg");
+            policy.WithOrigins("https://3sib-fbs.from.sg");
+        }
+
+        policy
+            .AllowCredentials()
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .SetIsOriginAllowedToAllowWildcardSubdomains();
+    });
+});
+
+#endregion
+
+var app = builder.Build();
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var client = scope.ServiceProvider.GetRequiredService<TelegramBotClient>();
+    var options = scope.ServiceProvider.GetRequiredService<IOptions<TelegramOptions>>();
+    await client.SetWebhook(options.Value.WebhookUrl);
+}
+
+app.UseMiddleware<TraceIdMiddleware>();
+
+app.UseCors();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.UseFastEndpoints(config =>
+{
+    config.Errors.UseProblemDetails(c =>
+    {
+        c.IndicateErrorCode = true;
+    });
+});
+app.UseSwaggerGen(config =>
+{
+    config.Path = "/openapi/{documentName}.json";
+});
+
+app.MapDefaultEndpoints();
+app.MapScalarApiReference();
+
+await app.RunAsync();
+==== Fbs.WebApi/Middleware/TraceIdMiddleware.cs ====
+using System.Diagnostics;
+
+namespace Fbs.WebApi.Middleware;
+
+public class TraceIdMiddleware : IMiddleware
+{
+    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+    {
+        if (Activity.Current is not null)
+        {
+            context.Response.Headers.Append("X-Fbs-Trace-Id", Activity.Current.TraceId.ToString());
+        }
+
+        await next(context);
+    }
+}
+==== Fbs.WebApi/Repository/FacilityRepository.cs ====
+using System.Linq.Expressions;
+using Fbs.WebApi.Entities;
+using Fbs.WebApi.Options;
+using Google.Apis.Sheets.v4;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Options;
+
+namespace Fbs.WebApi.Repository;
+
+public class FacilityRepository(
+    InstrumentationSource instrumentation,
+    HybridCache cache,
+    IOptions<GoogleOptions> options,
+    SheetsService sheetsService
+) : IRepository<Facility>
+{
+    private readonly string[] _header = ["Name", "Group", "Scope"];
+
+    public async Task<List<Facility>> GetListAsync(CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await cache.GetOrCreateAsync(
+            "Facilities",
+            (sheetsService, options),
+            async (state, ct) =>
+                await state
+                    .sheetsService.Spreadsheets.Values.Get(
+                        state.options.Value.SpreadsheetId,
+                        "Facilities"
+                    )
+                    .ExecuteAsync(ct),
+            cancellationToken: cancellationToken
+        );
+
+        if (!items.Values.First().SequenceEqual(_header))
+        {
+            throw new Exception("Unexpected headers in Facilities table");
+        }
+
+        return items
+            .Values.Skip(1)
+            .Select(
+                (row, idx) =>
+                    new Facility
+                    {
+                        Row = idx + 2,
+                        Name = row.ElementAtOrDefault(0) as string,
+                        Group = row.ElementAtOrDefault(1) as string,
+                        Scope = (row.ElementAtOrDefault(2) as string)
+                            ?.Split(",")
+                            .Select(s => s.Trim())
+                            .Where(s => !string.IsNullOrEmpty(s))
+                            .ToList(),
+                    }
+            )
+            .ToList();
+    }
+
+    public async Task<Facility?> FindAsync(
+        Expression<Func<Facility, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await GetListAsync(cancellationToken);
+        return items.SingleOrDefault(predicate.Compile());
+    }
+
+    public async Task<Facility> GetAsync(
+        Expression<Func<Facility, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await GetListAsync(cancellationToken);
+        return items.Single(predicate.Compile());
+    }
+
+    public async Task<Facility> InsertAsync(
+        Facility entity,
+        CancellationToken cancellationToken = default
+    )
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<Facility> UpdateAsync(
+        Facility entity,
+        CancellationToken cancellationToken = default
+    )
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task DeleteAsync(
+        Expression<Func<Facility, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        throw new NotImplementedException();
+    }
+}
+==== Fbs.WebApi/Repository/BookingRepository.cs ====
+using System.Linq.Expressions;
+using System.Text.Json;
+using Fbs.WebApi.Entities;
+using Fbs.WebApi.Options;
+using Google.Apis.Calendar.v3;
+using Google.Apis.Calendar.v3.Data;
+using MemoryPack;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Options;
+
+namespace Fbs.WebApi.Repository;
+
+public class BookingRepository(
+    InstrumentationSource instrumentation,
+    HybridCache cache,
+    IOptions<GoogleOptions> options,
+    CalendarService calendarService,
+    UserRepository userRepository
+) : IRepository<Booking>
+{
+    public async Task<List<Booking>> GetListAsync(CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        return await cache.GetOrCreateAsync(
+            "Bookings",
+            (calendarService),
+            async (state, ct) =>
+            {
+                string? token = null;
+                var bookings = new List<Booking>();
+
+                do
+                {
+                    var request = state.Events.List(options.Value.CalendarId);
+                    if (token is not null)
+                    {
+                        request.PageToken = token;
+                    }
+
+                    var items = await request.ExecuteAsync(ct);
+                    token = items.NextPageToken;
+
+                    var converted = items
+                        .Items.Select(item =>
+                        {
+                            var booking = MemoryPackSerializer.Deserialize<Booking>(
+                                Convert.FromBase64String(item.ExtendedProperties.Shared["Data"])
+                            );
+                            if (booking is null)
+                            {
+                                return null;
+                            }
+
+                            var eventStartDateTime = item.Start?.DateTimeDateTimeOffset;
+                            var eventEndDateTime = item.End?.DateTimeDateTimeOffset;
+                            if (eventStartDateTime is null || eventEndDateTime is null)
+                            {
+                                return null;
+                            }
+
+                            booking.StartDateTime = eventStartDateTime;
+                            booking.EndDateTime = eventEndDateTime;
+                            return booking;
+                        })
+                        .OfType<Booking>()
+                        .ToList();
+
+                    bookings.AddRange(converted);
+                } while (token is not null);
+
+                return bookings;
+            },
+            cancellationToken: cancellationToken
+        );
+    }
+
+    public async Task<Booking?> FindAsync(
+        Expression<Func<Booking, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var list = await GetListAsync(cancellationToken);
+        return list.SingleOrDefault(predicate.Compile());
+    }
+
+    public async Task<Booking> GetAsync(
+        Expression<Func<Booking, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var list = await GetListAsync(cancellationToken);
+        return list.Single(predicate.Compile());
+    }
+
+    public async Task<Booking> InsertAsync(
+        Booking entity,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var user = await userRepository.GetAsync(
+            u => u.Phone == entity.UserPhone,
+            cancellationToken
+        );
+
+        entity.Id = Guid.NewGuid();
+        var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(entity));
+
+        if (data.Length > 1000)
+        {
+            throw new Exception("Event information is too long.");
+        }
+
+        var @event = new Event
+        {
+            Id = entity.Id.ToString("N"),
+            Summary = $"{user.Unit} {entity.Conduct}",
+            Start = new EventDateTime { DateTimeDateTimeOffset = entity.StartDateTime },
+            End = new EventDateTime { DateTimeDateTimeOffset = entity.EndDateTime },
+            Location = entity.FacilityName,
+            Description = $"""
+                Point of contact: {entity.PocName} / {entity.PocPhone}
+
+                Booked by: {user.Unit} / {user.Name}
+                Number: {user.Phone}
+
+                Description:
+                {entity.Description}
+                """,
+            ExtendedProperties = new Event.ExtendedPropertiesData
+            {
+                Shared = new Dictionary<string, string>() { { "Data", data } },
+            },
+        };
+
+        await Task.WhenAll([
+            calendarService
+                .Events.Insert(@event, options.Value.CalendarId)
+                .ExecuteAsync(cancellationToken),
+            calendarService
+                .Events.Insert(@event, options.Value.CarbonCopyCalendarId)
+                .ExecuteAsync(cancellationToken),
+        ]);
+
+        await cache.RemoveAsync("Bookings", cancellationToken);
+
+        return entity;
+    }
+
+    public async Task<Booking> UpdateAsync(
+        Booking entity,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var bookings = await GetListAsync(cancellationToken);
+        var booking = bookings.Single(b => b.Id == entity.Id);
+
+        booking.StartDateTime = entity.StartDateTime;
+        booking.EndDateTime = entity.EndDateTime;
+        booking.Conduct = entity.Conduct;
+        booking.Description = entity.Description;
+        booking.FacilityName = entity.FacilityName;
+        booking.PocName = entity.PocName;
+        booking.PocPhone = entity.PocPhone;
+        booking.UserPhone = entity.UserPhone;
+
+        var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(booking));
+
+        if (data.Length > 1000)
+        {
+            throw new Exception("Event information is too long.");
+        }
+
+        var user = await userRepository.GetAsync(
+            u => u.Phone == booking.UserPhone,
+            cancellationToken
+        );
+        var @event = new Event
+        {
+            Id = booking.Id.ToString("N"),
+            Summary = $"{user.Unit} {booking.Conduct}",
+            Start = new EventDateTime { DateTimeDateTimeOffset = booking.StartDateTime },
+            End = new EventDateTime { DateTimeDateTimeOffset = booking.EndDateTime },
+            Location = booking.FacilityName,
+            Description = $"""
+                Point of contact: {booking.PocName} / {booking.PocPhone}
+
+                Booked by: {user.Unit} / {user.Name}
+                Number: {user.Phone}
+
+                Description:
+                {booking.Description}
+                """,
+            ExtendedProperties = new Event.ExtendedPropertiesData
+            {
+                Shared = new Dictionary<string, string>() { { "Data", data } },
+            },
+        };
+
+        await Task.WhenAll([
+            calendarService
+                .Events.Update(@event, options.Value.CalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken),
+            calendarService
+                .Events.Update(@event, options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken),
+        ]);
+
+        await cache.RemoveAsync("Bookings", cancellationToken);
+
+        return booking;
+    }
+
+    public async Task DeleteAsync(
+        Expression<Func<Booking, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var booking = await GetAsync(predicate, cancellationToken);
+
+        await Task.WhenAll([
+            calendarService
+                .Events.Delete(options.Value.CalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken),
+            calendarService
+                .Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
+                .ExecuteAsync(cancellationToken),
+        ]);
+
+        await cache.RemoveAsync("Bookings", cancellationToken);
+    }
+}
+==== Fbs.WebApi/Repository/IRepository.cs ====
+using System.Linq.Expressions;
+
+namespace Fbs.WebApi.Repository;
+
+public interface IRepository<TEntity>
+    where TEntity : Entity
+{
+    public Task<List<TEntity>> GetListAsync(CancellationToken cancellationToken = default);
+
+    public Task<TEntity?> FindAsync(
+        Expression<Func<TEntity, bool>> predicate,
+        CancellationToken cancellationToken = default
+    );
+
+    public Task<TEntity> GetAsync(
+        Expression<Func<TEntity, bool>> predicate,
+        CancellationToken cancellationToken = default
+    );
+
+    public Task<TEntity> InsertAsync(TEntity entity, CancellationToken cancellationToken = default);
+
+    public Task<TEntity> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
+
+    public Task DeleteAsync(
+        Expression<Func<TEntity, bool>> predicate,
+        CancellationToken cancellationToken = default
+    );
+}
+==== Fbs.WebApi/Repository/UserRepository.cs ====
+using System.Linq.Expressions;
+using Fbs.WebApi.Entities;
+using Fbs.WebApi.Options;
+using Google.Apis.Sheets.v4;
+using Google.Apis.Sheets.v4.Data;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Options;
+
+namespace Fbs.WebApi.Repository;
+
+public class UserRepository(
+    InstrumentationSource instrumentation,
+    IOptions<GoogleOptions> options,
+    HybridCache cache,
+    SheetsService sheetsService
+) : IRepository<User>
+{
+    private readonly string[] _header =
+    [
+        "Unit",
+        "Name",
+        "Phone",
+        "TelegramChatId",
+        "NotificationGroup",
+        "IsAdmin",
+    ];
+
+    public async Task<List<User>> GetListAsync(CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await cache.GetOrCreateAsync(
+            "Users",
+            (sheetsService, options),
+            async (state, ct) =>
+                await sheetsService
+                    .Spreadsheets.Values.Get(options.Value.SpreadsheetId, "Users")
+                    .ExecuteAsync(ct),
+            cancellationToken: cancellationToken
+        );
+
+        if (!items.Values.First().SequenceEqual(_header))
+        {
+            throw new Exception("Unexpected headers for Users sheet");
+        }
+
+        return items
+            .Values.Skip(1)
+            .Select(
+                (row, idx) =>
+                    new User
+                    {
+                        Row = idx + 2,
+                        Unit = row.ElementAtOrDefault(0) as string,
+                        Name = row.ElementAtOrDefault(1) as string,
+                        Phone = row.ElementAtOrDefault(2) as string,
+                        TelegramChatId = row.ElementAtOrDefault(3) as string,
+                        NotificationGroup = row.ElementAtOrDefault(4) as string,
+                        IsAdmin = (row.ElementAtOrDefault(5) as string) == "TRUE",
+                    }
+            )
+            .ToList();
+    }
+
+    public async Task<User?> FindAsync(
+        Expression<Func<User, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await GetListAsync(cancellationToken);
+        return items.SingleOrDefault(predicate.Compile());
+    }
+
+    public async Task<User> GetAsync(
+        Expression<Func<User, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await GetListAsync(cancellationToken);
+        return items.Single(predicate.Compile());
+    }
+
+    public async Task<User> InsertAsync(User entity, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<User> UpdateAsync(User entity, CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var request = sheetsService.Spreadsheets.Values.Update(
+            new ValueRange
+            {
+                Values =
+                [
+                    [
+                        entity.Unit,
+                        entity.Name,
+                        entity.Phone,
+                        entity.TelegramChatId,
+                        entity.NotificationGroup,
+                        entity.IsAdmin.ToString().ToUpper(),
+                    ],
+                ],
+            },
+            options.Value.SpreadsheetId,
+            $"Users!A{entity.Row}:F{entity.Row}"
+        );
+
+        request.ValueInputOption = SpreadsheetsResource
+            .ValuesResource
+            .UpdateRequest
+            .ValueInputOptionEnum
+            .RAW;
+        await request.ExecuteAsync(cancellationToken);
+
+        await cache.RemoveAsync("Users", cancellationToken);
+
+        return entity;
+    }
+
+    public async Task DeleteAsync(
+        Expression<Func<User, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+        var entity = await GetAsync(predicate, cancellationToken);
+
+        await sheetsService
+            .Spreadsheets.BatchUpdate(
+                new BatchUpdateSpreadsheetRequest
+                {
+                    Requests =
+                    [
+                        new Request
+                        {
+                            DeleteDimension = new DeleteDimensionRequest
+                            {
+                                Range = new DimensionRange
+                                {
+                                    SheetId = await GetSheetId(cancellationToken),
+                                    Dimension = "ROWS",
+                                    StartIndex = entity.Row - 1,
+                                    EndIndex = entity.Row,
+                                },
+                            },
+                        },
+                    ],
+                },
+                options.Value.SpreadsheetId
+            )
+            .ExecuteAsync(cancellationToken);
+
+        await cache.RemoveAsync("Users", cancellationToken);
+    }
+
+    private async Task<int?> GetSheetId(CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var sheet = await sheetsService
+            .Spreadsheets.Get(options.Value.SpreadsheetId)
+            .ExecuteAsync(cancellationToken);
+        return sheet.Sheets.Single(s => s.Properties.Title == "Users").Properties.SheetId;
+    }
+}
+==== Fbs.WebApi/Repository/Entity.cs ====
+namespace Fbs.WebApi.Repository;
+
+public abstract class Entity
+{
+    public int Row { get; set; }
+    public abstract string? GetId();
+}
+
+public abstract class Entity<TKey> : Entity
+{
+    public virtual TKey Id { get; set; } = default!;
+
+    public override string? GetId()
+    {
+        return Id?.ToString();
+    }
+}
+==== Fbs.WebApi/Repository/NominalRollRepository.cs ====
+using System.Linq.Expressions;
+using Fbs.WebApi.Entities;
+using Fbs.WebApi.Options;
+using Google.Apis.Sheets.v4;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Options;
+
+namespace Fbs.WebApi.Repository;
+
+public class NominalRollRepository(
+    InstrumentationSource instrumentation,
+    HybridCache cache,
+    IOptions<GoogleOptions> options,
+    SheetsService sheetsService
+) : IRepository<NominalRoll>
+{
+    private readonly string[] _header = ["Name", "Unit", "Phone"];
+
+    public async Task<List<NominalRoll>> GetListAsync(CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await cache.GetOrCreateAsync(
+            "Nominal Roll",
+            (sheetsService, options),
+            async (state, ct) =>
+                await state
+                    .sheetsService.Spreadsheets.Values.Get(
+                        state.options.Value.SpreadsheetId,
+                        "Nominal Roll"
+                    )
+                    .ExecuteAsync(ct),
+            cancellationToken: cancellationToken
+        );
+
+        if (!items.Values.First().SequenceEqual(_header))
+        {
+            throw new Exception("Unexpected headers in Nominal Roll table");
+        }
+
+        return items
+            .Values.Skip(1)
+            .Select(
+                (row, idx) =>
+                    new NominalRoll
+                    {
+                        Row = idx + 2,
+                        Name = row.ElementAtOrDefault(0) as string,
+                        Unit = row.ElementAtOrDefault(1) as string,
+                        Phone = row.ElementAtOrDefault(2) as string,
+                    }
+            )
+            .ToList();
+    }
+
+    public async Task<NominalRoll?> FindAsync(
+        Expression<Func<NominalRoll, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await GetListAsync(cancellationToken);
+        return items.SingleOrDefault(predicate.Compile());
+    }
+
+    public async Task<NominalRoll> GetAsync(
+        Expression<Func<NominalRoll, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await GetListAsync(cancellationToken);
+        return items.Single(predicate.Compile());
+    }
+
+    public async Task<NominalRoll> InsertAsync(
+        NominalRoll entity,
+        CancellationToken cancellationToken = default
+    )
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<NominalRoll> UpdateAsync(
+        NominalRoll entity,
+        CancellationToken cancellationToken = default
+    )
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task DeleteAsync(
+        Expression<Func<NominalRoll, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        throw new NotImplementedException();
+    }
+}
+==== Fbs.WebApi/Repository/OtpRepository.cs ====
+using System.Linq.Expressions;
+using Fbs.WebApi.Entities;
+using Fbs.WebApi.Options;
+using Google.Apis.Sheets.v4;
+using Google.Apis.Sheets.v4.Data;
+using Microsoft.Extensions.Options;
+
+namespace Fbs.WebApi.Repository;
+
+public class OtpRepository(
+    InstrumentationSource instrumentation,
+    IOptions<GoogleOptions> options,
+    SheetsService sheetsService
+) : IRepository<Otp>
+{
+    private readonly string[] _header = ["Phone", "Code", "CreatedAt"];
+
+    public async Task<List<Otp>> GetListAsync(CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await sheetsService
+            .Spreadsheets.Values.Get(options.Value.SpreadsheetId, "OTPs")
+            .ExecuteAsync(cancellationToken);
+
+        if (!items.Values.First().SequenceEqual(_header))
+        {
+            throw new Exception("Unexpected headers for Otp sheet");
+        }
+
+        return items
+            .Values.Skip(1)
+            .Select(
+                (row, idx) =>
+                    new Otp
+                    {
+                        Row = idx + 2,
+                        Phone = row.ElementAtOrDefault(0) as string,
+                        Code = row.ElementAtOrDefault(1) as string,
+                        CreatedAt = row.ElementAtOrDefault(2) is string o
+                            ? DateTimeOffset.Parse(o)
+                            : null,
+                    }
+            )
+            .ToList();
+    }
+
+    public async Task<Otp?> FindAsync(
+        Expression<Func<Otp, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await GetListAsync(cancellationToken);
+        return items.SingleOrDefault(predicate.Compile());
+    }
+
+    public async Task<Otp> GetAsync(
+        Expression<Func<Otp, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var items = await GetListAsync(cancellationToken);
+        return items.Single(predicate.Compile());
+    }
+
+    public async Task<Otp> InsertAsync(Otp entity, CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var r = sheetsService.Spreadsheets.Values.Append(
+            new ValueRange
+            {
+                Values =
+                [
+                    [entity.Phone, entity.Code, entity.CreatedAt.ToString()],
+                ],
+            },
+            options.Value.SpreadsheetId,
+            "OTPs"
+        );
+
+        r.ValueInputOption = SpreadsheetsResource
+            .ValuesResource
+            .AppendRequest
+            .ValueInputOptionEnum
+            .RAW;
+
+        await r.ExecuteAsync(cancellationToken);
+
+        return await GetAsync(o => o.Phone == entity.Phone, cancellationToken);
+    }
+
+    public async Task<Otp> UpdateAsync(Otp entity, CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var request = sheetsService.Spreadsheets.Values.Update(
+            new ValueRange
+            {
+                Values =
+                [
+                    [entity.Phone, entity.Code, entity.CreatedAt.ToString()],
+                ],
+            },
+            options.Value.SpreadsheetId,
+            $"OTPs!A{entity.Row}:C{entity.Row}"
+        );
+
+        request.ValueInputOption = SpreadsheetsResource
+            .ValuesResource
+            .UpdateRequest
+            .ValueInputOptionEnum
+            .RAW;
+        await request.ExecuteAsync(cancellationToken);
+
+        return entity;
+    }
+
+    public async Task DeleteAsync(
+        Expression<Func<Otp, bool>> predicate,
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+        var entity = await GetAsync(predicate, cancellationToken);
+
+        await sheetsService
+            .Spreadsheets.BatchUpdate(
+                new BatchUpdateSpreadsheetRequest
+                {
+                    Requests =
+                    [
+                        new Request
+                        {
+                            DeleteDimension = new DeleteDimensionRequest
+                            {
+                                Range = new DimensionRange
+                                {
+                                    SheetId = await GetSheetId(cancellationToken),
+                                    Dimension = "ROWS",
+                                    StartIndex = entity.Row - 1,
+                                    EndIndex = entity.Row,
+                                },
+                            },
+                        },
+                    ],
+                },
+                options.Value.SpreadsheetId
+            )
+            .ExecuteAsync(cancellationToken);
+    }
+
+    private async Task<int?> GetSheetId(CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var sheet = await sheetsService
+            .Spreadsheets.Get(options.Value.SpreadsheetId)
+            .ExecuteAsync(cancellationToken);
+        return sheet.Sheets.Single(s => s.Properties.Title == "OTPs").Properties.SheetId;
+    }
+}
+==== Fbs.WebApi/Dtos/Facility.cs ====
+namespace Fbs.WebApi.Dtos;
+
+public class Facility
+{
+    public string? Name { get; set; }
+    public string? Group { get; set; }
+    public List<string>? Scope { get; set; }
+}
+==== Fbs.WebApi/Dtos/TimeSlot.cs ====
+namespace Fbs.WebApi.Dtos;
+
+public class TimeSlot
+{
+    public DateTimeOffset StartDateTime { get; set; }
+    public DateTimeOffset EndDateTime { get; set; }
+    public BookingWithUser? Booking { get; set; }
+}
+==== Fbs.WebApi/Dtos/BookingWithUser.cs ====
+using Fbs.WebApi.Entities;
+
+namespace Fbs.WebApi.Dtos;
+
+public class BookingWithUser
+{
+    public Guid Id { get; set; }
+    public string? FacilityName { get; set; }
+    public string? Conduct { get; set; }
+    public string? Description { get; set; }
+    public string? PocName { get; set; }
+    public string? PocPhone { get; set; }
+    public DateTimeOffset? StartDateTime { get; set; }
+    public DateTimeOffset? EndDateTime { get; set; }
+
+    public User? User { get; set; }
+}
+==== Fbs.WebApi/InstrumentationSource.cs ====
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+
+namespace Fbs.WebApi;
+
+public sealed class InstrumentationSource : IDisposable
+{
+    internal const string ActivitySourceName = "Fbs.WebApi";
+    internal const string MeterName = "Fbs.Webapi";
+
+    private readonly Meter _meter;
+
+    public InstrumentationSource()
+    {
+        var version = typeof(InstrumentationSource).Assembly.GetName().Version?.ToString();
+        ActivitySource = new ActivitySource(ActivitySourceName, version);
+        _meter = new Meter(MeterName, version);
+    }
+
+    public ActivitySource ActivitySource { get; }
+
+    public void Dispose()
+    {
+        ActivitySource.Dispose();
+        _meter.Dispose();
+    }
+}
+==== Fbs.WebApi/Endpoints/NominalRoll/Get/Endpoint.cs ====
+using FastEndpoints;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.NominalRoll.Get;
+
+public class Endpoint(NominalRollRepository nominalRoll)
+    : EndpointWithoutRequest<IEnumerable<Entities.NominalRoll>>
+{
+    public override void Configure()
+    {
+        Get("/NominalRoll");
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        await Send.OkAsync((await nominalRoll.GetListAsync(ct)).DistinctBy(n => n.Phone), ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Auth/Verify/Post/Request.cs ====
+namespace Fbs.WebApi.Endpoints.Auth.Verify.Post;
+
+public class Request
+{
+    public string Phone { get; set; }
+    public string Code { get; set; }
+}
+==== Fbs.WebApi/Endpoints/Auth/Verify/Post/Endpoint.cs ====
+using System.Security.Cryptography;
+using System.Text;
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Repository;
+using Org.BouncyCastle.Crypto.Generators;
+
+namespace Fbs.WebApi.Endpoints.Auth.Verify.Post;
+
+public class Endpoint(
+    ILogger<Endpoint> logger,
+    OtpRepository otpRepository,
+    UserRepository userRepository
+) : Endpoint<Request>
+{
+    public override void Configure()
+    {
+        Post("/Auth/Verify");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var otp = await otpRepository.FindAsync(o => o.Phone == req.Phone, ct);
+        if (otp is null or { Code: null })
+        {
+            await Send.UnauthorizedAsync(ct);
+            return;
+        }
+
+        var hash = SCryptGenerate(
+            Encoding.Default.GetBytes(req.Code),
+            Encoding.Default.GetBytes(req.Phone)
+        );
+
+        var valid = CryptographicOperations.FixedTimeEquals(Convert.FromHexString(otp.Code), hash);
+        if (!valid)
+        {
+            await Send.UnauthorizedAsync(ct);
+            return;
+        }
+
+        var user = await userRepository.FindAsync(u => u.Phone == req.Phone);
+        if (user is null or { Phone: null })
+        {
+            await Send.UnauthorizedAsync(ct);
+            return;
+        }
+
+        await otpRepository.DeleteAsync(o => o.Phone == req.Phone, ct);
+
+        logger.LogInformation("User {Phone} verified OTP", user.Phone);
+
+        await CookieAuth.SignInAsync(u =>
+        {
+            u["Phone"] = user.Phone;
+        });
+    }
+
+    private static byte[] SCryptGenerate(byte[] password, byte[] salt)
+    {
+        // Reference : https://nodejs.org/api/crypto.html#cryptoscryptsyncpassword-salt-keylen-options
+        return SCrypt.Generate(password, salt, 16384, 8, 1, 64);
+    }
+}
+==== Fbs.WebApi/Endpoints/Auth/Login/Post/Request.cs ====
+namespace Fbs.WebApi.Endpoints.Auth.Login.Post;
+
+public class Request
+{
+    public string Phone { get; set; }
+}
+==== Fbs.WebApi/Endpoints/Auth/Login/Post/Endpoint.cs ====
+using System.Security.Cryptography;
+using System.Text;
+using FastEndpoints;
+using Fbs.WebApi.Repository;
+using Org.BouncyCastle.Crypto.Generators;
+using Telegram.Bot;
+
+namespace Fbs.WebApi.Endpoints.Auth.Login.Post;
+
+public class Endpoint(
+    ILogger<Endpoint> logger,
+    OtpRepository otpRepository,
+    UserRepository userRepository,
+    TelegramBotClient client
+) : Endpoint<Request>
+{
+    public override void Configure()
+    {
+        Post("/Auth/Login");
+        Description(e => e.ProducesProblemDetails());
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var user = await userRepository.FindAsync(u => u.Phone == req.Phone, ct);
+        switch (user)
+        {
+            case null:
+                AddError(r => r.Phone, "User is not allow-listed.", "EX01");
+                break;
+            case { TelegramChatId: null or { Length: 0 } }:
+                AddError(r => r.Phone, "User is not registered on Telegram.", "EX02");
+                break;
+        }
+
+        ThrowIfAnyErrors();
+
+        var code = RandomNumberGenerator.GetString("1234567890", 6);
+        var hash = Convert.ToHexString(
+            SCryptGenerate(Encoding.Default.GetBytes(code), Encoding.Default.GetBytes(req.Phone))
+        );
+
+        var existingOtp = await otpRepository.FindAsync(o => o.Phone == req.Phone, ct);
+        if (
+            existingOtp is not null
+            && existingOtp.CreatedAt + TimeSpan.FromSeconds(60) > DateTimeOffset.UtcNow
+        )
+        {
+            await Send.UnauthorizedAsync(ct);
+            return;
+        }
+
+        if (existingOtp is not null)
+        {
+            existingOtp.Code = hash;
+            existingOtp.CreatedAt = DateTimeOffset.UtcNow;
+            await otpRepository.UpdateAsync(existingOtp, ct);
+        }
+        else
+        {
+            await otpRepository.InsertAsync(
+                new Entities.Otp
+                {
+                    Phone = req.Phone,
+                    Code = hash,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                },
+                ct
+            );
+        }
+
+        logger.LogInformation("User {Phone} requested for OTP", user.Phone);
+
+        await client.SendMessage(
+            user.TelegramChatId,
+            $"Your login OTP is {code}",
+            cancellationToken: ct
+        );
+    }
+
+    private static byte[] SCryptGenerate(byte[] password, byte[] salt)
+    {
+        // Reference : https://nodejs.org/api/crypto.html#cryptoscryptsyncpassword-salt-keylen-options
+        return SCrypt.Generate(password, salt, 16384, 8, 1, 64);
+    }
+}
+==== Fbs.WebApi/Endpoints/Auth/Logout/Post/Endpoint.cs ====
+using System.Security.Claims;
+using FastEndpoints;
+using FastEndpoints.Security;
+
+namespace Fbs.WebApi.Endpoints.Auth.Logout.Post;
+
+public class Endpoint(ILogger<Endpoint> logger) : EndpointWithoutRequest
+{
+    public override void Configure()
+    {
+        Post("/Auth/Logout");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        logger.LogInformation("User {Phone} logged out", User.FindFirstValue("Phone"));
+        await CookieAuth.SignOutAsync();
+    }
+}
+==== Fbs.WebApi/Endpoints/Auth/Me/Get/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Entities;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Auth.Me.Get;
+
+public class Endpoint(UserRepository userRepository) : EndpointWithoutRequest<User>
+{
+    public override void Configure()
+    {
+        Get("/Auth/Me");
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+        var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
+        await Send.OkAsync(user, ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Cache/Purge/Get/Endpoint.cs ====
+using FastEndpoints;
+using Microsoft.Extensions.Caching.Hybrid;
+
+namespace Fbs.WebApi.Endpoints.Cache.Purge.Get;
+
+public class Endpoint(HybridCache cache) : EndpointWithoutRequest
+{
+    public override void Configure()
+    {
+        Get("/Cache/Purge");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        await cache.RemoveAsync(["Facilities", "Bookings", "Nominal Roll", "Users"], ct);
+        await Send.OkAsync(ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Booking/Post/Request.cs ====
+namespace Fbs.WebApi.Endpoints.Booking.Post;
+
+public class Request
+{
+    public string? Conduct { get; set; }
+    public string? Description { get; set; }
+    public string? FacilityName { get; set; }
+    public string? PocName { get; set; }
+    public string? PocPhone { get; set; }
+    public DateTimeOffset StartDateTime { get; set; }
+    public DateTimeOffset EndDateTime { get; set; }
+}
+==== Fbs.WebApi/Endpoints/Booking/Post/Validator.cs ====
+using FastEndpoints;
+using FluentValidation;
+
+namespace Fbs.WebApi.Endpoints.Booking.Post;
+
+public class Validator : Validator<Request>
+{
+    public Validator()
+    {
+        RuleFor(r => r.StartDateTime)
+            .Must(s => s >= DateTimeOffset.Now)
+            .WithMessage("Start Date Time must be in the future");
+
+        RuleFor(r => r.EndDateTime)
+            .Must((r, _) => r.EndDateTime > r.StartDateTime)
+            .WithMessage("End time must be after start time");
+
+        RuleFor(r => r.StartDateTime)
+            .Must(s => s.Minute % 30 == 0)
+            .WithMessage("Duration must be in 30 minute intervals");
+
+        RuleFor(r => r.EndDateTime)
+            .Must(s => s.Minute % 30 == 0)
+            .WithMessage("Duration must be in 30 minute intervals");
+
+        RuleFor(r => r.Conduct).NotEmpty().MaximumLength(100);
+    }
+}
+==== Fbs.WebApi/Endpoints/Booking/Post/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Events;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Booking.Post;
+
+public class Endpoint(
+    BookingRepository bookingRepository,
+    UserRepository userRepository,
+    FacilityRepository facilityRepository
+) : Endpoint<Request, Entities.Booking>
+{
+    public override void Configure()
+    {
+        Post("/Booking");
+        Claims("Phone");
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+
+        var facility = await facilityRepository.FindAsync(f => f.Name == req.FacilityName, ct);
+        if (facility?.Scope is null)
+        {
+            await Send.NotFoundAsync(cancellation: ct);
+            return;
+        }
+
+        var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
+        if (user.Unit is null)
+        {
+            throw new Exception("User must have unit specified in order to book facilities.");
+        }
+
+        if (!facility.AvailableForAll && !facility.Scope.Contains(user.Unit))
+        {
+            AddError(r => r.FacilityName, $"You do not have permission to book this facility");
+            await Send.ErrorsAsync(cancellation: ct);
+            return;
+        }
+
+        var bookings = await bookingRepository.GetListAsync(ct);
+        var overlapping = bookings.FirstOrDefault(b =>
+            b.FacilityName == facility.Name
+            && b.StartDateTime < req.EndDateTime
+            && b.EndDateTime > req.StartDateTime
+        );
+
+        if (overlapping is not null)
+        {
+            AddError(r => r.EndDateTime, $"Overlaps with booking {overlapping.Id}");
+            await Send.ErrorsAsync(cancellation: ct);
+            return;
+        }
+
+        var booking = new Entities.Booking
+        {
+            StartDateTime = req.StartDateTime,
+            EndDateTime = req.EndDateTime,
+            Conduct = req.Conduct,
+            Description = req.Description,
+            FacilityName = req.FacilityName,
+            PocName = req.PocName,
+            PocPhone = req.PocPhone,
+            UserPhone = phone,
+        };
+
+        await bookingRepository.InsertAsync(booking, ct);
+
+        await PublishAsync(
+            new BookingCreatedEvent
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                UserPhone = booking.UserPhone,
+            },
+            Mode.WaitForAll,
+            ct
+        );
+
+        await Send.CreatedAtAsync<Booking.ById.Get.Endpoint>(
+            new { booking.Id },
+            booking,
+            verb: Http.GET,
+            cancellation: ct
+        );
+    }
+}
+==== Fbs.WebApi/Endpoints/Booking/ById/Post/Request.cs ====
+using FastEndpoints;
+
+namespace Fbs.WebApi.Endpoints.Booking.ById.Post;
+
+public class Request
+{
+    [RouteParam]
+    public Guid Id { get; set; }
+
+    public string? Conduct { get; set; }
+    public string? Description { get; set; }
+    public string? PocName { get; set; }
+    public string? PocPhone { get; set; }
+}
+==== Fbs.WebApi/Endpoints/Booking/ById/Post/Validator.cs ====
+using FastEndpoints;
+using FluentValidation;
+
+namespace Fbs.WebApi.Endpoints.Booking.ById.Post;
+
+public class Validator : Validator<Request>
+{
+    public Validator()
+    {
+        RuleFor(r => r.Conduct).NotEmpty().MaximumLength(100);
+    }
+}
+==== Fbs.WebApi/Endpoints/Booking/ById/Post/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Events;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Booking.ById.Post;
+
+public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
+    : Endpoint<Request, Entities.Booking>
+{
+    public override void Configure()
+    {
+        Post("/Booking/{Id:guid}");
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+        if (phone is null)
+        {
+            throw new Exception("User does not exist");
+        }
+
+        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        if (booking is null)
+        {
+            throw new Exception("Booking does not exist.");
+        }
+
+        var bookingCreatedBy = await userRepository.FindAsync(
+            u => u.Phone == booking.UserPhone,
+            ct
+        );
+        var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
+
+        if (bookingCreatedBy?.Unit != currentUser?.Unit)
+        {
+            throw new Exception("You are not allowed to update this booking.");
+        }
+
+        booking.Conduct = req.Conduct;
+        booking.Description = req.Description;
+        booking.PocName = req.PocName;
+        booking.PocPhone = req.PocPhone;
+        booking.UserPhone = phone;
+
+        await bookingRepository.UpdateAsync(booking, ct);
+
+        await PublishAsync(
+            new BookingUpdatedEvent
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                UserPhone = booking.UserPhone,
+            },
+            Mode.WaitForAll,
+            ct
+        );
+
+        await Send.CreatedAtAsync<Booking.ById.Get.Endpoint>(
+            new { booking.Id },
+            booking,
+            verb: Http.GET,
+            cancellation: ct
+        );
+    }
+}
+==== Fbs.WebApi/Endpoints/Booking/ById/Delete/Request.cs ====
+using FastEndpoints;
+
+namespace Fbs.WebApi.Endpoints.Booking.ById.Delete;
+
+public class Request
+{
+    [RouteParam]
+    public Guid Id { get; set; }
+}
+==== Fbs.WebApi/Endpoints/Booking/ById/Delete/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Events;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Booking.ById.Delete;
+
+public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
+    : Endpoint<Request, BookingWithUser>
+{
+    public override void Configure()
+    {
+        Delete("/Booking/{Id:guid}");
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        if (booking is null)
+        {
+            await Send.NotFoundAsync(ct);
+            return;
+        }
+
+        var phone = User.ClaimValue("Phone");
+        if (phone != booking.UserPhone)
+        {
+            await Send.ForbiddenAsync(ct);
+            return;
+        }
+
+        await bookingRepository.DeleteAsync(b => b.Id == booking.Id, ct);
+        await PublishAsync(
+            new BookingDeletedEvent
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                UserPhone = booking.UserPhone,
+            },
+            Mode.WaitForAll,
+            ct
+        );
+
+        await Send.NoContentAsync(ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Booking/ById/Get/Request.cs ====
+using FastEndpoints;
+
+namespace Fbs.WebApi.Endpoints.Booking.ById.Get;
+
+public class Request
+{
+    [RouteParam]
+    public Guid Id { get; set; }
+}
+==== Fbs.WebApi/Endpoints/Booking/ById/Get/Endpoint.cs ====
+using FastEndpoints;
+using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Booking.ById.Get;
+
+public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
+    : Endpoint<Request, BookingWithUser>
+{
+    public override void Configure()
+    {
+        Get("/Booking/{Id:guid}");
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        if (booking is null)
+        {
+            await Send.NotFoundAsync(ct);
+            return;
+        }
+
+        var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, ct);
+        await Send.OkAsync(
+            new BookingWithUser
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                User = user,
+            },
+            ct
+        );
+    }
+}
+==== Fbs.WebApi/Endpoints/Booking/Get/Endpoint.cs ====
+using FastEndpoints;
+using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Booking.Get;
+
+public class Endpoint(UserRepository userRepository, BookingRepository bookingRepository)
+    : EndpointWithoutRequest<IEnumerable<BookingWithUser>>
+{
+    public override void Configure()
+    {
+        Get("/Booking");
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var all = await bookingRepository.GetListAsync(ct);
+
+        var userPhone = Query<string?>("userPhone", false);
+        if (userPhone is not null)
+        {
+            all = all.Where(b => b.UserPhone == userPhone).ToList();
+        }
+
+        var startsAfter = Query<DateTime?>("startsAfter", false);
+        if (startsAfter is not null)
+        {
+            all = all.Where(b => b.StartDateTime >= startsAfter).ToList();
+        }
+
+        var users = await userRepository.GetListAsync(ct);
+        var withUser = all.Select(booking => new BookingWithUser
+        {
+            Id = booking.Id,
+            FacilityName = booking.FacilityName,
+            Conduct = booking.Conduct,
+            Description = booking.Description,
+            PocName = booking.PocName,
+            PocPhone = booking.PocPhone,
+            StartDateTime = booking.StartDateTime,
+            EndDateTime = booking.EndDateTime,
+            User = users.Single(u => u.Phone == booking.UserPhone),
+        });
+
+        await Send.OkAsync(withUser.OrderByDescending(b => b.StartDateTime), ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Bot/Post/Endpoint.cs ====
+using FastEndpoints;
+using Fbs.WebApi.Repository;
+using Telegram.Bot;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
+
+namespace Fbs.WebApi.Endpoints.Bot.Post;
+
+public class Endpoint(
+    ILogger<Endpoint> logger,
+    TelegramBotClient client,
+    UserRepository userRepository
+) : Endpoint<Update>
+{
+    public override void Configure()
+    {
+        Post("/Bot");
+        Tags("Telegram");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(Update req, CancellationToken ct)
+    {
+        switch (req.Message)
+        {
+            case { Contact: { } contact }:
+            {
+                var normalizedPhoneNumber = contact.PhoneNumber.StartsWith('+')
+                    ? contact.PhoneNumber[1..]
+                    : contact.PhoneNumber;
+
+                if (normalizedPhoneNumber.Length is not 10)
+                {
+                    logger.LogWarning(
+                        "Normalized phone number length is incorrect for {Phone}",
+                        normalizedPhoneNumber
+                    );
+                }
+
+                var user = await userRepository.FindAsync(
+                    u => u.Phone == normalizedPhoneNumber,
+                    ct
+                );
+                if (user is null)
+                {
+                    await client.SendMessage(
+                        req.Message.Chat,
+                        """
+                        Thank you!
+
+                        Your number has not been whitelisted. Please approach your unit S3 for whitelisting.
+                        """,
+                        replyMarkup: new ReplyKeyboardRemove(),
+                        cancellationToken: ct
+                    );
+
+                    break;
+                }
+
+                user.TelegramChatId = req.Message.Chat.Id.ToString();
+
+                await userRepository.UpdateAsync(user, ct);
+
+                await client.SendMessage(
+                    req.Message.Chat,
+                    $"""
+                    You've been successfully registered as {user.Name}!
+
+                    You may now use Telegram to authenticate with the Facility Booking System.
+
+                    Make a booking <a href="https://3sib-fbs.from.sg">here</a>.
+                    """,
+                    ParseMode.Html,
+                    replyMarkup: new ReplyKeyboardRemove(),
+                    cancellationToken: ct
+                );
+
+                break;
+            }
+            case { Text: "/start" }:
+            {
+                await client.SendMessage(
+                    req.Message.Chat,
+                    """
+                    <b>Welcome to 3SIB Facility Booking System</b>
+
+                    Please link your Telegram account clicking the button below =)
+                    """,
+                    ParseMode.Html,
+                    replyMarkup: new[] { KeyboardButton.WithRequestContact("Link account") },
+                    cancellationToken: ct
+                );
+
+                break;
+            }
+            case not null:
+            {
+                await client.SendMessage(
+                    req.Message.Chat,
+                    "Unknown command :(",
+                    cancellationToken: ct
+                );
+
+                break;
+            }
+            default:
+            {
+                logger.LogInformation("Received unhandled update");
+                break;
+            }
+        }
+
+        await Send.OkAsync();
+    }
+}
+==== Fbs.WebApi/Endpoints/Admin/Users/Post/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Admin.Users.Post;
+
+public class Request
+{
+    public string Phone { get; set; } = string.Empty;
+}
+
+public class Endpoint(UserRepository userRepository) : Endpoint<Request, Entities.User>
+{
+    public override void Configure()
+    {
+        Post("/Admin/Users/{Phone}/Admin");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+        if (phone is null)
+        {
+            throw new Exception("User does not exist");
+        }
+
+        var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
+        if (currentUser?.IsAdmin != true)
+        {
+            throw new Exception("You do not have permission to manage admin status.");
+        }
+
+        var targetUser = await userRepository.FindAsync(u => u.Phone == req.Phone, ct);
+        if (targetUser is null)
+        {
+            throw new Exception("User does not exist.");
+        }
+
+        targetUser.IsAdmin = !targetUser.IsAdmin;
+        await userRepository.UpdateAsync(targetUser, ct);
+
+        await Send.OkAsync(targetUser, ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Admin/Users/Get/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Admin.Users.Get;
+
+public class Endpoint(UserRepository userRepository)
+    : EndpointWithoutRequest<IEnumerable<Entities.User>>
+{
+    public override void Configure()
+    {
+        Get("/Admin/Users");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+        if (phone is null)
+        {
+            throw new Exception("User does not exist");
+        }
+
+        var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
+        if (currentUser?.IsAdmin != true)
+        {
+            throw new Exception("You do not have permission to access this resource.");
+        }
+
+        var users = await userRepository.GetListAsync(ct);
+        await Send.OkAsync(users, ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Admin/Bookings/Delete/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Events;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Admin.Bookings.Delete;
+
+public class Request
+{
+    [RouteParam]
+    public Guid Id { get; set; }
+}
+
+public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
+    : Endpoint<Request, BookingWithUser>
+{
+    public override void Configure()
+    {
+        Delete("/Admin/Bookings/{Id:guid}");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+        if (phone is null)
+        {
+            throw new Exception("User does not exist");
+        }
+
+        var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
+        if (currentUser?.IsAdmin != true)
+        {
+            throw new Exception("You do not have permission to delete bookings.");
+        }
+
+        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        if (booking is null)
+        {
+            throw new Exception("Booking does not exist.");
+        }
+
+        await bookingRepository.DeleteAsync(b => b.Id == booking.Id, ct);
+
+        await PublishAsync(
+            new BookingDeletedEvent
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                UserPhone = booking.UserPhone,
+            },
+            Mode.WaitForAll,
+            ct
+        );
+
+        await Send.NoContentAsync(ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Admin/Bookings/Put/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Events;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Admin.Bookings.Put;
+
+public class Request
+{
+    [RouteParam]
+    public Guid Id { get; set; }
+    public string? Conduct { get; set; }
+    public string? Description { get; set; }
+    public string? PocName { get; set; }
+    public string? PocPhone { get; set; }
+}
+
+public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
+    : Endpoint<Request, Entities.Booking>
+{
+    public override void Configure()
+    {
+        Put("/Admin/Bookings/{Id:guid}");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+        if (phone is null)
+        {
+            throw new Exception("User does not exist");
+        }
+
+        var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
+        if (currentUser?.IsAdmin != true)
+        {
+            throw new Exception("You do not have permission to edit bookings.");
+        }
+
+        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        if (booking is null)
+        {
+            throw new Exception("Booking does not exist.");
+        }
+
+        booking.Conduct = req.Conduct;
+        booking.Description = req.Description;
+        booking.PocName = req.PocName;
+        booking.PocPhone = req.PocPhone;
+
+        await bookingRepository.UpdateAsync(booking, ct);
+
+        await PublishAsync(
+            new BookingUpdatedEvent
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                UserPhone = booking.UserPhone,
+            },
+            Mode.WaitForAll,
+            ct
+        );
+
+        await Send.OkAsync(booking, ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Admin/Bookings/ById/Get/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Admin.Bookings.ById.Get;
+
+public class Request
+{
+    [RouteParam]
+    public Guid Id { get; set; }
+}
+
+public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
+    : Endpoint<Request, BookingWithUser>
+{
+    public override void Configure()
+    {
+        Get("/Admin/Bookings/{Id:guid}");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+        if (phone is null)
+        {
+            throw new Exception("User does not exist");
+        }
+
+        var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
+        if (currentUser?.IsAdmin != true)
+        {
+            throw new Exception("You do not have permission to access this booking.");
+        }
+
+        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        if (booking is null)
+        {
+            await Send.NotFoundAsync(ct);
+            return;
+        }
+
+        var bookedBy = await userRepository.FindAsync(u => u.Phone == booking.UserPhone, ct);
+
+        await Send.OkAsync(
+            new BookingWithUser
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                User = bookedBy,
+            },
+            ct
+        );
+    }
+}
+==== Fbs.WebApi/Endpoints/Admin/Bookings/Get/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Admin.Bookings.Get;
+
+public class Endpoint(UserRepository userRepository, BookingRepository bookingRepository)
+    : EndpointWithoutRequest<IEnumerable<BookingWithUser>>
+{
+    public override void Configure()
+    {
+        Get("/Admin/Bookings");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+        if (phone is null)
+        {
+            throw new Exception("User does not exist");
+        }
+
+        var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
+        if (currentUser?.IsAdmin != true)
+        {
+            throw new Exception("You do not have permission to access admin bookings.");
+        }
+
+        var all = await bookingRepository.GetListAsync(ct);
+        var users = await userRepository.GetListAsync(ct);
+
+        var withUser = all.Select(booking => new BookingWithUser
+        {
+            Id = booking.Id,
+            FacilityName = booking.FacilityName,
+            Conduct = booking.Conduct,
+            Description = booking.Description,
+            PocName = booking.PocName,
+            PocPhone = booking.PocPhone,
+            StartDateTime = booking.StartDateTime,
+            EndDateTime = booking.EndDateTime,
+            User = users.FirstOrDefault(u => u.Phone == booking.UserPhone),
+        });
+
+        await Send.OkAsync(withUser.OrderByDescending(b => b.StartDateTime), ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Facility/TimeSlots/Get/Request.cs ====
+using FastEndpoints;
+
+namespace Fbs.WebApi.Endpoints.Facility.TimeSlots.Get;
+
+public class Request
+{
+    [QueryParam]
+    public DateTimeOffset StartTime { get; set; }
+
+    [QueryParam]
+    public DateTimeOffset EndTime { get; set; }
+
+    [RouteParam]
+    public string Name { get; set; }
+}
+==== Fbs.WebApi/Endpoints/Facility/TimeSlots/Get/Endpoint.cs ====
+using FastEndpoints;
+using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Facility.TimeSlots.Get;
+
+public class Endpoint(
+    FacilityRepository facilityRepository,
+    UserRepository userRepository,
+    BookingRepository bookingRepository
+) : Endpoint<Request, IEnumerable<TimeSlot>>
+{
+    public override void Configure()
+    {
+        Get("/Facility/{Name}/TimeSlots");
+    }
+
+    public override async Task HandleAsync(Request req, CancellationToken ct)
+    {
+        if (
+            req.StartTime >= req.EndTime
+            || req.StartTime.Minute % 30 != 0
+            || req.EndTime.Minute % 30 != 0
+        )
+        {
+            throw new Exception(
+                "Either the start time is greater than end time, or the time values provided are not in the correct intervals."
+            );
+        }
+
+        var facility = await facilityRepository.GetAsync(f => f.Name == req.Name, ct);
+
+        var users = await userRepository.GetListAsync(ct);
+        var usersDict = users.ToDictionary(u => u.Phone!);
+        var bookings = await bookingRepository.GetListAsync(ct);
+        var overlapping = bookings
+            .Where(b => b.FacilityName == facility.Name)
+            .Where(b => b.StartDateTime <= req.EndTime && b.EndDateTime >= req.StartTime)
+            .Select(booking => new BookingWithUser
+            {
+                Id = booking.Id,
+                FacilityName = booking.FacilityName,
+                Conduct = booking.Conduct,
+                Description = booking.Description,
+                PocName = booking.PocName,
+                PocPhone = booking.PocPhone,
+                StartDateTime = booking.StartDateTime,
+                EndDateTime = booking.EndDateTime,
+                User = usersDict[booking.UserPhone ?? string.Empty],
+            })
+            .ToList();
+
+        var current = req.StartTime;
+        var slots = new List<TimeSlot>();
+        do
+        {
+            var newCurrent = current;
+            var newEnd = current.AddMinutes(30);
+            current = current.AddMinutes(30);
+
+            var overlaps = overlapping.SingleOrDefault(b =>
+                b.StartDateTime < newEnd && b.EndDateTime > newCurrent
+            );
+            slots.Add(
+                new TimeSlot
+                {
+                    StartDateTime = newCurrent,
+                    EndDateTime = newEnd,
+                    Booking = overlaps,
+                }
+            );
+        } while (!ct.IsCancellationRequested && current < req.EndTime);
+
+        await Send.OkAsync(slots, ct);
+    }
+}
+==== Fbs.WebApi/Endpoints/Facility/Get/Endpoint.cs ====
+using FastEndpoints;
+using FastEndpoints.Security;
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Endpoints.Facility.Get;
+
+public class Endpoint(FacilityRepository facilityRepository, UserRepository userRepository)
+    : EndpointWithoutRequest<IEnumerable<Dtos.Facility>>
+{
+    public override void Configure()
+    {
+        Get("/Facility");
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var phone = User.ClaimValue("Phone");
+
+        var user = await userRepository.GetAsync(u => u.Phone == phone, ct);
+        if (user.Unit is null)
+        {
+            throw new Exception("User needs to have a unit in order to retrieve facility list.");
+        }
+
+        var facilities = await facilityRepository.GetListAsync(ct);
+
+        var eligible = facilities
+            .Where(f => f.Scope is not null)
+            .Where(f => f.AvailableForAll || f.Scope!.Contains(user.Unit));
+
+        var dtos = eligible.Select(f => new Dtos.Facility
+        {
+            Name = f.Name,
+            Group = f.Group,
+            Scope = f.Scope,
+        });
+
+        await Send.OkAsync(dtos, ct);
+    }
+}
+==== Fbs.WebApi/Entities/Facility.cs ====
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Entities;
+
+public class Facility : Entity
+{
+    public string? Name { get; set; }
+    public string? Group { get; set; }
+    public List<string>? Scope { get; set; }
+
+    public override string? GetId() => Name;
+
+    public bool AvailableForAll => Scope?.Contains("All") ?? false;
+}
+==== Fbs.WebApi/Entities/NominalRoll.cs ====
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Entities;
+
+public class NominalRoll : Entity
+{
+    public string? Name { get; set; }
+    public string? Unit { get; set; }
+    public string? Phone { get; set; }
+
+    public override string? GetId() => Phone;
+}
+==== Fbs.WebApi/Entities/Otp.cs ====
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Entities;
+
+public class Otp : Entity
+{
+    public string? Phone { get; set; }
+    public string? Code { get; set; }
+    public DateTimeOffset? CreatedAt { get; set; }
+
+    public override string GetId() => Phone;
+}
+==== Fbs.WebApi/Entities/Booking.cs ====
+using Fbs.WebApi.Repository;
+using MemoryPack;
+
+namespace Fbs.WebApi.Entities;
+
+[MemoryPackable]
+public partial class Booking : Entity<Guid>
+{
+    public DateTimeOffset? StartDateTime { get; set; }
+    public DateTimeOffset? EndDateTime { get; set; }
+    public string? Conduct { get; set; }
+    public string? Description { get; set; }
+    public string? PocName { get; set; }
+    public string? PocPhone { get; set; }
+
+    public string? FacilityName { get; set; }
+    public string? UserPhone { get; set; }
+}
+==== Fbs.WebApi/Entities/User.cs ====
+using Fbs.WebApi.Repository;
+
+namespace Fbs.WebApi.Entities;
+
+public class User : Entity
+{
+    public string? Unit { get; set; }
+    public string? Name { get; set; }
+    public string? Phone { get; set; }
+    public string? TelegramChatId { get; set; }
+    public string? NotificationGroup { get; set; }
+    public bool IsAdmin { get; set; }
+
+    public override string? GetId() => Phone;
+}

@@ -1,22 +1,10 @@
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS base
-USER $APP_UID
-WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
-
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-ARG BUILD_CONFIGURATION=Release
+FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /src
-COPY ["Fbs.WebApi/Fbs.WebApi.csproj", "Fbs.WebApi/"]
-RUN dotnet restore "Fbs.WebApi/Fbs.WebApi.csproj"
-COPY . .
-WORKDIR "/src/Fbs.WebApi"
-RUN dotnet build "Fbs.WebApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
+COPY Fbs.WebApi/ .
+RUN ./gradlew build -x test
 
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "Fbs.WebApi.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-
-FROM base AS final
+FROM eclipse-temurin:21-jre-alpine AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /src/build/libs/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
