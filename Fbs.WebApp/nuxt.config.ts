@@ -40,6 +40,11 @@ export default defineNuxtConfig({
     head: {
       script: [
         {
+          src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1586897931312395',
+          crossorigin: 'anonymous',
+          async: true
+        },
+        {
           innerHTML: `
               (function(c,l,a,r,i,t,y){
               c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
