@@ -23,13 +23,6 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
             return;
         }
 
-        var phone = User.ClaimValue("Phone");
-        if (phone != booking.UserPhone)
-        {
-            await Send.ForbiddenAsync(ct);
-            return;
-        }
-
         await bookingRepository.DeleteAsync(b => b.Id == booking.Id, ct);
         await PublishAsync(
             new BookingDeletedEvent
