@@ -1,5 +1,5 @@
 import type { DateFormatter } from '@internationalized/date'
-import type { FbsWebApiDtosBookingWithUser } from '~/api/models'
+import type { FbsWebApiDtosBookingWithUser } from '~/api'
 
 // Keep in sync with the API's batch limit (Endpoints/Booking/Batch/Post/Validator.cs)
 export const MAX_BATCH_SLOTS = 50

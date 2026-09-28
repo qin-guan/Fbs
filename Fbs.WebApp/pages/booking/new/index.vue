@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { VueCal } from 'vue-cal'
 import 'vue-cal/style'
+import { useGetBooking, useGetFacility } from '~/api'
 import type { NewBookingSlot, SlotClash } from '~/composables/booking-slots'
 
 definePageMeta({
@@ -29,8 +30,8 @@ const helpMaximized = ref(false)
 const builderOpen = ref(false)
 
 const { data: help } = await useLazyAsyncData(() => queryCollection('content').path('/help').first())
-const { data: facilities, isPending: facilitiesIsPending } = useFacilities()
-const { data: bookings, isPending: bookingsIsPending } = useBookings()
+const { data: facilities, isPending: facilitiesIsPending } = useGetFacility()
+const { data: bookings, isPending: bookingsIsPending } = useGetBooking()
 
 const facilityTypes = computed(() => {
   if (facilitiesIsPending.value) {

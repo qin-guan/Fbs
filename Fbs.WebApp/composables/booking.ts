@@ -1,61 +1,47 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import type { FbsWebApiEndpointsBookingBatchPostRequest } from '~/api/models'
-
-export function useBookings() {
-  return useQuery({
-    queryKey: ['bookings'],
-    queryFn: () => $api.booking.get(),
-  })
-}
-
-export function useBooking(id: MaybeRef<string>) {
-  return useQuery({
-    queryKey: ['bookings', toValue(id)],
-    queryFn: () => $api.booking.byId(toValue(id)).get(),
-  })
-}
-
-export function useCreateBookingMutation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: $api.booking.post,
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
-    },
-  })
-}
+import { useQueryClient } from '@tanstack/vue-query'
+import {
+  getBookingByIdQueryKey,
+  getBookingQueryKey,
+  useDeleteBookingById,
+  usePostBookingBatch,
+  usePostBookingById,
+} from '~/api'
 
 export function useCreateBookingBatchMutation() {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: (body: FbsWebApiEndpointsBookingBatchPostRequest) => $api.booking.batch.post(body),
-    // A rejected batch usually means someone else booked first, so refresh either way
-    onSettled() {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+  return usePostBookingBatch({
+    mutation: {
+      // A rejected batch usually means someone else booked first, so refresh either way
+      onSettled() {
+        queryClient.invalidateQueries({ queryKey: getBookingQueryKey() })
+      },
     },
   })
 }
 
-export function useDeleteBookingMutation(id: MaybeRef<string>) {
+export function useDeleteBookingMutation() {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: $api.booking.byId(toValue(id)).delete,
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+  return useDeleteBookingById({
+    mutation: {
+      onSuccess(_, { path }) {
+        queryClient.invalidateQueries({ queryKey: getBookingQueryKey() })
+        queryClient.invalidateQueries({ queryKey: getBookingByIdQueryKey({ path }) })
+      },
     },
   })
 }
 
-export function useUpdateBookingMutation(id: MaybeRef<string>) {
+export function useUpdateBookingMutation() {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    mutationFn: $api.booking.byId(toValue(id)).post,
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+  return usePostBookingById({
+    mutation: {
+      onSuccess(_, { path }) {
+        queryClient.invalidateQueries({ queryKey: getBookingQueryKey() })
+        queryClient.invalidateQueries({ queryKey: getBookingByIdQueryKey({ path }) })
+      },
     },
   })
 }

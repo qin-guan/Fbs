@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useGetAuthMe } from '~/api'
+
 definePageMeta({
   layout: 'landing',
 })
 
-const { data: me } = useMe()
+const { data: me } = useGetAuthMe()
 
 const links = computed(() => me.value?.phone
   ? [

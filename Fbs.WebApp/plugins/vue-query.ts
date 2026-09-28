@@ -1,4 +1,3 @@
-import type { ApiError } from '@microsoft/kiota-abstractions'
 import type {
   DehydratedState,
   VueQueryPluginOptions,
@@ -11,18 +10,21 @@ import {
   hydrate,
   dehydrate,
 } from '@tanstack/vue-query'
+import { ResponseError } from '~/api'
 
 // The API answers a missing, expired or unreadable session cookie with a bare 401 (or 403).
 // Endpoints that refuse a specific action, like cancelling another unit's booking, send a 403
 // with problem details instead, which the page reports itself.
 function isAuthError(error: unknown) {
-  const { responseStatusCode, responseHeaders } = error as Partial<ApiError>
-  if (responseStatusCode === 401) {
+  if (!(error instanceof ResponseError)) {
+    return false
+  }
+
+  if (error.status === 401) {
     return true
   }
 
-  return responseStatusCode === 403
-    && !responseHeaders?.['content-type']?.some(value => value.includes('problem+json'))
+  return error.status === 403 && !error.contentType?.includes('problem+json')
 }
 
 export default defineNuxtPlugin((nuxt) => {

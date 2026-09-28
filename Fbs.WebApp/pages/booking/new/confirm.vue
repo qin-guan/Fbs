@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormError, FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
-import type { FastEndpointsProblemDetails, FbsWebApiEntitiesBooking } from '~/api/models'
+import { useGetAuthMe, useGetBooking, type FbsWebApiEntitiesBooking } from '~/api'
 import type { BookingSlot } from '~/composables/booking-slots'
 
 definePageMeta({
@@ -13,8 +13,8 @@ const onboarded = useLocalStorage<boolean>('new-confirm-onboarded', false)
 const router = useRouter()
 const { df, tf } = useFormatter()
 const basket = useBookingBasket()
-const { data: me } = useMe()
-const { data: bookings } = useBookings()
+const { data: me } = useGetAuthMe()
+const { data: bookings } = useGetBooking()
 const { mutate: createMutate, isPending: createIsPending } = useCreateBookingBatchMutation()
 
 const route = useRoute()
@@ -139,21 +139,23 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
   }
 
   createMutate({
-    conduct: data.conduct,
-    pocName: data.pocName,
-    pocPhone: '65' + data.pocPhone,
-    description: data.description,
-    slots: submitted.map(slot => ({
-      facilityName: slot.facilityName,
-      startDateTime: slot.start,
-      endDateTime: slot.end,
-    })),
+    body: {
+      conduct: data.conduct,
+      pocName: data.pocName,
+      pocPhone: '65' + data.pocPhone,
+      description: data.description,
+      slots: submitted.map(slot => ({
+        facilityName: slot.facilityName,
+        startDateTime: slot.start,
+        endDateTime: slot.end,
+      })),
+    },
   }, {
     onError(error) {
-      const e = error as FastEndpointsProblemDetails
+      const e = getProblemDetails(error)
       const slotErrors: Record<number, string> = {}
       const otherErrors: string[] = []
-      for (const err of e.errors ?? []) {
+      for (const err of e?.errors ?? []) {
         const match = /^slots\[(\d+)\]/i.exec(err.name ?? '')
         if (match) {
           slotErrors[Number(match[1])] ??= err.reason ?? 'This slot can\'t be booked'

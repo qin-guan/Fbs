@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useGetAuthMe } from '~/api'
+
 definePageMeta({
   layout: 'app',
 })
 
-const { data: me } = useMe()
+const { data: me } = useGetAuthMe()
 
 const fields = computed(() => [
   { label: 'Rank / Name', description: 'Your rank and name', value: me.value?.name },

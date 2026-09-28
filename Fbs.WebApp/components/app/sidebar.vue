@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import { useGetAuthMe } from '~/api'
 
 const route = useRoute()
 const { visible } = useSidebar()
-const { data: me } = useMe()
+const { data: me } = useGetAuthMe()
 
 function close() {
   visible.value = false

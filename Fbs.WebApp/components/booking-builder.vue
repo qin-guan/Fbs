@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getLocalTimeZone, today, type DateValue } from '@internationalized/date'
+import { useGetBooking, useGetFacility } from '~/api'
 import type { NewBookingSlot } from '~/composables/booking-slots'
 
 // Pick several facilities and days at once, and add the resulting slots to the booking list.
@@ -9,8 +10,8 @@ const emit = defineEmits<{
   add: [slots: NewBookingSlot[]]
 }>()
 
-const { data: facilities } = useFacilities()
-const { data: bookings } = useBookings()
+const { data: facilities } = useGetFacility()
+const { data: bookings } = useGetBooking()
 const basket = useBookingBasket()
 const { tf } = useFormatter()
 

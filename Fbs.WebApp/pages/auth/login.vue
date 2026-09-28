@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { FormError, FormSubmitEvent } from '@nuxt/ui'
-import type { FastEndpointsProblemDetails } from '~/api/models'
+import { useGetAuthMe, usePostAuthLogin } from '~/api'
 
 definePageMeta({
   layout: 'landing',
 })
 
-const { data: me } = useMe()
+const { data: me } = useGetAuthMe()
 const showSignUpOnTelegramButton = ref(false)
 
 const router = useRouter()
 const toast = useToast()
-const { mutate: mutateLogin, isPending: isPendingLogin } = useLoginMutation()
+const { mutate: mutateLogin, isPending: isPendingLogin } = usePostAuthLogin()
 
 const state = reactive({
   phone: '',
@@ -53,11 +53,11 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
   const phone = `65${data.phone.replace('-', '')}`
 
   mutateLogin({
-    phone,
+    body: { phone },
   }, {
     onError(error) {
-      const e = error as FastEndpointsProblemDetails
-      for (const error of e.errors ?? []) {
+      const e = getProblemDetails(error)
+      for (const error of e?.errors ?? []) {
         if (error.code === 'EX02') {
           showSignUpOnTelegramButton.value = true
         }
@@ -72,10 +72,10 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
       }
 
       // The API answers with a bare 401 when an OTP was requested less than a minute ago
-      if (!e.errors?.length) {
+      if (!e?.errors?.length) {
         toast.add({
           title: 'Error',
-          description: e.responseStatusCode === 401
+          description: error.status === 401
             ? 'Please wait a minute before requesting another OTP.'
             : 'Something went wrong. Please try again.',
           color: 'error',

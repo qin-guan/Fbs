@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormError } from '@nuxt/ui'
-import type { FastEndpointsProblemDetails } from '~/api/models'
+import { usePostAuthVerify } from '~/api'
 
 definePageMeta({
   layout: 'landing',
@@ -14,7 +14,7 @@ const otp = computed(() => state.otp.join(''))
 
 const toast = useToast()
 const phone = useRoute().query.phone as string
-const { mutate: mutateVerify, isPending: isPendingVerify } = useVerifyMutation()
+const { mutate: mutateVerify, isPending: isPendingVerify } = usePostAuthVerify()
 
 const displayPhone = computed(() => {
   const match = /^65(\d{4})(\d{4})$/.exec(phone ?? '')
@@ -41,10 +41,10 @@ function onFormError() {
 }
 
 function onFormSubmit() {
-  mutateVerify({ code: otp.value, phone }, {
+  mutateVerify({ body: { code: otp.value, phone } }, {
     onError(error) {
-      const e = error as FastEndpointsProblemDetails
-      for (const error of e.errors ?? []) {
+      const e = getProblemDetails(error)
+      for (const error of e?.errors ?? []) {
         toast.add({
           title: 'Error',
           description: error.reason ?? undefined,
@@ -55,7 +55,7 @@ function onFormSubmit() {
       }
 
       // The API rejects a wrong or expired OTP with a bare 401
-      if (!e.errors?.length) {
+      if (!e?.errors?.length) {
         toast.add({
           title: 'Error',
           description: 'The OTP is invalid or has expired.',

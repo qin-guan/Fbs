@@ -1,5 +1,7 @@
 <script setup lang="ts">
-const { data: me } = useMe()
+import { useGetAuthMe } from '~/api'
+
+const { data: me } = useGetAuthMe()
 </script>
 
 <template>

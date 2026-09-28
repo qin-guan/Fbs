@@ -3,7 +3,7 @@ import { h } from 'vue'
 import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date'
 import type { TableColumn } from '@nuxt/ui'
 import type { Column, ColumnFiltersState, FilterFn, HeaderContext } from '@tanstack/vue-table'
-import type { FbsWebApiDtosBookingWithUser } from '~/api/models'
+import { useGetBooking, useGetFacility, type FbsWebApiDtosBookingWithUser } from '~/api'
 import TableHeader from '~/components/table-header.vue'
 
 definePageMeta({
@@ -15,8 +15,8 @@ type Booking = FbsWebApiDtosBookingWithUser
 const router = useRouter()
 const { df, tf } = useFormatter()
 
-const { data: facilities } = useFacilities()
-const { data: bookings, isPending: bookingsIsPending } = useBookings()
+const { data: facilities } = useGetFacility()
+const { data: bookings, isPending: bookingsIsPending } = useGetBooking()
 
 // Keyboard shortcuts: alt+n for a new booking, / to focus the keyword search
 const activeElement = useActiveElement()
