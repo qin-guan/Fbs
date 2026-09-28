@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date'
 import type { DropdownMenuItem } from '@nuxt/ui'
-import type { FastEndpointsProblemDetails, FbsWebApiDtosBookingWithUser } from '~/api/models'
+import { useGetAuthMe, useGetBooking, useGetBookingById, type FbsWebApiDtosBookingWithUser } from '~/api'
 
 definePageMeta({
   layout: 'app',
 })
 
-const { data: me } = useMe()
+const id = useRoute().params.id as string
+
+const { data: me } = useGetAuthMe()
 const toast = useToast()
 const { df, tf } = useFormatter()
-const { data: booking, isPending: bookingIsPending } = useBooking(useRoute().params.id as string)
-const { data: bookings } = useBookings()
+const { data: booking, isPending: bookingIsPending } = useGetBookingById({ path: { id } })
+const { data: bookings } = useGetBooking()
 
-const { mutate: deleteMutate, isPending: deleteIsPending } = useDeleteBookingMutation(useRoute().params.id as string)
-const { mutate: updateMutate, isPending: updateIsPending } = useUpdateBookingMutation(useRoute().params.id as string)
+const { mutate: deleteMutate, isPending: deleteIsPending } = useDeleteBookingMutation()
+const { mutate: updateMutate, isPending: updateIsPending } = useUpdateBookingMutation()
 
 const updateValues = ref<FbsWebApiDtosBookingWithUser>({})
 const deleteConfirmationDialog = ref(false)
@@ -169,7 +171,7 @@ function optionSelect({ phone }: { phone: string }) {
 }
 
 function showError(summary: string, error: unknown) {
-  const e = error as FastEndpointsProblemDetails
+  const e = getProblemDetails(error)
   toast.add({
     title: summary,
     description: e?.errors?.find(a => a)?.reason ?? e?.title ?? undefined,
@@ -180,7 +182,7 @@ function showError(summary: string, error: unknown) {
 }
 
 function deleteBooking() {
-  deleteMutate({}, {
+  deleteMutate({ path: { id } }, {
     async onSuccess() {
       deleteConfirmationDialog.value = false
       toast.add({
@@ -199,11 +201,16 @@ function deleteBooking() {
 
 function updateBooking() {
   updateMutate({
-    ...updateValues.value,
-    pocPhone: '65' + updateValues.value.pocPhone,
-    // Leaving the times out keeps the current time slot
-    startDateTime: timeChanged.value ? newStart.value : undefined,
-    endDateTime: timeChanged.value ? newEnd.value : undefined,
+    path: { id },
+    body: {
+      conduct: updateValues.value.conduct ?? '',
+      description: updateValues.value.description,
+      pocName: updateValues.value.pocName,
+      pocPhone: '65' + updateValues.value.pocPhone,
+      // Leaving the times out keeps the current time slot
+      startDateTime: timeChanged.value ? newStart.value : undefined,
+      endDateTime: timeChanged.value ? newEnd.value : undefined,
+    },
   }, {
     async onSuccess() {
       toast.add({

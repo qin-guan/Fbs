@@ -1,29 +1,22 @@
 import MiniSearch from 'minisearch'
-import { useQuery } from '@tanstack/vue-query'
-
-export function useNominalRoll() {
-  return useQuery({
-    queryKey: ['nominal-roll'],
-    queryFn: () => $api.nominalRoll.get(),
-  })
-}
+import { useGetNominalRoll } from '~/api'
 
 export function useNominalRollMapping() {
-  return useQuery({
-    queryKey: ['nominal-roll-names'],
-    queryFn: () => $api.nominalRoll.get(),
-    select(data) {
-      const r: Record<string, string | null | undefined> = {}
-      for (const item of data ?? []) {
-        r[item.phone ?? ''] = item.name
-      }
-      return r
+  return useGetNominalRoll({
+    query: {
+      select(data) {
+        const r: Record<string, string | null | undefined> = {}
+        for (const item of data ?? []) {
+          r[item.phone ?? ''] = item.name
+        }
+        return r
+      },
     },
   })
 }
 
 export const useNominalRollMiniSearch = createSharedComposable(() => {
-  const { data: nominalRoll } = useNominalRoll()
+  const { data: nominalRoll } = useGetNominalRoll()
 
   return computed(() => {
     if (!nominalRoll.value) return null

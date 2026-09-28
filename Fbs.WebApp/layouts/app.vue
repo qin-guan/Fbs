@@ -1,5 +1,7 @@
 <script setup lang="ts">
-const { error } = useMe()
+import { useGetAuthMe } from '~/api'
+
+const { error } = useGetAuthMe()
 
 const router = useRouter()
 

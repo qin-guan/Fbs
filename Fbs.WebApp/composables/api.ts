@@ -1,9 +1,13 @@
-import { AnonymousAuthenticationProvider } from '@microsoft/kiota-abstractions'
-import { FetchRequestAdapter, HttpClient } from '@microsoft/kiota-http-fetchlibrary'
-import { createApiClient } from '~/api/apiClient'
+import { ResponseError, type FastEndpointsProblemDetails } from '~/api'
 
-const authProvider = new AnonymousAuthenticationProvider()
-const httpClient = new HttpClient((req, init) => fetch(req, { ...init, credentials: 'include' }))
-const adapter = new FetchRequestAdapter(authProvider, undefined, undefined, httpClient)
-adapter.baseUrl = useRuntimeConfig().public.api
-export const $api = createApiClient(adapter)
+/**
+ * The problem details the API sends when it rejects a request, such as validation errors or
+ * refusing to cancel another unit's booking. Bare 401s and 404s have none.
+ */
+export function getProblemDetails(error: unknown) {
+  if (error instanceof ResponseError && error.contentType?.includes('problem+json')) {
+    return error.data as FastEndpointsProblemDetails
+  }
+
+  return undefined
+}
