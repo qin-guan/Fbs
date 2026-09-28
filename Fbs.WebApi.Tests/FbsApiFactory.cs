@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Fbs.WebApi.Entities;
+using Fbs.WebApi.Repository;
 using Fbs.WebApi.Tests.Fakes;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
@@ -13,6 +15,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+// FastEndpoints keeps the running app's services in a static, so apps started side by side end
+// up sharing event handlers and send each other's notifications
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace Fbs.WebApi.Tests;
 
 public static class Users
@@ -21,6 +27,7 @@ public static class Users
     public const string SameUnit = "6598765432";
     public const string AllGroup = "6581112222";
     public const string OtherUnit = "6581113333";
+    public const string Admin = "6581114444";
 }
 
 /// <summary>
@@ -36,6 +43,16 @@ public class FbsApiFactory : WebApplicationFactory<Program>
         var client = CreateClient();
         client.DefaultRequestHeaders.Add(TestAuthHandler.PhoneHeader, phone);
         return client;
+    }
+
+    /// <summary>
+    /// Adds a booking to the calendar and waits for the API to pick it up, as if it was made
+    /// before the test.
+    /// </summary>
+    public async Task AddBookingAsync(Booking booking)
+    {
+        Google.AddBooking(booking);
+        await Services.GetRequiredService<BookingCache>().SyncAsync();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

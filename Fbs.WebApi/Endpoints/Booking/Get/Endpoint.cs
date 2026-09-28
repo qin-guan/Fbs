@@ -28,7 +28,7 @@ public class Endpoint(UserRepository userRepository, BookingRepository bookingRe
             all = all.Where(b => b.StartDateTime >= startsAfter).ToList();
         }
 
-        var users = await userRepository.GetListAsync(ct);
+        var users = await userRepository.GetByPhoneAsync(ct);
         var withUser = all.Select(booking => new BookingWithUser
         {
             Id = booking.Id,
@@ -39,7 +39,7 @@ public class Endpoint(UserRepository userRepository, BookingRepository bookingRe
             PocPhone = booking.PocPhone,
             StartDateTime = booking.StartDateTime,
             EndDateTime = booking.EndDateTime,
-            User = users.Single(u => u.Phone == booking.UserPhone),
+            User = users.GetValueOrDefault(booking.UserPhone ?? string.Empty),
         });
 
         await Send.OkAsync(withUser.OrderByDescending(b => b.StartDateTime), ct);

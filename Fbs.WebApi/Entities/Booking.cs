@@ -15,4 +15,9 @@ public partial class Booking : Entity<Guid>
 
     public string? FacilityName { get; set; }
     public string? UserPhone { get; set; }
+
+    /// <summary>
+    /// A copy that can be changed without affecting this booking.
+    /// </summary>
+    public Booking Clone() => (Booking)MemberwiseClone();
 }

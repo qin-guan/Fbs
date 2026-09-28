@@ -15,8 +15,11 @@ public class Request
     public string? PocPhone { get; set; }
 }
 
-public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
-    : Endpoint<Request, Entities.Booking>
+public class Endpoint(
+    BookingRepository bookingRepository,
+    UserRepository userRepository,
+    BackgroundPublisher publisher
+) : Endpoint<Request, Entities.Booking>
 {
     public override void Configure()
     {
@@ -51,7 +54,7 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
 
         await bookingRepository.UpdateAsync(booking, ct);
 
-        await PublishAsync(
+        publisher.Publish(
             new BookingUpdatedEvent
             {
                 Id = booking.Id,
@@ -63,9 +66,7 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
                 StartDateTime = booking.StartDateTime,
                 EndDateTime = booking.EndDateTime,
                 UserPhone = booking.UserPhone,
-            },
-            Mode.WaitForAll,
-            ct
+            }
         );
 
         await Send.OkAsync(booking, ct);

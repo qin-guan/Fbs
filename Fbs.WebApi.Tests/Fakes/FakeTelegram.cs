@@ -12,8 +12,20 @@ namespace Fbs.WebApi.Tests.Fakes;
 public class FakeTelegram
 {
     private int _messageId;
+    private TaskCompletionSource _resumed = Resumed();
 
     public ConcurrentQueue<(long ChatId, string Text)> Messages { get; } = new();
+
+    /// <summary>
+    /// How long each request takes, to stand in for the round trip to Telegram.
+    /// </summary>
+    public TimeSpan Latency { get; set; }
+
+    /// <summary>Holds every message until <see cref="Resume"/> is called.</summary>
+    public void Pause() =>
+        _resumed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public void Resume() => _resumed.TrySetResult();
 
     public HttpMessageHandler CreateHandler() => new Handler(this);
 
@@ -41,6 +53,12 @@ public class FakeTelegram
                 return Ok(true);
 
             case "sendmessage":
+                await _resumed.Task.WaitAsync(ct);
+                if (Latency > TimeSpan.Zero)
+                {
+                    await Task.Delay(Latency, ct);
+                }
+
                 var chatNode = body!["chat_id"]!;
                 var chatId = chatNode.GetValueKind() == JsonValueKind.String
                     ? long.Parse(chatNode.GetValue<string>())
@@ -61,6 +79,13 @@ public class FakeTelegram
             default:
                 return new HttpResponseMessage(HttpStatusCode.NotImplemented);
         }
+    }
+
+    private static TaskCompletionSource Resumed()
+    {
+        var source = new TaskCompletionSource();
+        source.SetResult();
+        return source;
     }
 
     private static HttpResponseMessage Ok(JsonNode result) =>

@@ -9,7 +9,8 @@ public class Endpoint(
     BookingRepository bookingRepository,
     UserRepository userRepository,
     FacilityRepository facilityRepository,
-    BookingWriteLock bookingWriteLock
+    BookingWriteLock bookingWriteLock,
+    BackgroundPublisher publisher
 ) : Endpoint<Request, Entities.Booking>
 {
     public override void Configure()
@@ -56,7 +57,7 @@ public class Endpoint(
 
         using (await bookingWriteLock.AcquireAsync(ct))
         {
-            var bookings = await bookingRepository.GetListAsync(ct);
+            var bookings = await bookingRepository.GetLatestListAsync(ct);
             var overlapping = bookings.FirstOrDefault(b =>
                 b.FacilityName == facility.Name
                 && b.StartDateTime < req.EndDateTime
@@ -73,7 +74,7 @@ public class Endpoint(
             await bookingRepository.InsertAsync(booking, ct);
         }
 
-        await PublishAsync(
+        publisher.Publish(
             new BookingCreatedEvent
             {
                 Id = booking.Id,
@@ -85,9 +86,7 @@ public class Endpoint(
                 StartDateTime = booking.StartDateTime,
                 EndDateTime = booking.EndDateTime,
                 UserPhone = booking.UserPhone,
-            },
-            Mode.WaitForAll,
-            ct
+            }
         );
 
         await Send.CreatedAtAsync<Booking.ById.Get.Endpoint>(
