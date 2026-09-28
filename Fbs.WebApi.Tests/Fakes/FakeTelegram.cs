@@ -21,6 +21,11 @@ public class FakeTelegram
     /// </summary>
     public TimeSpan Latency { get; set; }
 
+    /// <summary>
+    /// Chats that reject messages as if they had blocked the bot.
+    /// </summary>
+    public HashSet<long> BlockedChatIds { get; } = [];
+
     /// <summary>Holds every message until <see cref="Resume"/> is called.</summary>
     public void Pause() =>
         _resumed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -63,6 +68,23 @@ public class FakeTelegram
                 var chatId = chatNode.GetValueKind() == JsonValueKind.String
                     ? long.Parse(chatNode.GetValue<string>())
                     : chatNode.GetValue<long>();
+                if (BlockedChatIds.Contains(chatId))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.Forbidden)
+                    {
+                        Content = new StringContent(
+                            new JsonObject
+                            {
+                                ["ok"] = false,
+                                ["error_code"] = 403,
+                                ["description"] = "Forbidden: bot was blocked by the user",
+                            }.ToJsonString(),
+                            Encoding.UTF8,
+                            "application/json"
+                        ),
+                    };
+                }
+
                 var text = body["text"]!.GetValue<string>();
                 Messages.Enqueue((chatId, text));
 

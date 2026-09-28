@@ -1,6 +1,5 @@
 using FastEndpoints;
 using FastEndpoints.Security;
-using Fbs.WebApi.Dtos;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Repository;
 
@@ -16,7 +15,7 @@ public class Endpoint(
     BookingRepository bookingRepository,
     UserRepository userRepository,
     BackgroundPublisher publisher
-) : Endpoint<Request, BookingWithUser>
+) : Endpoint<Request>
 {
     public override void Configure()
     {
