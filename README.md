@@ -4,7 +4,8 @@
 
 You need:
 
-* .NET 9
+* .NET 10
+* Node.js and pnpm
 * DevTunnel
 * Telegram Bot Token
 
@@ -35,10 +36,26 @@ dotnet user-secrets set "Telegram:WebhookUrl" "<YOUR_DEVTUNNEL_HERE>/Bot";
 
 You need to provide the service account with access to the facility spreadsheet.
 
-Start the AppHost project:
+Start the AppHost project, which runs the API and the web app (on http://localhost:3000) and prints a link to the
+Aspire dashboard:
 
 ```powershell
 dotnet run --project ./Fbs.AppHost/Fbs.AppHost.csproj;
+```
+
+Or, with the [Aspire CLI](https://aspire.dev):
+
+```powershell
+aspire run;
+```
+
+## Testing
+
+The API tests use [TUnit](https://tunit.dev) and run the API in memory, with Google and Telegram faked, so they need
+no secrets:
+
+```powershell
+dotnet test;
 ```
 
 ## Deploying

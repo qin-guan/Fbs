@@ -2,26 +2,25 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Fbs.WebApi.Entities;
+using Fbs.WebApi.Tests.Data;
 using Fbs.WebApi.Tests.Fakes;
+using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public class BookingUpdateTests : IDisposable
+public class BookingUpdateTests
 {
     private static readonly TimeSpan Singapore = TimeSpan.FromHours(8);
 
-    private readonly FbsApiFactory _factory = new();
-    private readonly HttpClient _client;
+    [ClassDataSource<FbsApiFactory>]
+    public required FbsApiFactory Factory { get; init; }
 
-    public BookingUpdateTests()
-    {
-        _client = _factory.CreateClientFor(Users.Booker);
-    }
+    private HttpClient _client = null!;
 
-    public void Dispose()
+    [Before(Test)]
+    public void CreateClient()
     {
-        _client.Dispose();
-        _factory.Dispose();
+        _client = Factory.CreateClientFor(Users.Booker);
     }
 
     /// <summary>Midnight (Singapore time) a number of days from now.</summary>
@@ -42,7 +41,7 @@ public class BookingUpdateTests : IDisposable
             EndDateTime = end,
             UserPhone = userPhone,
         };
-        await _factory.AddBookingAsync(booking);
+        await Factory.AddBookingAsync(booking);
         return booking;
     }
 
@@ -84,50 +83,41 @@ public class BookingUpdateTests : IDisposable
             .ToList();
     }
 
-    private static async Task AssertStatusAsync(HttpStatusCode expected, HttpResponseMessage response)
-    {
-        Assert.True(
-            response.StatusCode == expected,
-            $"Expected {expected} but got {response.StatusCode}: {await response.Content.ReadAsStringAsync()}"
-        );
-    }
-
-    [Fact]
+    [Test]
     public async Task Moves_a_booking_to_a_free_slot_and_tells_everyone_the_old_time()
     {
         var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
 
         var response = await UpdateAsync(_client, booking.Id, Midnight(11).AddHours(14), Midnight(11).AddHours(16));
 
-        await AssertStatusAsync(HttpStatusCode.Created, response);
-        Assert.Equal((Midnight(11).AddHours(14), Midnight(11).AddHours(16)), await TimesAsync(booking.Id));
+        await Assert.That(response).HasStatus(HttpStatusCode.Created);
+        await Assert.That(await TimesAsync(booking.Id)).IsEqualTo((Midnight(11).AddHours(14), Midnight(11).AddHours(16)));
 
         foreach (var calendarId in new[] { FakeGoogle.MainCalendar, FakeGoogle.CarbonCopyCalendar })
         {
-            var @event = Assert.Single(_factory.Google.Events(calendarId));
-            Assert.Equal(
-                Midnight(11).AddHours(14),
-                DateTimeOffset.Parse(@event["start"]!["dateTime"]!.GetValue<string>())
-            );
+            var @event = await Assert.That(Factory.Google.Events(calendarId)).HasSingleItem();
+            await Assert
+                .That(DateTimeOffset.Parse(@event["start"]!["dateTime"]!.GetValue<string>()))
+                .IsEqualTo(Midnight(11).AddHours(14));
         }
 
-        var messages = await _factory.Telegram.WaitForMessagesAsync(3);
-        Assert.Equal(3, messages.Count);
-        Assert.All(messages, m => Assert.Contains("Previously", m.Text));
+        var messages = await Factory.Telegram.WaitForMessagesAsync(3);
+        await Assert.That(messages).Count().IsEqualTo(3);
+        await Assert.That(messages).All().Satisfy(m => m.Text, text => text.Contains("Previously"));
     }
 
-    [Fact]
+    [Test]
     public async Task A_booking_can_move_into_its_own_slot()
     {
         var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
 
         var response = await UpdateAsync(_client, booking.Id, Midnight(10).AddHours(9), Midnight(10).AddHours(11));
 
-        await AssertStatusAsync(HttpStatusCode.Created, response);
-        Assert.Equal((Midnight(10).AddHours(9), Midnight(10).AddHours(11)), await TimesAsync(booking.Id));
+        await Assert.That(response).HasStatus(HttpStatusCode.Created);
+        await Assert.That(await TimesAsync(booking.Id)).IsEqualTo((Midnight(10).AddHours(9), Midnight(10).AddHours(11)));
     }
 
-    [Fact]
+    [Test]
     public async Task Moving_onto_another_booking_is_rejected()
     {
         var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
@@ -136,45 +126,45 @@ public class BookingUpdateTests : IDisposable
 
         var response = await UpdateAsync(_client, booking.Id, Midnight(10).AddHours(9), Midnight(10).AddHours(13));
 
-        await AssertStatusAsync(HttpStatusCode.BadRequest, response);
-        var reason = Assert.Single(await ReasonsAsync(response));
-        Assert.Contains(other.Id.ToString(), reason);
-        Assert.Equal((Midnight(10).AddHours(8), Midnight(10).AddHours(10)), await TimesAsync(booking.Id));
+        await Assert.That(response).HasStatus(HttpStatusCode.BadRequest);
+        var reason = await Assert.That(await ReasonsAsync(response)).HasSingleItem();
+        await Assert.That(reason).Contains(other.Id.ToString());
+        await Assert.That(await TimesAsync(booking.Id)).IsEqualTo((Midnight(10).AddHours(8), Midnight(10).AddHours(10)));
         await Task.Delay(200);
-        Assert.Empty(_factory.Telegram.Messages);
+        await Assert.That(Factory.Telegram.Messages).IsEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task Invalid_time_slots_are_rejected()
     {
         var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
 
         var past = await UpdateAsync(_client, booking.Id, Midnight(-1).AddHours(8), Midnight(-1).AddHours(10));
-        await AssertStatusAsync(HttpStatusCode.BadRequest, past);
-        Assert.Contains("Start Date Time must be in the future", await ReasonsAsync(past));
+        await Assert.That(past).HasStatus(HttpStatusCode.BadRequest);
+        await Assert.That(await ReasonsAsync(past)).Contains("Start Date Time must be in the future");
 
         var unaligned = await UpdateAsync(_client, booking.Id, Midnight(10).AddHours(8).AddMinutes(15), Midnight(10).AddHours(10));
-        await AssertStatusAsync(HttpStatusCode.BadRequest, unaligned);
-        Assert.Contains("Duration must be in 30 minute intervals", await ReasonsAsync(unaligned));
+        await Assert.That(unaligned).HasStatus(HttpStatusCode.BadRequest);
+        await Assert.That(await ReasonsAsync(unaligned)).Contains("Duration must be in 30 minute intervals");
 
         var backwards = await UpdateAsync(_client, booking.Id, Midnight(10).AddHours(10), Midnight(10).AddHours(8));
-        await AssertStatusAsync(HttpStatusCode.BadRequest, backwards);
-        Assert.Contains("End time must be after start time", await ReasonsAsync(backwards));
+        await Assert.That(backwards).HasStatus(HttpStatusCode.BadRequest);
+        await Assert.That(await ReasonsAsync(backwards)).Contains("End time must be after start time");
 
         var onlyStart = await UpdateAsync(_client, booking.Id, Midnight(10).AddHours(9), null);
-        await AssertStatusAsync(HttpStatusCode.BadRequest, onlyStart);
+        await Assert.That(onlyStart).HasStatus(HttpStatusCode.BadRequest);
 
-        Assert.Equal((Midnight(10).AddHours(8), Midnight(10).AddHours(10)), await TimesAsync(booking.Id));
+        await Assert.That(await TimesAsync(booking.Id)).IsEqualTo((Midnight(10).AddHours(8), Midnight(10).AddHours(10)));
     }
 
-    [Fact]
+    [Test]
     public async Task A_booking_that_is_over_cannot_be_moved_but_its_details_can_still_change()
     {
         var booking = await AddBookingAsync("Field", Midnight(-2).AddHours(8), Midnight(-2).AddHours(10));
 
         var move = await UpdateAsync(_client, booking.Id, Midnight(10).AddHours(8), Midnight(10).AddHours(10));
-        await AssertStatusAsync(HttpStatusCode.BadRequest, move);
-        Assert.Contains("This booking is over, so its time can no longer be changed", await ReasonsAsync(move));
+        await Assert.That(move).HasStatus(HttpStatusCode.BadRequest);
+        await Assert.That(await ReasonsAsync(move)).Contains("This booking is over, so its time can no longer be changed");
 
         var details = await UpdateAsync(
             _client,
@@ -183,51 +173,51 @@ public class BookingUpdateTests : IDisposable
             booking.EndDateTime,
             conduct: "Renamed"
         );
-        await AssertStatusAsync(HttpStatusCode.Created, details);
-        Assert.Equal((booking.StartDateTime!.Value, booking.EndDateTime!.Value), await TimesAsync(booking.Id));
+        await Assert.That(details).HasStatus(HttpStatusCode.Created);
+        await Assert.That(await TimesAsync(booking.Id)).IsEqualTo((booking.StartDateTime!.Value, booking.EndDateTime!.Value));
     }
 
-    [Fact]
+    [Test]
     public async Task Leaving_out_the_times_keeps_the_time_slot()
     {
         var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
 
         var response = await UpdateAsync(_client, booking.Id, null, null, conduct: "Renamed");
 
-        await AssertStatusAsync(HttpStatusCode.Created, response);
-        Assert.Equal((Midnight(10).AddHours(8), Midnight(10).AddHours(10)), await TimesAsync(booking.Id));
-        var messages = await _factory.Telegram.WaitForMessagesAsync(3);
-        Assert.All(messages, m => Assert.DoesNotContain("Previously", m.Text));
+        await Assert.That(response).HasStatus(HttpStatusCode.Created);
+        await Assert.That(await TimesAsync(booking.Id)).IsEqualTo((Midnight(10).AddHours(8), Midnight(10).AddHours(10)));
+        var messages = await Factory.Telegram.WaitForMessagesAsync(3);
+        await Assert.That(messages).All().Satisfy(m => m.Text, text => text.DoesNotContain("Previously"));
     }
 
-    [Fact]
+    [Test]
     public async Task Someone_in_the_same_unit_can_move_a_booking()
     {
         var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
-        using var sameUnit = _factory.CreateClientFor(Users.SameUnit);
+        using var sameUnit = Factory.CreateClientFor(Users.SameUnit);
 
         var response = await UpdateAsync(sameUnit, booking.Id, Midnight(10).AddHours(12), Midnight(10).AddHours(14));
 
-        await AssertStatusAsync(HttpStatusCode.Created, response);
+        await Assert.That(response).HasStatus(HttpStatusCode.Created);
     }
 
-    [Fact]
+    [Test]
     public async Task Other_units_cannot_update_a_booking()
     {
         var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
-        using var otherUnit = _factory.CreateClientFor(Users.OtherUnit);
+        using var otherUnit = Factory.CreateClientFor(Users.OtherUnit);
 
         var response = await UpdateAsync(otherUnit, booking.Id, Midnight(10).AddHours(12), Midnight(10).AddHours(14));
 
-        await AssertStatusAsync(HttpStatusCode.Forbidden, response);
-        Assert.Equal((Midnight(10).AddHours(8), Midnight(10).AddHours(10)), await TimesAsync(booking.Id));
+        await Assert.That(response).HasStatus(HttpStatusCode.Forbidden);
+        await Assert.That(await TimesAsync(booking.Id)).IsEqualTo((Midnight(10).AddHours(8), Midnight(10).AddHours(10)));
     }
 
-    [Fact]
+    [Test]
     public async Task Updating_a_missing_booking_is_not_found()
     {
         var response = await UpdateAsync(_client, Guid.NewGuid(), null, null);
 
-        await AssertStatusAsync(HttpStatusCode.NotFound, response);
+        await Assert.That(response).HasStatus(HttpStatusCode.NotFound);
     }
 }

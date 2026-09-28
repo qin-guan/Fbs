@@ -2,14 +2,18 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Fbs.WebApi.Entities;
+using Fbs.WebApi.Tests.Data;
 using Fbs.WebApi.Tests.Fakes;
+using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public class BookingDeleteTests : IAsyncLifetime
+public class BookingDeleteTests
 {
-    private readonly FbsApiFactory _factory = new();
-    private readonly HttpClient _client;
+    [ClassDataSource<FbsApiFactory>]
+    public required FbsApiFactory Factory { get; init; }
+
+    private HttpClient _client = null!;
     private readonly Booking _booking = new()
     {
         Id = Guid.NewGuid(),
@@ -20,97 +24,83 @@ public class BookingDeleteTests : IAsyncLifetime
         UserPhone = Users.Booker,
     };
 
-    public BookingDeleteTests()
+    [Before(Test)]
+    public async Task AddBookingAsync()
     {
-        _client = _factory.CreateClientFor(Users.Booker);
-    }
-
-    public Task InitializeAsync() => _factory.AddBookingAsync(_booking);
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        _factory.Dispose();
-        return Task.CompletedTask;
+        _client = Factory.CreateClientFor(Users.Booker);
+        await Factory.AddBookingAsync(_booking);
     }
 
     private Task<HttpResponseMessage> DeleteAsync() => _client.DeleteAsync($"/Booking/{_booking.Id}");
 
-    private static async Task AssertStatusAsync(HttpStatusCode expected, HttpResponseMessage response)
-    {
-        Assert.True(
-            response.StatusCode == expected,
-            $"Expected {expected} but got {response.StatusCode}: {await response.Content.ReadAsStringAsync()}"
-        );
-    }
-
     private async Task AssertBookingIsGoneAsync()
     {
-        Assert.Empty(_factory.Google.Events(FakeGoogle.MainCalendar));
-        Assert.Empty(_factory.Google.Events(FakeGoogle.CarbonCopyCalendar));
+        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).IsEmpty();
+        await Assert.That(Factory.Google.Events(FakeGoogle.CarbonCopyCalendar)).IsEmpty();
 
         var bookings = await _client.GetFromJsonAsync<List<JsonElement>>("/Booking");
-        Assert.Empty(bookings!);
+        await Assert.That(bookings!).IsEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task Removes_the_booking_and_notifies_subscribers()
     {
         var response = await DeleteAsync();
 
-        await AssertStatusAsync(HttpStatusCode.NoContent, response);
+        await Assert.That(response).HasStatus(HttpStatusCode.NoContent);
         await AssertBookingIsGoneAsync();
 
         // The booker, their unit and the "All" group; not other units
-        var messages = await _factory.Telegram.WaitForMessagesAsync(3);
-        Assert.Equal([1001, 1002, 1003], messages.Select(m => m.ChatId).Order());
-        Assert.All(messages, m => Assert.Contains("CANCELLED", m.Text));
-        Assert.All(messages, m => Assert.Contains(_booking.Id.ToString(), m.Text));
+        var messages = await Factory.Telegram.WaitForMessagesAsync(3);
+        await Assert.That(messages.Select(m => m.ChatId)).IsEquivalentTo([1001L, 1002L, 1003L]);
+        await Assert.That(messages).All().Satisfy(m => m.Text, text => text.Contains("CANCELLED"));
+        await Assert.That(messages).All().Satisfy(m => m.Text, text => text.Contains(_booking.Id.ToString()));
     }
 
-    [Fact]
+    [Test]
     public async Task Succeeds_when_the_carbon_copy_event_was_already_removed()
     {
         // The carbon copy calendar accepts manual changes, so its event may already be gone
-        _factory.Google.RemoveEvent(FakeGoogle.CarbonCopyCalendar, _booking.Id);
+        Factory.Google.RemoveEvent(FakeGoogle.CarbonCopyCalendar, _booking.Id);
 
         var response = await DeleteAsync();
 
-        await AssertStatusAsync(HttpStatusCode.NoContent, response);
+        await Assert.That(response).HasStatus(HttpStatusCode.NoContent);
         await AssertBookingIsGoneAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task Succeeds_when_a_notification_cannot_be_delivered()
     {
-        _factory.Telegram.BlockedChatIds.Add(1003);
+        Factory.Telegram.BlockedChatIds.Add(1003);
 
         var response = await DeleteAsync();
 
-        await AssertStatusAsync(HttpStatusCode.NoContent, response);
+        await Assert.That(response).HasStatus(HttpStatusCode.NoContent);
         await AssertBookingIsGoneAsync();
     }
 
-    [Theory]
-    [InlineData("/Booking/{id}")]
-    [InlineData("/Admin/Bookings/{id}")]
+    [Test]
+    [Arguments("/Booking/{id}")]
+    [Arguments("/Admin/Bookings/{id}")]
     public async Task Is_documented_as_having_no_response_body(string path)
     {
         // The generated web app client decodes whatever the spec says, so it must match the 204 sent
         var spec = JsonDocument.Parse(await _client.GetStringAsync("/openapi/v1.json"));
         var responses = spec.RootElement.GetProperty("paths").GetProperty(path).GetProperty("delete").GetProperty("responses");
+        var statusCodes = responses.EnumerateObject().Select(r => r.Name).ToList();
 
-        Assert.True(responses.TryGetProperty("204", out var noContent), responses.ToString());
-        Assert.False(noContent.TryGetProperty("content", out _), responses.ToString());
-        Assert.False(responses.TryGetProperty("200", out _), responses.ToString());
+        await Assert.That(statusCodes).Contains("204");
+        await Assert.That(statusCodes).DoesNotContain("200");
+        await Assert.That(responses.GetProperty("204").EnumerateObject().Select(p => p.Name)).DoesNotContain("content");
     }
 
-    [Fact]
+    [Test]
     public async Task Returns_not_found_for_an_unknown_booking()
     {
         var response = await _client.DeleteAsync($"/Booking/{Guid.NewGuid()}");
 
-        await AssertStatusAsync(HttpStatusCode.NotFound, response);
-        Assert.Single(_factory.Google.Events(FakeGoogle.MainCalendar));
+        await Assert.That(response).HasStatus(HttpStatusCode.NotFound);
+        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).HasSingleItem();
     }
 }
