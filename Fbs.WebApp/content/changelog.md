@@ -9,6 +9,10 @@
 - Anyone in the same unit can cancel each other's bookings
 - The POC for a new booking defaults to you
 
+#### What's fixed
+
+- Dragging the handle at the bottom of a selected time slot resizes it again
+
 ### 02/06/2025
 
 #### What's fixed

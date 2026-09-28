@@ -37,7 +37,7 @@
     "typescript": "^5.9.3",
     "valibot": "^1.1.0",
     "vue": "^3.5.22",
-    "vue-cal": "5.0.1-rc.31",
+    "vue-cal": "5.0.1-rc.46",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
