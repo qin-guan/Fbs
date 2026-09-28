@@ -1,27 +1,37 @@
 <script setup lang="ts">
-const { visible: sidebarVisible } = useSidebar()
+defineProps<{
+  title?: string
+}>()
 </script>
 
 <template>
-  <div class="flex items-center px-1 h-12 border-b-1 border-gray-300 gap-3">
-    <div
-      class="flex lg:hidden"
-    >
-      <Button
-        variant="text"
-        @click="sidebarVisible = true"
-      >
-        <template #icon>
-          <Icon
-            name="i-lucide-menu"
-            class="text-black"
-          />
-        </template>
-      </Button>
-    </div>
+  <UDashboardNavbar
+    :title="title"
+    :ui="{ right: 'gap-2', left: 'min-w-0 flex-1' }"
+  >
+    <template #leading>
+      <UDashboardSidebarCollapse />
+    </template>
 
-    <div class="lg:ml-3 w-full">
-      <slot name="content" />
-    </div>
-  </div>
+    <template
+      v-if="$slots.title"
+      #title
+    >
+      <slot name="title" />
+    </template>
+
+    <template
+      v-if="$slots.trailing"
+      #trailing
+    >
+      <slot name="trailing" />
+    </template>
+
+    <template
+      v-if="$slots.right"
+      #right
+    >
+      <slot name="right" />
+    </template>
+  </UDashboardNavbar>
 </template>

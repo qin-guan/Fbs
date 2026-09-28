@@ -25,6 +25,15 @@ export function createFastEndpointsProblemDetailsFromDiscriminatorValue(parseNod
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FbsWebApiDtosBookingSlot}
+ */
+// @ts-ignore
+export function createFbsWebApiDtosBookingSlotFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoFbsWebApiDtosBookingSlot;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {FbsWebApiDtosBookingWithUser}
  */
 // @ts-ignore
@@ -52,6 +61,15 @@ export function createFbsWebApiDtosTimeSlotFromDiscriminatorValue(parseNode: Par
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FbsWebApiEndpointsAdminBookingsPutRequest}
+ */
+// @ts-ignore
+export function createFbsWebApiEndpointsAdminBookingsPutRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoFbsWebApiEndpointsAdminBookingsPutRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {FbsWebApiEndpointsAuthLoginPostRequest}
  */
 // @ts-ignore
@@ -66,6 +84,15 @@ export function createFbsWebApiEndpointsAuthLoginPostRequestFromDiscriminatorVal
 // @ts-ignore
 export function createFbsWebApiEndpointsAuthVerifyPostRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoFbsWebApiEndpointsAuthVerifyPostRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FbsWebApiEndpointsBookingBatchPostRequest}
+ */
+// @ts-ignore
+export function createFbsWebApiEndpointsBookingBatchPostRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoFbsWebApiEndpointsBookingBatchPostRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -164,6 +191,18 @@ export function deserializeIntoFastEndpointsProblemDetails_Error(fastEndpointsPr
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
+export function deserializeIntoFbsWebApiDtosBookingSlot(fbsWebApiDtosBookingSlot: Partial<FbsWebApiDtosBookingSlot> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "endDateTime": n => { fbsWebApiDtosBookingSlot.endDateTime = n.getDateValue(); },
+        "facilityName": n => { fbsWebApiDtosBookingSlot.facilityName = n.getStringValue(); },
+        "startDateTime": n => { fbsWebApiDtosBookingSlot.startDateTime = n.getDateValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
 export function deserializeIntoFbsWebApiDtosBookingWithUser(fbsWebApiDtosBookingWithUser: Partial<FbsWebApiDtosBookingWithUser> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "conduct": n => { fbsWebApiDtosBookingWithUser.conduct = n.getStringValue(); },
@@ -186,6 +225,7 @@ export function deserializeIntoFbsWebApiDtosFacility(fbsWebApiDtosFacility: Part
     return {
         "group": n => { fbsWebApiDtosFacility.group = n.getStringValue(); },
         "name": n => { fbsWebApiDtosFacility.name = n.getStringValue(); },
+        "scope": n => { fbsWebApiDtosFacility.scope = n.getCollectionOfPrimitiveValues<string>(); },
     }
 }
 /**
@@ -198,6 +238,19 @@ export function deserializeIntoFbsWebApiDtosTimeSlot(fbsWebApiDtosTimeSlot: Part
         "booking": n => { fbsWebApiDtosTimeSlot.booking = n.getObjectValue<FbsWebApiDtosBookingWithUser>(createFbsWebApiDtosBookingWithUserFromDiscriminatorValue); },
         "endDateTime": n => { fbsWebApiDtosTimeSlot.endDateTime = n.getDateValue(); },
         "startDateTime": n => { fbsWebApiDtosTimeSlot.startDateTime = n.getDateValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFbsWebApiEndpointsAdminBookingsPutRequest(fbsWebApiEndpointsAdminBookingsPutRequest: Partial<FbsWebApiEndpointsAdminBookingsPutRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "conduct": n => { fbsWebApiEndpointsAdminBookingsPutRequest.conduct = n.getStringValue(); },
+        "description": n => { fbsWebApiEndpointsAdminBookingsPutRequest.description = n.getStringValue(); },
+        "pocName": n => { fbsWebApiEndpointsAdminBookingsPutRequest.pocName = n.getStringValue(); },
+        "pocPhone": n => { fbsWebApiEndpointsAdminBookingsPutRequest.pocPhone = n.getStringValue(); },
     }
 }
 /**
@@ -219,6 +272,20 @@ export function deserializeIntoFbsWebApiEndpointsAuthVerifyPostRequest(fbsWebApi
     return {
         "code": n => { fbsWebApiEndpointsAuthVerifyPostRequest.code = n.getStringValue(); },
         "phone": n => { fbsWebApiEndpointsAuthVerifyPostRequest.phone = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFbsWebApiEndpointsBookingBatchPostRequest(fbsWebApiEndpointsBookingBatchPostRequest: Partial<FbsWebApiEndpointsBookingBatchPostRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "conduct": n => { fbsWebApiEndpointsBookingBatchPostRequest.conduct = n.getStringValue(); },
+        "description": n => { fbsWebApiEndpointsBookingBatchPostRequest.description = n.getStringValue(); },
+        "pocName": n => { fbsWebApiEndpointsBookingBatchPostRequest.pocName = n.getStringValue(); },
+        "pocPhone": n => { fbsWebApiEndpointsBookingBatchPostRequest.pocPhone = n.getStringValue(); },
+        "slots": n => { fbsWebApiEndpointsBookingBatchPostRequest.slots = n.getCollectionOfObjectValues<FbsWebApiDtosBookingSlot>(createFbsWebApiDtosBookingSlotFromDiscriminatorValue); },
     }
 }
 /**
@@ -289,6 +356,7 @@ export function deserializeIntoFbsWebApiEntitiesNominalRoll(fbsWebApiEntitiesNom
 export function deserializeIntoFbsWebApiEntitiesUser(fbsWebApiEntitiesUser: Partial<FbsWebApiEntitiesUser> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         ...deserializeIntoFbsWebApiRepositoryEntity(fbsWebApiEntitiesUser),
+        "isAdmin": n => { fbsWebApiEntitiesUser.isAdmin = n.getBooleanValue(); },
         "name": n => { fbsWebApiEntitiesUser.name = n.getStringValue(); },
         "notificationGroup": n => { fbsWebApiEntitiesUser.notificationGroup = n.getStringValue(); },
         "phone": n => { fbsWebApiEntitiesUser.phone = n.getStringValue(); },
@@ -371,6 +439,20 @@ export interface FastEndpointsProblemDetails_Error extends Parsable {
      */
     severity?: string | null;
 }
+export interface FbsWebApiDtosBookingSlot extends Parsable {
+    /**
+     * The endDateTime property
+     */
+    endDateTime?: Date | null;
+    /**
+     * The facilityName property
+     */
+    facilityName?: string | null;
+    /**
+     * The startDateTime property
+     */
+    startDateTime?: Date | null;
+}
 export interface FbsWebApiDtosBookingWithUser extends Parsable {
     /**
      * The conduct property
@@ -418,6 +500,10 @@ export interface FbsWebApiDtosFacility extends Parsable {
      * The name property
      */
     name?: string | null;
+    /**
+     * The scope property
+     */
+    scope?: string[] | null;
 }
 export interface FbsWebApiDtosTimeSlot extends Parsable {
     /**
@@ -432,6 +518,24 @@ export interface FbsWebApiDtosTimeSlot extends Parsable {
      * The startDateTime property
      */
     startDateTime?: Date | null;
+}
+export interface FbsWebApiEndpointsAdminBookingsPutRequest extends Parsable {
+    /**
+     * The conduct property
+     */
+    conduct?: string | null;
+    /**
+     * The description property
+     */
+    description?: string | null;
+    /**
+     * The pocName property
+     */
+    pocName?: string | null;
+    /**
+     * The pocPhone property
+     */
+    pocPhone?: string | null;
 }
 export interface FbsWebApiEndpointsAuthLoginPostRequest extends Parsable {
     /**
@@ -448,6 +552,28 @@ export interface FbsWebApiEndpointsAuthVerifyPostRequest extends Parsable {
      * The phone property
      */
     phone?: string | null;
+}
+export interface FbsWebApiEndpointsBookingBatchPostRequest extends Parsable {
+    /**
+     * The conduct property
+     */
+    conduct?: string | null;
+    /**
+     * The description property
+     */
+    description?: string | null;
+    /**
+     * The pocName property
+     */
+    pocName?: string | null;
+    /**
+     * The pocPhone property
+     */
+    pocPhone?: string | null;
+    /**
+     * The slots property
+     */
+    slots?: FbsWebApiDtosBookingSlot[] | null;
 }
 export interface FbsWebApiEndpointsBookingByIdPostRequest extends Parsable {
     /**
@@ -559,6 +685,10 @@ export interface FbsWebApiEntitiesUser extends AdditionalDataHolder, FbsWebApiRe
      */
     additionalData?: Record<string, unknown>;
     /**
+     * The isAdmin property
+     */
+    isAdmin?: boolean | null;
+    /**
      * The name property
      */
     name?: string | null;
@@ -629,6 +759,18 @@ export function serializeFastEndpointsProblemDetails_Error(writer: Serialization
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
+export function serializeFbsWebApiDtosBookingSlot(writer: SerializationWriter, fbsWebApiDtosBookingSlot: Partial<FbsWebApiDtosBookingSlot> | undefined | null = {}) : void {
+    if (fbsWebApiDtosBookingSlot) {
+        writer.writeDateValue("endDateTime", fbsWebApiDtosBookingSlot.endDateTime);
+        writer.writeStringValue("facilityName", fbsWebApiDtosBookingSlot.facilityName);
+        writer.writeDateValue("startDateTime", fbsWebApiDtosBookingSlot.startDateTime);
+    }
+}
+/**
+ * Serializes information the current object
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
 export function serializeFbsWebApiDtosBookingWithUser(writer: SerializationWriter, fbsWebApiDtosBookingWithUser: Partial<FbsWebApiDtosBookingWithUser> | undefined | null = {}) : void {
     if (fbsWebApiDtosBookingWithUser) {
         writer.writeStringValue("conduct", fbsWebApiDtosBookingWithUser.conduct);
@@ -651,6 +793,7 @@ export function serializeFbsWebApiDtosFacility(writer: SerializationWriter, fbsW
     if (fbsWebApiDtosFacility) {
         writer.writeStringValue("group", fbsWebApiDtosFacility.group);
         writer.writeStringValue("name", fbsWebApiDtosFacility.name);
+        writer.writeCollectionOfPrimitiveValues<string>("scope", fbsWebApiDtosFacility.scope);
     }
 }
 /**
@@ -663,6 +806,19 @@ export function serializeFbsWebApiDtosTimeSlot(writer: SerializationWriter, fbsW
         writer.writeObjectValue<FbsWebApiDtosBookingWithUser>("booking", fbsWebApiDtosTimeSlot.booking, serializeFbsWebApiDtosBookingWithUser);
         writer.writeDateValue("endDateTime", fbsWebApiDtosTimeSlot.endDateTime);
         writer.writeDateValue("startDateTime", fbsWebApiDtosTimeSlot.startDateTime);
+    }
+}
+/**
+ * Serializes information the current object
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFbsWebApiEndpointsAdminBookingsPutRequest(writer: SerializationWriter, fbsWebApiEndpointsAdminBookingsPutRequest: Partial<FbsWebApiEndpointsAdminBookingsPutRequest> | undefined | null = {}) : void {
+    if (fbsWebApiEndpointsAdminBookingsPutRequest) {
+        writer.writeStringValue("conduct", fbsWebApiEndpointsAdminBookingsPutRequest.conduct);
+        writer.writeStringValue("description", fbsWebApiEndpointsAdminBookingsPutRequest.description);
+        writer.writeStringValue("pocName", fbsWebApiEndpointsAdminBookingsPutRequest.pocName);
+        writer.writeStringValue("pocPhone", fbsWebApiEndpointsAdminBookingsPutRequest.pocPhone);
     }
 }
 /**
@@ -684,6 +840,20 @@ export function serializeFbsWebApiEndpointsAuthVerifyPostRequest(writer: Seriali
     if (fbsWebApiEndpointsAuthVerifyPostRequest) {
         writer.writeStringValue("code", fbsWebApiEndpointsAuthVerifyPostRequest.code);
         writer.writeStringValue("phone", fbsWebApiEndpointsAuthVerifyPostRequest.phone);
+    }
+}
+/**
+ * Serializes information the current object
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFbsWebApiEndpointsBookingBatchPostRequest(writer: SerializationWriter, fbsWebApiEndpointsBookingBatchPostRequest: Partial<FbsWebApiEndpointsBookingBatchPostRequest> | undefined | null = {}) : void {
+    if (fbsWebApiEndpointsBookingBatchPostRequest) {
+        writer.writeStringValue("conduct", fbsWebApiEndpointsBookingBatchPostRequest.conduct);
+        writer.writeStringValue("description", fbsWebApiEndpointsBookingBatchPostRequest.description);
+        writer.writeStringValue("pocName", fbsWebApiEndpointsBookingBatchPostRequest.pocName);
+        writer.writeStringValue("pocPhone", fbsWebApiEndpointsBookingBatchPostRequest.pocPhone);
+        writer.writeCollectionOfObjectValues<FbsWebApiDtosBookingSlot>("slots", fbsWebApiEndpointsBookingBatchPostRequest.slots, serializeFbsWebApiDtosBookingSlot);
     }
 }
 /**
@@ -756,6 +926,7 @@ export function serializeFbsWebApiEntitiesNominalRoll(writer: SerializationWrite
 export function serializeFbsWebApiEntitiesUser(writer: SerializationWriter, fbsWebApiEntitiesUser: Partial<FbsWebApiEntitiesUser> | undefined | null = {}) : void {
     if (fbsWebApiEntitiesUser) {
         serializeFbsWebApiRepositoryEntity(writer, fbsWebApiEntitiesUser)
+        writer.writeBooleanValue("isAdmin", fbsWebApiEntitiesUser.isAdmin);
         writer.writeStringValue("name", fbsWebApiEntitiesUser.name);
         writer.writeStringValue("notificationGroup", fbsWebApiEntitiesUser.notificationGroup);
         writer.writeStringValue("phone", fbsWebApiEntitiesUser.phone);

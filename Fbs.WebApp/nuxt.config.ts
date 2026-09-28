@@ -1,28 +1,8 @@
-import tailwindcss from '@tailwindcss/vite'
-import _Aura from '@primeuix/themes/aura'
-import { definePreset } from '@primeuix/themes'
-
-const Aura = definePreset(_Aura, {
-  semantic: {
-    primary: {
-      50: '{orange.50}',
-      100: '{orange.100}',
-      200: '{orange.200}',
-      300: '{orange.300}',
-      400: '{orange.400}',
-      500: '{orange.500}',
-      600: '{orange.600}',
-      700: '{orange.700}',
-      800: '{orange.800}',
-      900: '{orange.900}',
-      950: '{orange.950}',
-    },
-  },
-})
-
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: [
+    // @nuxt/ui must come before @nuxt/content so its styled prose components are used
+    '@nuxt/ui',
     '@nuxt/content',
     '@nuxt/eslint',
     '@nuxt/fonts',
@@ -31,7 +11,6 @@ export default defineNuxtConfig({
     '@nuxt/scripts',
     '@nuxt/test-utils',
     '@vueuse/nuxt',
-    '@primevue/nuxt-module',
   ],
   ssr: false,
   devtools: { enabled: false },
@@ -42,7 +21,7 @@ export default defineNuxtConfig({
         {
           src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1586897931312395',
           crossorigin: 'anonymous',
-          async: true
+          async: true,
         },
         {
           innerHTML: `
@@ -58,7 +37,7 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/main.css', 'driver.js/dist/driver.css'],
+  css: ['driver.js/dist/driver.css', '~/assets/css/main.css'],
 
   content: {
     experimental: { sqliteConnector: 'native' },
@@ -68,6 +47,7 @@ export default defineNuxtConfig({
     ui: {
       colors: {
         primary: 'orange',
+        neutral: 'zinc',
       },
     },
   },
@@ -78,12 +58,6 @@ export default defineNuxtConfig({
     },
   },
   compatibilityDate: '2024-11-01',
-
-  vite: {
-    plugins: [
-      tailwindcss(),
-    ],
-  },
 
   eslint: {
     config: {
@@ -97,14 +71,39 @@ export default defineNuxtConfig({
     ],
   },
 
-  primevue: {
-    options: {
-      theme: {
-        options: {
-          darkModeSelector: 'none',
-        },
-        preset: Aura,
-      },
+  icon: {
+    clientBundle: {
+      // Bundle icons used in the app, plus the ones Nuxt UI components use internally,
+      // so they render without a round trip to the Iconify API.
+      scan: true,
+      icons: [
+        'lucide:arrow-right',
+        'lucide:arrow-up-right',
+        'lucide:check',
+        'lucide:chevron-down',
+        'lucide:chevron-left',
+        'lucide:chevron-right',
+        'lucide:chevrons-left',
+        'lucide:chevrons-right',
+        'lucide:circle-alert',
+        'lucide:circle-check',
+        'lucide:circle-x',
+        'lucide:ellipsis',
+        'lucide:hash',
+        'lucide:info',
+        'lucide:loader-circle',
+        'lucide:menu',
+        'lucide:minus',
+        'lucide:monitor',
+        'lucide:moon',
+        'lucide:panel-left-close',
+        'lucide:panel-left-open',
+        'lucide:plus',
+        'lucide:search',
+        'lucide:sun',
+        'lucide:triangle-alert',
+        'lucide:x',
+      ],
     },
   },
 })

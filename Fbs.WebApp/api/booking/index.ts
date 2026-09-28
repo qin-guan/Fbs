@@ -4,6 +4,8 @@
 // @ts-ignore
 import { createFastEndpointsProblemDetailsFromDiscriminatorValue, createFbsWebApiDtosBookingWithUserFromDiscriminatorValue, createFbsWebApiEntitiesBookingFromDiscriminatorValue, serializeFbsWebApiEndpointsBookingPostRequest, serializeFbsWebApiEntitiesBooking, type FastEndpointsProblemDetails, type FbsWebApiDtosBookingWithUser, type FbsWebApiEndpointsBookingPostRequest, type FbsWebApiEntitiesBooking } from '../models/index.js';
 // @ts-ignore
+import { BatchRequestBuilderRequestsMetadata, type BatchRequestBuilder } from './batch/index.js';
+// @ts-ignore
 import { BookingItemRequestBuilderRequestsMetadata, type BookingItemRequestBuilder } from './item/index.js';
 // @ts-ignore
 import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata, type Parsable, type ParsableFactory, type RequestConfiguration, type RequestInformation, type RequestsMetadata } from '@microsoft/kiota-abstractions';
@@ -12,6 +14,10 @@ import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type 
  * Builds and executes requests for operations under /Booking
  */
 export interface BookingRequestBuilder extends BaseRequestBuilder<BookingRequestBuilder> {
+    /**
+     * The Batch property
+     */
+    get batch(): BatchRequestBuilder;
     /**
      * Gets an item from the ApiSdk.Booking.item collection
      * @param id Unique identifier of the item
@@ -53,6 +59,9 @@ export const BookingRequestBuilderNavigationMetadata: Record<Exclude<keyof Booki
     byId: {
         requestsMetadata: BookingItemRequestBuilderRequestsMetadata,
         pathParametersMappings: ["id"],
+    },
+    batch: {
+        requestsMetadata: BatchRequestBuilderRequestsMetadata,
     },
 };
 /**

@@ -3,44 +3,55 @@ const { data: me } = useMe()
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <header class="mx-auto h-12 flex justify-between items-center container px-3">
-      <div>
-        <NuxtLink to="/">3SIB Facility Bookings</NuxtLink>
-      </div>
-
-      <div>
-        <Button
-          v-slot="slotProps"
-          as-child
-          link
+  <div class="min-h-svh flex flex-col bg-default">
+    <header class="sticky top-0 z-10 border-b border-default bg-default/75 backdrop-blur">
+      <UContainer class="h-(--ui-header-height) flex items-center justify-between gap-3">
+        <NuxtLink
+          to="/"
+          class="flex items-center gap-2.5 font-semibold text-highlighted"
         >
-          <NuxtLink
+          <img
+            src="/images/logo.png"
+            alt="3SIB crest"
+            width="32"
+            height="26"
+            class="h-7 w-auto"
+          >
+          <span>3SIB Facility Bookings</span>
+        </NuxtLink>
+
+        <div class="flex items-center gap-1.5">
+          <UColorModeButton />
+
+          <UButton
             v-if="me?.phone"
             to="/booking"
-            :class="slotProps.class"
-          >
-            Dashboard
-          </NuxtLink>
-
-          <NuxtLink
+            label="Dashboard"
+            trailing-icon="i-lucide-arrow-right"
+          />
+          <UButton
             v-else
             to="/auth/login"
-            :class="slotProps.class"
-          >
-            Login
-          </NuxtLink>
-        </Button>
-      </div>
+            label="Login"
+            color="neutral"
+            variant="outline"
+          />
+        </div>
+      </UContainer>
     </header>
 
-    <main class="flex flex-col flex-1 container mx-auto p-3">
-      <LazyMessage
+    <main class="flex flex-col flex-1">
+      <UContainer
         v-if="$growthbook.isOn('banner')"
-        severity="warn"
+        class="pt-4"
       >
-        {{ $growthbook.getFeatureValue('banner', "This should not be here!") }}
-      </LazyMessage>
+        <UAlert
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-triangle-alert"
+          :title="$growthbook.getFeatureValue('banner', 'This should not be here!')"
+        />
+      </UContainer>
 
       <div class="flex flex-1">
         <slot />

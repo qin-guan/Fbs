@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import type { FbsWebApiEndpointsBookingBatchPostRequest } from '~/api/models'
 
 export function useBookings() {
   return useQuery({
@@ -20,6 +21,18 @@ export function useCreateBookingMutation() {
   return useMutation({
     mutationFn: $api.booking.post,
     onSuccess() {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    },
+  })
+}
+
+export function useCreateBookingBatchMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: FbsWebApiEndpointsBookingBatchPostRequest) => $api.booking.batch.post(body),
+    // A rejected batch usually means someone else booked first, so refresh either way
+    onSettled() {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
     },
   })

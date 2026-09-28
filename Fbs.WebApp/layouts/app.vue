@@ -9,11 +9,9 @@ whenever(error, async () => {
 </script>
 
 <template>
-  <div class="h-full flex card">
+  <UDashboardGroup unit="rem">
     <AppSidebar />
 
-    <div class="flex-1">
-      <slot />
-    </div>
-  </div>
+    <slot />
+  </UDashboardGroup>
 </template>

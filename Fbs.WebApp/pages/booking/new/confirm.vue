@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { FormResolverOptions } from '@primevue/forms/form'
-import { useQuery } from '@tanstack/vue-query'
-import type { FastEndpointsProblemDetails } from '~/api/models'
+import type { FormError, FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
+import type { FastEndpointsProblemDetails, FbsWebApiEntitiesBooking } from '~/api/models'
+import type { BookingSlot } from '~/composables/booking-slots'
 
 definePageMeta({
   layout: 'app',
@@ -11,9 +11,10 @@ const { $driver } = useNuxtApp()
 const onboarded = useLocalStorage<boolean>('new-confirm-onboarded', false)
 
 const router = useRouter()
-const { data: nominalRoll, isPending: nominalRollIsPending } = useNominalRollMapping()
-const nominalRollMiniSearch = useNominalRollMiniSearch()
-const { mutate: createMutate, isPending: createIsPending } = useCreateBookingMutation()
+const { df, tf } = useFormatter()
+const basket = useBookingBasket()
+const { data: bookings } = useBookings()
+const { mutate: createMutate, isPending: createIsPending } = useCreateBookingBatchMutation()
 
 const route = useRoute()
 const toast = useToast()
@@ -41,305 +42,380 @@ onMounted(() => {
   }
 })
 
-const { data: prefilledData, error: prefilledDataError } = useQuery({
-  queryKey: ['bookings', 'new', route.query],
-  queryFn: () => {
-    if (!route.query['start-date'] || !route.query['end-date'] || !route.query['facility-name']) {
-      throw new Error('Missing required query parameters')
-    }
+// A single slot arrives in the URL; several come from the booking list
+const querySlot = computed<BookingSlot | undefined>(() => {
+  const query = route.query
+  if (!query['start-date'] || !query['end-date'] || !query['facility-name']) return undefined
 
-    return {
-      startDateTime: new Date(route.query['start-date'] as string),
-      endDateTime: new Date(route.query['end-date'] as string),
-      facilityName: route.query['facility-name'] as string,
-      originalQuery: route.query['original-query'] as string,
-    }
-  },
+  return {
+    id: 'query',
+    facilityName: query['facility-name'] as string,
+    start: new Date(query['start-date'] as string),
+    end: new Date(query['end-date'] as string),
+  }
+})
+const fromList = computed(() => !querySlot.value)
+const slots = computed(() => querySlot.value ? [querySlot.value] : basket.slots.value)
+const originalQuery = computed(() => (route.query['original-query'] as string | undefined) ?? '')
+
+const clashes = computed(() => findClashes(slots.value, bookings.value))
+const serverErrors = ref<Record<number, string>>({})
+const problemCount = computed(() => slots.value.filter((_, i) => clashes.value[i] || serverErrors.value[i]).length)
+const created = ref<FbsWebApiEntitiesBooking[]>([])
+let errorToastId: string | number | undefined
+
+watch(slots, () => {
+  serverErrors.value = {}
 })
 
-const filteredItemsPhone = ref<string[]>([])
-const filteredItemsName = computed(() => {
-  return filteredItemsPhone.value.map(i => nominalRoll.value[i])
+const state = reactive({
+  conduct: '',
+  pocName: '',
+  pocPhone: '',
+  description: '',
 })
 
-function searchItems(event) {
-  filteredItemsPhone.value = nominalRollMiniSearch.value?.search(event.query).map(e => e.id) ?? []
+function optionSelect({ phone }: { phone: string }) {
+  state.pocPhone = phone.slice(2)
 }
 
-function optionSelect(form, { value }) {
-  if (!nominalRoll.value) return
-  form.pocPhone.value = Object.entries(nominalRoll.value).find(e => e[1] == value)?.[0].slice(2) ?? ''
+function removeSlot(index: number) {
+  const slot = slots.value[index]
+  if (slot && fromList.value) basket.remove([slot.id])
 }
 
-function resolver({ values }: FormResolverOptions) {
-  const errors: Record<string, unknown> = {}
-
-  if (values.conduct?.length === 0) {
-    errors.conduct = [{ message: 'Conduct name is required.' }]
-  }
-
-  if (values.pocName?.length === 0) {
-    errors.pocName = [{ message: 'POC Rank and Name is required.' }]
-  }
-
-  if (values.pocPhone?.length === 0) {
-    errors.pocPhone = [{ message: 'POC Phone is required.' }]
-  }
-
-  if (values.pocPhone?.length !== 8) {
-    errors.pocPhone = [{ message: 'POC Phone is not valid.' }]
-  }
-
-  return { errors }
+function removeProblemSlots() {
+  basket.remove(slots.value.filter((_, i) => clashes.value[i] || serverErrors.value[i]).map(s => s.id))
 }
 
-function onFormSubmit({ valid, states }) {
-  if (!valid || !prefilledData.value) return
+function validate(values: typeof state): FormError[] {
+  const errors: FormError[] = []
+
+  if (!values.conduct) {
+    errors.push({ name: 'conduct', message: 'Conduct name is required.' })
+  }
+
+  if (!values.pocName) {
+    errors.push({ name: 'pocName', message: 'POC Rank and Name is required.' })
+  }
+
+  if (!values.pocPhone) {
+    errors.push({ name: 'pocPhone', message: 'POC Phone is required.' })
+  }
+  else if (values.pocPhone.length !== 8) {
+    errors.push({ name: 'pocPhone', message: 'POC Phone is not valid.' })
+  }
+
+  return errors
+}
+
+function onFormError(event: FormErrorEvent) {
+  const id = event.errors[0]?.id
+  if (id) {
+    // Inputs are disabled while the form submits; focus once they are re-enabled
+    setTimeout(() => document.getElementById(id)?.focus())
+  }
+}
+
+function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
+  const submitted = slots.value
+  if (!submitted.length || problemCount.value) return
+
+  if (errorToastId !== undefined) {
+    toast.remove(errorToastId)
+    errorToastId = undefined
+  }
 
   createMutate({
-    conduct: states.conduct.value,
-    pocName: states.pocName.value,
-    pocPhone: '65' + states.pocPhone.value,
-    description: states.description.value,
-    startDateTime: prefilledData.value.startDateTime,
-    endDateTime: prefilledData.value.endDateTime,
-    facilityName: prefilledData.value.facilityName,
+    conduct: data.conduct,
+    pocName: data.pocName,
+    pocPhone: '65' + data.pocPhone,
+    description: data.description,
+    slots: submitted.map(slot => ({
+      facilityName: slot.facilityName,
+      startDateTime: slot.start,
+      endDateTime: slot.end,
+    })),
   }, {
     onError(error) {
       const e = error as FastEndpointsProblemDetails
-      toast.add({
-        severity: 'error',
-        summary: 'Error creating booking',
-        detail: e.errors?.find(a => a)?.reason,
-      })
+      const slotErrors: Record<number, string> = {}
+      const otherErrors: string[] = []
+      for (const err of e.errors ?? []) {
+        const match = /^slots\[(\d+)\]/i.exec(err.name ?? '')
+        if (match) {
+          slotErrors[Number(match[1])] ??= err.reason ?? 'This slot can\'t be booked'
+        }
+        else if (err.reason) {
+          otherErrors.push(err.reason)
+        }
+      }
+      serverErrors.value = slotErrors
+
+      // The batch is all or nothing, so nothing was booked
+      const count = Object.keys(slotErrors).length
+      errorToastId = toast.add({
+        title: submitted.length > 1 && count ? 'Nothing was booked' : 'Error creating booking',
+        description: submitted.length > 1 && count
+          ? `${count} ${count === 1 ? 'slot' : 'slots'} can't be booked. Remove ${count === 1 ? 'it' : 'them'} and try again.`
+          : Object.values(slotErrors)[0] ?? otherErrors[0],
+        color: 'error',
+        icon: 'i-lucide-circle-x',
+      }).id
     },
-    async onSuccess(data) {
+    async onSuccess(result) {
+      if (fromList.value) {
+        basket.remove(submitted.map(s => s.id))
+      }
+
+      const first = result?.[0]
+      if (result?.length === 1 && first?.id) {
+        toast.add({
+          title: 'Booking created successfully',
+          description: `Booking for ${first.facilityName} has been created.`,
+          color: 'success',
+          icon: 'i-lucide-circle-check',
+        })
+        await router.push(`/booking/${first.id}`)
+        return
+      }
+
+      created.value = result ?? []
       toast.add({
-        severity: 'success',
-        summary: 'Booking created successfully',
-        detail: `Booking for ${prefilledData.value.facilityName} has been created.`,
+        title: `${created.value.length} bookings created`,
+        color: 'success',
+        icon: 'i-lucide-circle-check',
       })
-      if (data?.id) {
-        await router.push(`/booking/${data?.id}`)
-      }
-      else {
-        await router.push(`/booking`)
-      }
     },
   })
 }
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <Toast />
-
-    <AppNavbar>
-      <template #content>
-        <div class="flex justify-between items-center mr-3">
-          <Breadcrumb
-            :pt="{ root: { style: 'padding: 0;' } }"
-            :model="[
-              { label: 'Bookings', route: '/booking' },
-              { label: 'New', route: `/booking/new${prefilledData?.originalQuery}`, id: 'crumbs' },
-              { label: prefilledData?.facilityName },
+  <UDashboardPanel id="booking-confirm">
+    <template #header>
+      <AppNavbar>
+        <template #title>
+          <UBreadcrumb
+            :items="[
+              { label: 'Bookings', to: '/booking' },
+              { label: 'New', to: `/booking/new${originalQuery}`, slot: 'crumbs' },
+              { label: querySlot?.facilityName ?? (created.length ? 'Done' : `${slots.length} ${slots.length === 1 ? 'slot' : 'slots'}`) },
             ]"
           >
-            <template #item="{ item, props }">
-              <NuxtLink
-                v-if="item.route"
-                v-slot="{ href, navigate }"
-                :to="item.route"
-                custom
-              >
-                <a
-                  :id="item.id"
-                  :href="href"
-                  v-bind="props.action"
-                  @click="navigate"
-                >
-                  {{ item.label }}
-                </a>
-              </NuxtLink>
-              <a
-                v-else
-                :href="item.url"
-                :target="item.target"
-                v-bind="props.action"
-              >
-                {{ item.label }}
-              </a>
+            <template #crumbs-label="{ item }">
+              <span id="crumbs">{{ item.label }}</span>
             </template>
-          </Breadcrumb>
-        </div>
-      </template>
-    </AppNavbar>
+          </UBreadcrumb>
+        </template>
+      </AppNavbar>
+    </template>
 
-    <div
-      v-if="prefilledData"
-      class="p-3 flex flex-col flex-1"
-    >
-      <h2 class="text-lg font-semibold">
-        Confirm your booking
-      </h2>
-
-      <Form
-        v-slot="$form"
-        :resolver="resolver"
-        class="flex flex-1 flex-col gap-3 mt-5"
-        :initial-values="{
-          conduct: '',
-          pocName: '',
-          pocPhone: '',
-          description: '',
-        }"
-        @submit="onFormSubmit"
-      >
-        <div class="flex">
-          <Message
-            severity="secondary"
-            size="small"
-          >
-            {{ prefilledData?.facilityName }}
-          </Message>
-        </div>
-
-        <Inplace active>
-          <template #display>
-            <h4 class="text-xl w-full">
-              {{ $form.conduct.value || 'Conduct name' }}
-            </h4>
-          </template>
-
-          <template #content="{ closeCallback }">
-            <span class="inline-flex items-center gap-2">
-              <InputText
-                :value="$form.conduct?.value ?? ''"
-                name="conduct"
-                placeholder="Conduct name"
-                size="large"
-                autofocus
-              />
-              <Button
-                text
-                size="large"
-                severity="danger"
-                @click="closeCallback"
+    <template #body>
+      <div class="w-full lg:max-w-3xl mx-auto">
+        <UPageCard
+          v-if="created.length"
+          :title="`${created.length} bookings created`"
+          description="A Telegram message is sent for each booking, as usual."
+          icon="i-lucide-circle-check"
+          variant="subtle"
+          :ui="{ leadingIcon: 'text-success' }"
+        >
+          <ul class="divide-y divide-default">
+            <li
+              v-for="booking in created"
+              :key="booking.id ?? undefined"
+            >
+              <ULink
+                :to="`/booking/${booking.id}`"
+                class="flex items-center justify-between gap-3 py-2 hover:text-highlighted"
               >
-                <template #icon>
-                  <Icon name="i-lucide-check" />
-                </template>
-              </Button>
-            </span>
-          </template>
-        </Inplace>
+                <span class="min-w-0">
+                  <span class="block truncate text-sm font-medium text-highlighted">{{ booking.facilityName }}</span>
+                  <span
+                    v-if="booking.startDateTime && booking.endDateTime"
+                    class="block truncate text-xs text-muted"
+                  >
+                    {{ describeSlot({ start: booking.startDateTime, end: booking.endDateTime }, df, tf).date }}
+                    · {{ describeSlot({ start: booking.startDateTime, end: booking.endDateTime }, df, tf).time }}
+                  </span>
+                </span>
+                <UIcon
+                  name="i-lucide-chevron-right"
+                  class="size-4 shrink-0 text-dimmed"
+                />
+              </ULink>
+            </li>
+          </ul>
 
-        <Message
-          v-if="$form.conduct?.invalid"
-          severity="error"
-          size="small"
-          variant="simple"
-        >
-          {{ $form.conduct.error?.message }}
-        </Message>
-
-        <FloatLabel
-          id="poc-rank-and-name"
-          variant="on"
-        >
-          <AutoComplete
-            name="pocName"
-            :virtual-scroller-options="{ itemSize: 38 }"
-            dropdown
-            :suggestions="filteredItemsName"
-            fluid
-            @complete="searchItems"
-            @option-select="optionSelect($form, $event)"
-          />
-          <label for="pocName">POC Rank and Name</label>
-        </FloatLabel>
-
-        <Message
-          v-if="$form.pocName?.invalid"
-          severity="error"
-          size="small"
-          variant="simple"
-        >
-          {{ $form.pocName.error?.message }}
-        </Message>
-
-        <FormField
-          v-slot="$field"
-          name="pocPhone"
-        >
-          <FloatLabel variant="on">
-            <InputText
-              v-model="$field.value"
-              type="tel"
-              fluid
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <UButton
+              to="/booking"
+              label="View all bookings"
+              color="neutral"
+              variant="outline"
+              class="justify-center"
             />
-            <label for="pocPhone">POC Phone</label>
-          </FloatLabel>
+            <UButton
+              :to="`/booking/new${originalQuery}`"
+              label="Make another booking"
+              icon="i-lucide-calendar-plus"
+              class="justify-center"
+            />
+          </div>
+        </UPageCard>
 
-          <Message
-            v-if="$field.invalid"
-            severity="error"
-            size="small"
-            variant="simple"
-          >
-            {{ $field.error?.message }}
-          </Message>
-        </FormField>
-
-        <FloatLabel variant="on">
-          <Textarea
-            name="description"
-            fluid
-          />
-          <label for="description">Description</label>
-        </FloatLabel>
-
-        <FloatLabel variant="on">
-          <DatePicker
-            v-model="prefilledData.startDateTime"
-            name="start"
-            disabled
-            fluid
-            show-time
-          />
-
-          <label for="start">Start</label>
-        </FloatLabel>
-
-        <FloatLabel variant="on">
-          <DatePicker
-            v-model="prefilledData.endDateTime"
-            name="end"
-            disabled
-            fluid
-            show-time
-          />
-
-          <label for="end">End</label>
-        </FloatLabel>
-
-        <Message
-          size="small"
-          class="my-3"
-        >
-          <strong>
-            Be gracious to others!
-          </strong>
-          <p>Book only what you need, and leave the facility in a better condition than you found it!</p>
-          <p>Thank you :3</p>
-        </Message>
-
-        <Button
-          :loading="createIsPending"
-          label="Confirm"
-          type="submit"
+        <UAlert
+          v-else-if="!slots.length"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-circle-alert"
+          title="No time slot selected"
+          description="Pick a facility and time slot on the timeline first."
+          :actions="[{ label: 'Back to new booking', to: `/booking/new${originalQuery}`, color: 'error', variant: 'outline' }]"
         />
-      </Form>
-    </div>
-  </div>
+
+        <UForm
+          v-else
+          :state="state"
+          :validate="validate"
+          :validate-on="['input']"
+          class="flex flex-col gap-6"
+          @submit="onFormSubmit"
+          @error="onFormError"
+        >
+          <h2 class="text-lg font-semibold text-highlighted">
+            {{ slots.length === 1 ? 'Confirm your booking' : `Confirm ${slots.length} bookings` }}
+          </h2>
+
+          <UPageCard
+            variant="subtle"
+            :ui="{ container: 'gap-y-3' }"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold text-highlighted">
+                {{ slots.length === 1 ? 'Slot' : `${slots.length} slots` }}
+              </h3>
+              <UButton
+                v-if="fromList"
+                :to="`/booking/new${originalQuery}`"
+                label="Add more"
+                icon="i-lucide-plus"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+              />
+            </div>
+
+            <BookingSlotList
+              :slots="slots"
+              :clashes="clashes"
+              :errors="serverErrors"
+              :removable="fromList"
+              class="max-h-80 overflow-y-auto"
+              @remove="removeSlot"
+            />
+
+            <UAlert
+              v-if="problemCount"
+              color="error"
+              variant="subtle"
+              icon="i-lucide-circle-alert"
+              :title="slots.length === 1
+                ? 'This slot can\'t be booked.'
+                : `${problemCount} ${problemCount === 1 ? 'slot' : 'slots'} can't be booked.`"
+              :description="slots.length === 1
+                ? 'Go back and pick another time.'
+                : 'Bookings are made all at once, so remove the slots that clash to continue.'"
+              :actions="fromList
+                ? [{ label: problemCount === 1 ? 'Remove it' : 'Remove them', color: 'error', variant: 'outline', onClick: removeProblemSlots }]
+                : [{ label: 'Pick another time', to: `/booking/new${originalQuery}`, color: 'error', variant: 'outline' }]"
+            />
+          </UPageCard>
+
+          <UPageCard variant="subtle">
+            <div class="grid gap-5 sm:grid-cols-2">
+              <UFormField
+                label="Conduct"
+                name="conduct"
+                class="sm:col-span-2"
+              >
+                <UInput
+                  v-model="state.conduct"
+                  placeholder="Conduct name"
+                  size="xl"
+                  autofocus
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField
+                id="poc-rank-and-name"
+                label="POC Rank and Name"
+                name="pocName"
+              >
+                <PocNameInput
+                  v-model="state.pocName"
+                  placeholder="Search the nominal roll"
+                  @select="optionSelect"
+                />
+              </UFormField>
+
+              <UFormField
+                label="POC Phone"
+                name="pocPhone"
+              >
+                <UInput
+                  v-model="state.pocPhone"
+                  type="tel"
+                  inputmode="numeric"
+                  placeholder="8888 9999"
+                  class="w-full"
+                  :ui="{ base: 'ps-12', leading: 'pointer-events-none' }"
+                >
+                  <template #leading>
+                    <span class="text-sm text-muted">+65</span>
+                  </template>
+                </UInput>
+              </UFormField>
+
+              <UFormField
+                label="Description"
+                name="description"
+                class="sm:col-span-2"
+              >
+                <UTextarea
+                  v-model="state.description"
+                  :rows="3"
+                  autoresize
+                  class="w-full"
+                />
+              </UFormField>
+            </div>
+          </UPageCard>
+
+          <UAlert
+            color="primary"
+            variant="subtle"
+            icon="i-lucide-heart-handshake"
+            title="Be gracious to others!"
+          >
+            <template #description>
+              <p>Book only what you need, and leave the facility in a better condition than you found it!</p>
+              <p>Thank you :3</p>
+            </template>
+          </UAlert>
+
+          <UButton
+            :loading="createIsPending"
+            :label="slots.length === 1 ? 'Confirm' : `Confirm ${slots.length} bookings`"
+            :disabled="!!problemCount"
+            type="submit"
+            size="lg"
+            block
+          />
+        </UForm>
+      </div>
+    </template>
+  </UDashboardPanel>
 </template>
