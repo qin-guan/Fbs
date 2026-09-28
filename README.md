@@ -40,3 +40,8 @@ Start the AppHost project:
 ```powershell
 dotnet run --project ./Fbs.AppHost/Fbs.AppHost.csproj;
 ```
+
+## Deploying
+
+Login cookies are encrypted with ASP.NET Core Data Protection keys. The Docker image keeps them in `/app/keys`, so
+mount a persistent volume at that path or every redeploy generates new keys and logs everyone out.

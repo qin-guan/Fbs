@@ -12,6 +12,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
@@ -53,6 +54,18 @@ builder
         }
     )
     .AddAuthorization();
+
+// Auth cookies are encrypted with the Data Protection key ring, which by default lives inside the
+// container and is regenerated on every redeploy, logging everyone out. Point this at a persistent
+// volume to keep sessions across deploys.
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    builder
+        .Services.AddDataProtection()
+        .SetApplicationName("Fbs.WebApi")
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
 
 builder
     .Services.AddHttpClient<TelegramBotClient>("tgwebhook")
