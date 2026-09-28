@@ -12,22 +12,18 @@ useSeoMeta({
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <AppNavbar>
-      <template #content>
-        <div class="flex justify-between items-center mr-3">
-          <div class="space-x-3 flex items-center">
-            <h2>FAQs</h2>
-          </div>
-        </div>
-      </template>
-    </AppNavbar>
+  <UDashboardPanel id="faqs">
+    <template #header>
+      <AppNavbar title="FAQs" />
+    </template>
 
-    <article class="prose-sm p-3">
-      <ContentRenderer
-        v-if="home"
-        :value="home"
-      />
-    </article>
-  </div>
+    <template #body>
+      <article class="w-full lg:max-w-3xl mx-auto">
+        <ContentRenderer
+          v-if="home"
+          :value="home"
+        />
+      </article>
+    </template>
+  </UDashboardPanel>
 </template>

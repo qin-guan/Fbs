@@ -20,7 +20,7 @@ const bind = computed({
 </script>
 
 <template>
-  <InputText
+  <UInput
     v-bind="$attrs"
     v-model="bind"
   />

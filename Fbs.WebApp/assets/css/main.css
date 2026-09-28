@@ -1,7 +1,81 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
+@import "@nuxt/ui";
 
 @theme {
-  --font-display: "Inter", "sans-serif";
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* driver.js onboarding popovers, themed with Nuxt UI tokens */
+.driver-popover {
+  background-color: var(--ui-bg);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  border-radius: calc(var(--ui-radius) * 2);
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.35);
+  font-family: var(--font-sans);
+}
+
+.driver-popover .driver-popover-title {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ui-text-highlighted);
+}
+
+.driver-popover .driver-popover-description {
+  font-family: var(--font-sans);
+  color: var(--ui-text-muted);
+}
+
+.driver-popover .driver-popover-progress-text {
+  color: var(--ui-text-dimmed);
+}
+
+.driver-popover .driver-popover-close-btn {
+  color: var(--ui-text-dimmed);
+}
+
+.driver-popover .driver-popover-close-btn:hover {
+  color: var(--ui-text-highlighted);
+}
+
+.driver-popover .driver-popover-footer button {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  text-shadow: none;
+  padding: 0.25rem 0.625rem;
+  border-radius: calc(var(--ui-radius) * 1.5);
+  border: 1px solid var(--ui-border-accented);
+  background-color: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+.driver-popover .driver-popover-footer button:hover {
+  background-color: var(--ui-bg-elevated);
+}
+
+.driver-popover .driver-popover-footer .driver-popover-next-btn {
+  border-color: var(--ui-primary);
+  background-color: var(--ui-primary);
+  color: var(--ui-text-inverted);
+}
+
+.driver-popover .driver-popover-footer .driver-popover-next-btn:hover {
+  background-color: color-mix(in oklab, var(--ui-primary) 85%, var(--ui-text-inverted));
+}
+
+.driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: var(--ui-bg);
+}
+
+.driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: var(--ui-bg);
+}
+
+.driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: var(--ui-bg);
+}
+
+.driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: var(--ui-bg);
+}

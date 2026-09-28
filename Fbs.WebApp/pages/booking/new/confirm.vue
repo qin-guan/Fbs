@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FormResolverOptions } from '@primevue/forms/form'
+import type { FormError, FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
 import { useQuery } from '@tanstack/vue-query'
 import type { FastEndpointsProblemDetails } from '~/api/models'
 
@@ -11,8 +11,7 @@ const { $driver } = useNuxtApp()
 const onboarded = useLocalStorage<boolean>('new-confirm-onboarded', false)
 
 const router = useRouter()
-const { data: nominalRoll, isPending: nominalRollIsPending } = useNominalRollMapping()
-const nominalRollMiniSearch = useNominalRollMiniSearch()
+const { df, tf } = useFormatter()
 const { mutate: createMutate, isPending: createIsPending } = useCreateBookingMutation()
 
 const route = useRoute()
@@ -43,6 +42,7 @@ onMounted(() => {
 
 const { data: prefilledData, error: prefilledDataError } = useQuery({
   queryKey: ['bookings', 'new', route.query],
+  retry: false,
   queryFn: () => {
     if (!route.query['start-date'] || !route.query['end-date'] || !route.query['facility-name']) {
       throw new Error('Missing required query parameters')
@@ -57,67 +57,75 @@ const { data: prefilledData, error: prefilledDataError } = useQuery({
   },
 })
 
-const filteredItemsPhone = ref<string[]>([])
-const filteredItemsName = computed(() => {
-  return filteredItemsPhone.value.map(i => nominalRoll.value[i])
+const state = reactive({
+  conduct: '',
+  pocName: '',
+  pocPhone: '',
+  description: '',
 })
 
-function searchItems(event) {
-  filteredItemsPhone.value = nominalRollMiniSearch.value?.search(event.query).map(e => e.id) ?? []
+function optionSelect({ phone }: { phone: string }) {
+  state.pocPhone = phone.slice(2)
 }
 
-function optionSelect(form, { value }) {
-  if (!nominalRoll.value) return
-  form.pocPhone.value = Object.entries(nominalRoll.value).find(e => e[1] == value)?.[0].slice(2) ?? ''
+function validate(values: typeof state): FormError[] {
+  const errors: FormError[] = []
+
+  if (!values.conduct) {
+    errors.push({ name: 'conduct', message: 'Conduct name is required.' })
+  }
+
+  if (!values.pocName) {
+    errors.push({ name: 'pocName', message: 'POC Rank and Name is required.' })
+  }
+
+  if (!values.pocPhone) {
+    errors.push({ name: 'pocPhone', message: 'POC Phone is required.' })
+  }
+  else if (values.pocPhone.length !== 8) {
+    errors.push({ name: 'pocPhone', message: 'POC Phone is not valid.' })
+  }
+
+  return errors
 }
 
-function resolver({ values }: FormResolverOptions) {
-  const errors: Record<string, unknown> = {}
-
-  if (values.conduct?.length === 0) {
-    errors.conduct = [{ message: 'Conduct name is required.' }]
+function onFormError(event: FormErrorEvent) {
+  const id = event.errors[0]?.id
+  if (id) {
+    // Inputs are disabled while the form submits; focus once they are re-enabled
+    setTimeout(() => document.getElementById(id)?.focus())
   }
-
-  if (values.pocName?.length === 0) {
-    errors.pocName = [{ message: 'POC Rank and Name is required.' }]
-  }
-
-  if (values.pocPhone?.length === 0) {
-    errors.pocPhone = [{ message: 'POC Phone is required.' }]
-  }
-
-  if (values.pocPhone?.length !== 8) {
-    errors.pocPhone = [{ message: 'POC Phone is not valid.' }]
-  }
-
-  return { errors }
 }
 
-function onFormSubmit({ valid, states }) {
-  if (!valid || !prefilledData.value) return
+function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
+  if (!prefilledData.value) return
+
+  const facilityName = prefilledData.value.facilityName
 
   createMutate({
-    conduct: states.conduct.value,
-    pocName: states.pocName.value,
-    pocPhone: '65' + states.pocPhone.value,
-    description: states.description.value,
+    conduct: data.conduct,
+    pocName: data.pocName,
+    pocPhone: '65' + data.pocPhone,
+    description: data.description,
     startDateTime: prefilledData.value.startDateTime,
     endDateTime: prefilledData.value.endDateTime,
-    facilityName: prefilledData.value.facilityName,
+    facilityName,
   }, {
     onError(error) {
       const e = error as FastEndpointsProblemDetails
       toast.add({
-        severity: 'error',
-        summary: 'Error creating booking',
-        detail: e.errors?.find(a => a)?.reason,
+        title: 'Error creating booking',
+        description: e.errors?.find(a => a)?.reason ?? undefined,
+        color: 'error',
+        icon: 'i-lucide-circle-x',
       })
     },
     async onSuccess(data) {
       toast.add({
-        severity: 'success',
-        summary: 'Booking created successfully',
-        detail: `Booking for ${prefilledData.value.facilityName} has been created.`,
+        title: 'Booking created successfully',
+        description: `Booking for ${facilityName} has been created.`,
+        color: 'success',
+        icon: 'i-lucide-circle-check',
       })
       if (data?.id) {
         await router.push(`/booking/${data?.id}`)
@@ -131,215 +139,168 @@ function onFormSubmit({ valid, states }) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <Toast />
-
-    <AppNavbar>
-      <template #content>
-        <div class="flex justify-between items-center mr-3">
-          <Breadcrumb
-            :pt="{ root: { style: 'padding: 0;' } }"
-            :model="[
-              { label: 'Bookings', route: '/booking' },
-              { label: 'New', route: `/booking/new${prefilledData?.originalQuery}`, id: 'crumbs' },
+  <UDashboardPanel id="booking-confirm">
+    <template #header>
+      <AppNavbar>
+        <template #title>
+          <UBreadcrumb
+            :items="[
+              { label: 'Bookings', to: '/booking' },
+              { label: 'New', to: `/booking/new${prefilledData?.originalQuery ?? ''}`, slot: 'crumbs' },
               { label: prefilledData?.facilityName },
             ]"
           >
-            <template #item="{ item, props }">
-              <NuxtLink
-                v-if="item.route"
-                v-slot="{ href, navigate }"
-                :to="item.route"
-                custom
-              >
-                <a
-                  :id="item.id"
-                  :href="href"
-                  v-bind="props.action"
-                  @click="navigate"
-                >
-                  {{ item.label }}
-                </a>
-              </NuxtLink>
-              <a
-                v-else
-                :href="item.url"
-                :target="item.target"
-                v-bind="props.action"
-              >
-                {{ item.label }}
-              </a>
+            <template #crumbs-label="{ item }">
+              <span id="crumbs">{{ item.label }}</span>
             </template>
-          </Breadcrumb>
-        </div>
-      </template>
-    </AppNavbar>
+          </UBreadcrumb>
+        </template>
+      </AppNavbar>
+    </template>
 
-    <div
-      v-if="prefilledData"
-      class="p-3 flex flex-col flex-1"
-    >
-      <h2 class="text-lg font-semibold">
-        Confirm your booking
-      </h2>
-
-      <Form
-        v-slot="$form"
-        :resolver="resolver"
-        class="flex flex-1 flex-col gap-3 mt-5"
-        :initial-values="{
-          conduct: '',
-          pocName: '',
-          pocPhone: '',
-          description: '',
-        }"
-        @submit="onFormSubmit"
-      >
-        <div class="flex">
-          <Message
-            severity="secondary"
-            size="small"
-          >
-            {{ prefilledData?.facilityName }}
-          </Message>
-        </div>
-
-        <Inplace active>
-          <template #display>
-            <h4 class="text-xl w-full">
-              {{ $form.conduct.value || 'Conduct name' }}
-            </h4>
-          </template>
-
-          <template #content="{ closeCallback }">
-            <span class="inline-flex items-center gap-2">
-              <InputText
-                :value="$form.conduct?.value ?? ''"
-                name="conduct"
-                placeholder="Conduct name"
-                size="large"
-                autofocus
-              />
-              <Button
-                text
-                size="large"
-                severity="danger"
-                @click="closeCallback"
-              >
-                <template #icon>
-                  <Icon name="i-lucide-check" />
-                </template>
-              </Button>
-            </span>
-          </template>
-        </Inplace>
-
-        <Message
-          v-if="$form.conduct?.invalid"
-          severity="error"
-          size="small"
-          variant="simple"
-        >
-          {{ $form.conduct.error?.message }}
-        </Message>
-
-        <FloatLabel
-          id="poc-rank-and-name"
-          variant="on"
-        >
-          <AutoComplete
-            name="pocName"
-            :virtual-scroller-options="{ itemSize: 38 }"
-            dropdown
-            :suggestions="filteredItemsName"
-            fluid
-            @complete="searchItems"
-            @option-select="optionSelect($form, $event)"
-          />
-          <label for="pocName">POC Rank and Name</label>
-        </FloatLabel>
-
-        <Message
-          v-if="$form.pocName?.invalid"
-          severity="error"
-          size="small"
-          variant="simple"
-        >
-          {{ $form.pocName.error?.message }}
-        </Message>
-
-        <FormField
-          v-slot="$field"
-          name="pocPhone"
-        >
-          <FloatLabel variant="on">
-            <InputText
-              v-model="$field.value"
-              type="tel"
-              fluid
-            />
-            <label for="pocPhone">POC Phone</label>
-          </FloatLabel>
-
-          <Message
-            v-if="$field.invalid"
-            severity="error"
-            size="small"
-            variant="simple"
-          >
-            {{ $field.error?.message }}
-          </Message>
-        </FormField>
-
-        <FloatLabel variant="on">
-          <Textarea
-            name="description"
-            fluid
-          />
-          <label for="description">Description</label>
-        </FloatLabel>
-
-        <FloatLabel variant="on">
-          <DatePicker
-            v-model="prefilledData.startDateTime"
-            name="start"
-            disabled
-            fluid
-            show-time
-          />
-
-          <label for="start">Start</label>
-        </FloatLabel>
-
-        <FloatLabel variant="on">
-          <DatePicker
-            v-model="prefilledData.endDateTime"
-            name="end"
-            disabled
-            fluid
-            show-time
-          />
-
-          <label for="end">End</label>
-        </FloatLabel>
-
-        <Message
-          size="small"
-          class="my-3"
-        >
-          <strong>
-            Be gracious to others!
-          </strong>
-          <p>Book only what you need, and leave the facility in a better condition than you found it!</p>
-          <p>Thank you :3</p>
-        </Message>
-
-        <Button
-          :loading="createIsPending"
-          label="Confirm"
-          type="submit"
+    <template #body>
+      <div class="w-full lg:max-w-3xl mx-auto">
+        <UAlert
+          v-if="prefilledDataError"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-circle-alert"
+          title="No time slot selected"
+          description="Pick a facility and time slot on the timeline first."
+          :actions="[{ label: 'Back to new booking', to: '/booking/new', color: 'error', variant: 'outline' }]"
         />
-      </Form>
-    </div>
-  </div>
+
+        <UForm
+          v-if="prefilledData"
+          :state="state"
+          :validate="validate"
+          :validate-on="['input']"
+          class="flex flex-col gap-6"
+          @submit="onFormSubmit"
+          @error="onFormError"
+        >
+          <div class="flex flex-col gap-3">
+            <h2 class="text-lg font-semibold text-highlighted">
+              Confirm your booking
+            </h2>
+
+            <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
+              <UBadge
+                :label="prefilledData.facilityName"
+                icon="i-lucide-map-pin"
+                color="neutral"
+                variant="subtle"
+              />
+              <span class="flex items-center gap-1.5">
+                <UIcon
+                  name="i-lucide-clock"
+                  class="size-4"
+                />
+                {{ df.format(prefilledData.startDateTime) }}, {{ tf.format(prefilledData.startDateTime) }} – {{ tf.format(prefilledData.endDateTime) }}
+              </span>
+            </div>
+          </div>
+
+          <UPageCard variant="subtle">
+            <div class="grid gap-5 sm:grid-cols-2">
+              <UFormField
+                label="Conduct"
+                name="conduct"
+                class="sm:col-span-2"
+              >
+                <UInput
+                  v-model="state.conduct"
+                  placeholder="Conduct name"
+                  size="xl"
+                  autofocus
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField
+                id="poc-rank-and-name"
+                label="POC Rank and Name"
+                name="pocName"
+              >
+                <PocNameInput
+                  v-model="state.pocName"
+                  placeholder="Search the nominal roll"
+                  @select="optionSelect"
+                />
+              </UFormField>
+
+              <UFormField
+                label="POC Phone"
+                name="pocPhone"
+              >
+                <UInput
+                  v-model="state.pocPhone"
+                  type="tel"
+                  inputmode="numeric"
+                  placeholder="8888 9999"
+                  class="w-full"
+                  :ui="{ base: 'ps-12', leading: 'pointer-events-none' }"
+                >
+                  <template #leading>
+                    <span class="text-sm text-muted">+65</span>
+                  </template>
+                </UInput>
+              </UFormField>
+
+              <UFormField
+                label="Description"
+                name="description"
+                class="sm:col-span-2"
+              >
+                <UTextarea
+                  v-model="state.description"
+                  :rows="3"
+                  autoresize
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField label="Start">
+                <UInput
+                  :model-value="`${df.format(prefilledData.startDateTime)}, ${tf.format(prefilledData.startDateTime)}`"
+                  icon="i-lucide-calendar"
+                  disabled
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField label="End">
+                <UInput
+                  :model-value="`${df.format(prefilledData.endDateTime)}, ${tf.format(prefilledData.endDateTime)}`"
+                  icon="i-lucide-calendar"
+                  disabled
+                  class="w-full"
+                />
+              </UFormField>
+            </div>
+          </UPageCard>
+
+          <UAlert
+            color="primary"
+            variant="subtle"
+            icon="i-lucide-heart-handshake"
+            title="Be gracious to others!"
+          >
+            <template #description>
+              <p>Book only what you need, and leave the facility in a better condition than you found it!</p>
+              <p>Thank you :3</p>
+            </template>
+          </UAlert>
+
+          <UButton
+            :loading="createIsPending"
+            label="Confirm"
+            type="submit"
+            size="lg"
+            block
+          />
+        </UForm>
+      </div>
+    </template>
+  </UDashboardPanel>
 </template>

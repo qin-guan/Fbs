@@ -5,20 +5,11 @@ useHead({
 </script>
 
 <template>
-  <Toast />
-  <NuxtRouteAnnouncer />
-  <NuxtLoadingIndicator />
-  <NuxtLayout>
-    <NuxtPage />
-  </NuxtLayout>
+  <UApp>
+    <NuxtRouteAnnouncer />
+    <NuxtLoadingIndicator color="var(--ui-primary)" />
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+  </UApp>
 </template>
-
-<style>
-#__nuxt {
-  height: 100vh;
-}
-
-body {
-  font-family: Inter, sans-serif;
-}
-</style>

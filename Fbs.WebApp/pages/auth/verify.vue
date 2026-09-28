@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { useToast } from 'primevue/usetoast'
-import type { FormSubmitEvent } from '@primevue/forms/form'
+import type { FormError } from '@nuxt/ui'
 import type { FastEndpointsProblemDetails } from '~/api/models'
 
 definePageMeta({
@@ -8,43 +7,61 @@ definePageMeta({
 })
 
 const router = useRouter()
-const otp = ref('')
+const state = reactive({
+  otp: [] as number[],
+})
+const otp = computed(() => state.otp.join(''))
 
 const toast = useToast()
 const phone = useRoute().query.phone as string
 const { mutate: mutateVerify, isPending: isPendingVerify } = useVerifyMutation()
 
-function resolver() {
-  const errors: Record<string, unknown> = {}
+const displayPhone = computed(() => {
+  const match = /^65(\d{4})(\d{4})$/.exec(phone ?? '')
+  return match ? `+65 ${match[1]} ${match[2]}` : phone
+})
 
-  if (otp.value.length === 0) {
-    errors.otp = [{ message: 'OTP must be 6 digits.' }]
+function validate(): FormError[] {
+  const errors: FormError[] = []
+
+  if (otp.value.length !== 6) {
+    errors.push({ name: 'otp', message: 'OTP must be 6 digits.' })
   }
 
-  return {
-    errors,
-  }
+  return errors
 }
 
-async function onFormSubmit({ valid }: FormSubmitEvent) {
-  if (!valid) {
-    toast.add({
-      severity: 'error',
-      summary: 'Form is invalid.',
-      life: 3000,
-    })
-    return
-  }
+function onFormError() {
+  toast.add({
+    title: 'Form is invalid.',
+    color: 'error',
+    icon: 'i-lucide-circle-x',
+    duration: 3000,
+  })
+}
 
+function onFormSubmit() {
   mutateVerify({ code: otp.value, phone }, {
     onError(error) {
       const e = error as FastEndpointsProblemDetails
       for (const error of e.errors ?? []) {
         toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: error.reason,
-          life: 3000,
+          title: 'Error',
+          description: error.reason ?? undefined,
+          color: 'error',
+          icon: 'i-lucide-circle-x',
+          duration: 3000,
+        })
+      }
+
+      // The API rejects a wrong or expired OTP with a bare 401
+      if (!e.errors?.length) {
+        toast.add({
+          title: 'Error',
+          description: 'The OTP is invalid or has expired.',
+          color: 'error',
+          icon: 'i-lucide-circle-x',
+          duration: 3000,
         })
       }
     },
@@ -56,67 +73,72 @@ async function onFormSubmit({ valid }: FormSubmitEvent) {
 </script>
 
 <template>
-  <div class="flex-2">
-    <div class="container mx-auto px-4 mt-6 max-w-md lg:mt-20">
-      <Form
-        v-slot="$form"
-        :resolver="resolver"
-        :initial-values="{ otp: '' }"
-        class="flex flex-col gap-4"
-        @submit="onFormSubmit"
-      >
-        <div class="flex flex-col gap-1">
-          <div class="my-6 flex flex-col items-start gap-3">
-            <h1 class="text-3xl font-semibold">
+  <div class="flex flex-1 justify-center px-4 py-10 lg:py-20">
+    <div class="w-full max-w-sm">
+      <UPageCard variant="subtle">
+        <div class="flex flex-col items-start gap-3">
+          <div class="space-y-1.5">
+            <h1 class="text-2xl font-semibold text-highlighted">
               Verify your OTP
             </h1>
-            <span>
+            <p class="text-sm text-muted">
               Enter the OTP sent to your Telegram account
-            </span>
-            <Chip :label="phone" />
+            </p>
           </div>
 
-          <Fluid>
-            <InputOtp
+          <UBadge
+            :label="displayPhone"
+            icon="i-lucide-smartphone"
+            color="neutral"
+            variant="subtle"
+            size="lg"
+          />
+        </div>
+
+        <UForm
+          :state="state"
+          :validate="validate"
+          :validate-on="['input']"
+          class="flex flex-col gap-4"
+          @submit="onFormSubmit"
+          @error="onFormError"
+        >
+          <UFormField name="otp">
+            <UPinInput
               id="otp"
-              v-model="otp"
-              name="otp"
+              v-model="state.otp"
               :length="6"
-              integer-only
+              type="number"
+              otp
+              autofocus
+              size="xl"
+              class="w-full justify-between"
               :disabled="isPendingVerify"
             />
+          </UFormField>
 
-            <Message
-              v-if="$form.otp?.invalid"
-              severity="error"
-              size="small"
-              variant="simple"
-            >
-              {{ $form.otp.error?.message }}
-            </Message>
+          <div class="mt-4 flex flex-col gap-3">
+            <UButton
+              type="submit"
+              label="Login"
+              size="lg"
+              :loading="isPendingVerify"
+              block
+            />
 
-            <div class="mt-10 space-y-3">
-              <Button
-                type="submit"
-                label="Login"
-              />
-
-              <Button
-                v-slot="slotProps"
-                as-child
-                severity="secondary"
-              >
-                <NuxtLink
-                  to="tg://resolve?domain=temasek_facility_booking_bot"
-                  :class="slotProps.class"
-                >
-                  Open Telegram
-                </NuxtLink>
-              </Button>
-            </div>
-          </Fluid>
-        </div>
-      </Form>
+            <UButton
+              to="tg://resolve?domain=temasek_facility_booking_bot"
+              external
+              icon="i-simple-icons-telegram"
+              label="Open Telegram"
+              color="neutral"
+              variant="subtle"
+              size="lg"
+              block
+            />
+          </div>
+        </UForm>
+      </UPageCard>
     </div>
   </div>
 </template>

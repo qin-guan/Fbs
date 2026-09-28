@@ -3,85 +3,53 @@ definePageMeta({
   layout: 'app',
 })
 
-const { data: me, isPending: meIsPending } = useMe()
+const { data: me } = useMe()
+
+const fields = computed(() => [
+  { label: 'Rank / Name', description: 'Your rank and name', value: me.value?.name },
+  { label: 'Phone', description: 'Your phone number (intl.)', value: me.value?.phone },
+  { label: 'Telegram ID', description: 'Your internal Telegram ID', value: me.value?.telegramChatId },
+  { label: 'Notification group', description: 'Subscribed notification group', value: me.value?.notificationGroup },
+])
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <AppNavbar>
-      <template #content>
-        <h2>Your profile</h2>
-      </template>
-    </AppNavbar>
+  <UDashboardPanel id="profile">
+    <template #header>
+      <AppNavbar title="Your profile" />
+    </template>
 
-    <div class="w-full lg:w-xl px-3 mx-auto divide-y-1 divide-gray-300">
-      <div class="py-3 flex justify-between items-center">
-        <span>
-          <span class="font-semibold">
-            Rank / Name
-          </span>
-          <br>
-          <span>
-            Your rank and name
-          </span>
-        </span>
-        <InputText
-          size="small"
-          :model-value="me?.name"
-          disabled
+    <template #body>
+      <div class="w-full lg:max-w-2xl mx-auto">
+        <UPageCard
+          title="Profile"
+          description="Your account details, as registered with the booking bot."
+          variant="naked"
+          class="mb-4"
         />
-      </div>
 
-      <div class="py-3 flex justify-between items-center">
-        <span>
-          <span class="font-semibold">
-            Phone
-          </span>
-          <br>
-          <span>
-            Your phone number (intl.)
-          </span>
-        </span>
-        <InputText
-          size="small"
-          :model-value="me?.phone"
-          disabled
-        />
-      </div>
+        <UPageCard variant="subtle">
+          <template
+            v-for="(field, index) in fields"
+            :key="field.label"
+          >
+            <USeparator v-if="index > 0" />
 
-      <div class="py-3 flex justify-between items-center">
-        <span>
-          <span class="font-semibold">
-            Telegram ID
-          </span>
-          <br>
-          <span>
-            Your internal Telegram ID
-          </span>
-        </span>
-        <InputText
-          size="small"
-          :model-value="me?.telegramChatId"
-          disabled
-        />
+            <UFormField
+              :label="field.label"
+              :description="field.description"
+              class="flex max-sm:flex-col justify-between sm:items-center gap-4"
+            >
+              <UInput
+                :model-value="field.value ?? ''"
+                :aria-label="field.label"
+                class="w-full sm:w-64"
+                disabled
+              />
+            </UFormField>
+          </template>
+        </UPageCard>
       </div>
-
-      <div class="py-3 flex justify-between items-center">
-        <span>
-          <span class="font-semibold">
-            Notification group
-          </span>
-          <br>
-          <span>
-            Subscribed notification group
-          </span>
-        </span>
-        <InputText
-          size="small"
-          :model-value="me?.notificationGroup"
-          disabled
-        />
-      </div>
-    </div>
-  </div>
+    </template>
+  </UDashboardPanel>
 </template>

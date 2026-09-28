@@ -1,247 +1,301 @@
 <script setup lang="ts">
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api'
+import { h } from 'vue'
+import { getLocalTimeZone, today, type CalendarDate } from '@internationalized/date'
+import type { TableColumn } from '@nuxt/ui'
+import type { Column, ColumnFiltersState, FilterFn, HeaderContext } from '@tanstack/vue-table'
+import type { FbsWebApiDtosBookingWithUser } from '~/api/models'
+import TableHeader from '~/components/table-header.vue'
 
 definePageMeta({
   layout: 'app',
 })
 
-const router = useRouter()
-const { height } = useWindowSize()
+type Booking = FbsWebApiDtosBookingWithUser
 
-const { Alt_n, slash } = useMagicKeys({
+const router = useRouter()
+const { df, tf } = useFormatter()
+
+const { data: facilities } = useFacilities()
+const { data: bookings, isPending: bookingsIsPending } = useBookings()
+
+// Keyboard shortcuts: alt+n for a new booking, / to focus the keyword search
+const activeElement = useActiveElement()
+const notUsingInput = computed(() => {
+  const el = activeElement.value
+  return !(el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable)
+})
+
+const keys = useMagicKeys({
   passive: false,
   onEventFired(e) {
-    if (e.key === '/') {
+    if (e.key === '/' && e.type === 'keydown' && notUsingInput.value) {
       e.preventDefault()
     }
   },
 })
 
-const searchVisible = ref(false)
-const tableHeight = computed(() => `${height.value - 48}px`)
-
-const { data: facilities, isPending: facilitiesIsPending } = useFacilities()
-const { data: bookings, isPending: bookingsIsPending } = useBookings()
-
-const defaultFilters = {
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  id: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  conduct: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  facilityName: { value: null, matchMode: FilterMatchMode.IN },
-  startDateTime: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.DATE_IS }] },
-  pocName: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  pocPhone: { value: null, matchMode: FilterMatchMode.CONTAINS },
-}
-
-const filters = ref(defaultFilters)
 const keywordSearchInput = useTemplateRef('keywordSearchInput')
 
-whenever(Alt_n, async () => {
+whenever(() => !!keys['Alt_KeyN']?.value, async () => {
   await router.push('/booking/new')
 })
 
-whenever(slash, async () => {
-  keywordSearchInput.value?.$el.focus()
+whenever(() => !!keys['slash']?.value && notUsingInput.value, () => {
+  keywordSearchInput.value?.inputRef?.focus()
 })
 
+// Filters
+const globalFilter = ref('')
+const columnFilters = ref<ColumnFiltersState>([])
+const columnSizing = ref<Record<string, number>>({})
+
+// UTable only re-computes its rows when table state changes, not when `data` does,
+// so hand it a fresh filter array once it has received newly (re)fetched bookings.
+watch(bookings, () => {
+  columnFilters.value = [...columnFilters.value]
+}, { flush: 'post' })
+
+const globalFilterFields = ['id', 'conduct', 'facilityName', 'pocName', 'pocPhone'] as const
+
+const facilityOptions = computed(() => facilities.value?.map(f => f.name).filter((n): n is string => !!n) ?? [])
+
+const facilityFilter = computed<string[]>({
+  get: () => (columnFilters.value.find(f => f.id === 'facilityName')?.value as string[] | undefined) ?? [],
+  set: value => setColumnFilter('facilityName', value.length ? value : undefined),
+})
+
+const startDateFilter = computed<CalendarDate | undefined>({
+  get: () => columnFilters.value.find(f => f.id === 'startDateTime')?.value as CalendarDate | undefined,
+  set: value => setColumnFilter('startDateTime', value),
+})
+
+const hasFilters = computed(() => !!globalFilter.value || columnFilters.value.length > 0)
+
+function setColumnFilter(id: string, value: unknown) {
+  const others = columnFilters.value.filter(f => f.id !== id)
+  columnFilters.value = value === undefined ? others : [...others, { id, value }]
+}
+
 function clearFilters() {
-  filters.value = defaultFilters
+  globalFilter.value = ''
+  columnFilters.value = []
+}
+
+const globalFilterFn: FilterFn<Booking> = (row, _columnId, value: string) => {
+  const query = value.toLowerCase()
+  return globalFilterFields.some(field => String(row.original[field] ?? '').toLowerCase().includes(query))
+}
+
+const facilityFilterFn: FilterFn<Booking> = (row, columnId, value: string[]) => {
+  return !value?.length || value.includes(row.getValue<string>(columnId))
+}
+
+const startDateFilterFn: FilterFn<Booking> = (row, columnId, value: CalendarDate) => {
+  const date = row.getValue<Date | undefined>(columnId)
+  if (!value || !date) return !value
+  return date.getFullYear() === value.year && date.getMonth() + 1 === value.month && date.getDate() === value.day
+}
+
+// Columns
+function durationInHours(booking: Booking) {
+  if (!booking.startDateTime || !booking.endDateTime) return undefined
+  return (booking.endDateTime.getTime() - booking.startDateTime.getTime()) / (1000 * 60 * 60)
+}
+
+// Once a column has been resized, pin its width and truncate overflowing text
+function sizedColumn(column: TableColumn<Booking>, label: string): TableColumn<Booking> {
+  const style = ({ column }: { column: Column<Booking> }): Record<string, string> => columnSizing.value[column.id]
+    ? { width: `${column.getSize()}px`, minWidth: `${column.getSize()}px`, maxWidth: `${column.getSize()}px` }
+    : {}
+
+  return Object.assign(column, {
+    header: ({ header }: HeaderContext<Booking, unknown>) => h(TableHeader, { header, label }),
+    meta: {
+      style: { th: style, td: style },
+      class: { td: ({ column }: { column: Column<Booking> }) => columnSizing.value[column.id] ? 'truncate' : '' },
+    },
+  })
+}
+
+const columns: TableColumn<Booking>[] = [
+  sizedColumn({ accessorKey: 'id', enableSorting: false }, 'ID'),
+  sizedColumn({ accessorKey: 'facilityName', filterFn: facilityFilterFn }, 'Facility'),
+  sizedColumn({ accessorKey: 'conduct' }, 'Conduct'),
+  sizedColumn({ id: 'duration', accessorFn: durationInHours, enableSorting: false }, 'Duration'),
+  sizedColumn({ accessorKey: 'startDateTime', sortingFn: 'datetime', filterFn: startDateFilterFn }, 'Start'),
+  sizedColumn({ id: 'poc', accessorFn: b => `${b.pocName} (${b.pocPhone})`, enableSorting: false }, 'POC'),
+]
+
+function onSelect(_: Event, row: { original: Booking }) {
+  if (row.original.id) {
+    router.push(`/booking/${row.original.id}`)
+  }
 }
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <AppNavbar>
-      <template #content>
-        <div class="flex justify-between items-center mr-3">
-          <div class="space-x-3 flex items-center">
-            <h2>Bookings</h2>
-            <Button
-              type="button"
-              label="Clear"
-              size="small"
-              variant="text"
-              @click="clearFilters"
-            >
-              <template #icon>
-                <Icon name="i-lucide-funnel-x" />
-              </template>
-            </Button>
-          </div>
-          <div class="flex flex-row-reverse md:flex-row items-center gap-3">
-            <Button
-              v-slot="slotProps"
-              size="small"
-              as-child
-            >
-              <NuxtLink
-                to="/booking/new"
-                :class="slotProps.class"
-              >
-                New
-                <Badge>
-                  alt-n
-                </Badge>
-              </NuxtLink>
-            </Button>
-
-            <Button
-              class="md:hidden!"
-              variant="text"
-              severity="secondary"
-              @click="searchVisible = true"
-            >
-              <template #icon>
-                <Icon name="i-lucide-search" />
-              </template>
-            </Button>
-
-            <IconField class="hidden md:flex">
-              <InputIcon>
-                <Icon name="i-lucide-search" />
-              </InputIcon>
-              <InputText
-                ref="keywordSearchInput"
-                v-model="filters['global'].value"
-                size="small"
-                placeholder="Keyword Search"
-              />
-              <InputIcon>
-                <Icon name="i-lucide-square-slash" />
-              </InputIcon>
-            </IconField>
-          </div>
-        </div>
-      </template>
-    </AppNavbar>
-
-    <Dialog
-      v-model:visible="searchVisible"
-      position="top"
-      :modal="true"
-      :draggable="false"
-      :pt="{ content: { class: 'p-0!' } }"
-    >
-      <template #header>
-        <IconField class="mr-5">
-          <InputIcon>
-            <Icon name="i-lucide-search" />
-          </InputIcon>
-          <InputText
-            v-model="filters['global'].value"
-            size="small"
-            placeholder="Keyword Search"
+  <UDashboardPanel id="bookings">
+    <template #header>
+      <AppNavbar title="Bookings">
+        <template #trailing>
+          <UBadge
+            v-if="bookings"
+            :label="bookings.length"
+            variant="subtle"
           />
-        </IconField>
-      </template>
-    </Dialog>
+        </template>
 
-    <DataTable
-      v-model:filters="filters"
-			striped-rows
-      show-gridlines
-      :value="bookings"
-      data-key="id"
-      filter-display="menu"
-      scrollable
-      :global-filter-fields="['id', 'conduct', 'facilityName', 'pocName', 'pocPhone']"
-      resizable-columns
-      column-resize-mode="expand"
-      removable-sort
-      sort-mode="multiple"
-      :scroll-height="tableHeight"
-      :virtual-scroller-options="{ itemSize: 50 }"
-      :loading="bookingsIsPending"
-    >
-      <template #empty>
-        No bookings found.
-      </template>
-
-      <Column
-        field="id"
-        header="ID"
-        style="height: 50px;"
-        body-class="truncate"
-      >
-        <template #body="slotProps">
-          <Button
-            v-slot="buttonSlotProps"
-            link
-            as-child
+        <template #right>
+          <UButton
+            to="/booking/new"
+            icon="i-lucide-plus"
+            label="New"
           >
-            <NuxtLink
-              style="margin: 0; padding: 0;"
-              :class="buttonSlotProps.class"
-              :to="`/booking/${slotProps.data.id}`"
-            >
-              {{ slotProps.data.id.substring(0, 8) }}
-            </NuxtLink>
-          </Button>
+            <template #trailing>
+              <span class="hidden sm:inline-flex items-center gap-0.5">
+                <UKbd
+                  value="alt"
+                  size="sm"
+                  class="bg-white/20 text-inverted ring-0"
+                />
+                <UKbd
+                  value="N"
+                  size="sm"
+                  class="bg-white/20 text-inverted ring-0"
+                />
+              </span>
+            </template>
+          </UButton>
         </template>
-      </Column>
-      <Column
-        field="facilityName"
-        header="Facility"
-        filter-field="facilityName"
-        style="height: 50px;"
-        :show-filter-match-modes="false"
-        body-class="truncate"
-      >
-        <template #filter="{ filterModel }">
-          <MultiSelect
-            v-model="filterModel.value"
-            filter
-            :options="facilities"
-            option-label="name"
-            option-value="name"
-            placeholder="Any"
+      </AppNavbar>
+    </template>
+
+    <template #body>
+      <div class="flex flex-wrap items-center gap-2">
+        <UInput
+          ref="keywordSearchInput"
+          v-model="globalFilter"
+          icon="i-lucide-search"
+          placeholder="Keyword Search"
+          aria-label="Keyword search"
+          class="w-full sm:w-72"
+        >
+          <template #trailing>
+            <UKbd
+              value="/"
+              class="hidden sm:inline-flex"
+            />
+          </template>
+        </UInput>
+
+        <USelectMenu
+          v-model="facilityFilter"
+          :items="facilityOptions"
+          multiple
+          icon="i-lucide-building-2"
+          placeholder="Any facility"
+          aria-label="Filter by facility"
+          class="min-w-0 flex-1 sm:w-56 sm:flex-none"
+        />
+
+        <UPopover>
+          <UButton
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-calendar"
+            :label="startDateFilter ? df.format(startDateFilter.toDate(getLocalTimeZone())) : 'Any date'"
+            aria-label="Filter by start date"
           />
-        </template>
-      </Column>
-      <Column
-        field="conduct"
-        header="Conduct"
-        style="height: 50px;"
-        body-class="truncate"
-      />
-      <Column
-        header="Duration"
-        style="height: 50px;"
-        body-class="truncate"
+
+          <template #content="{ close }">
+            <div class="p-2">
+              <UCalendar
+                v-model="startDateFilter"
+                @update:model-value="close"
+              />
+              <div class="flex justify-between gap-2 border-t border-default pt-2">
+                <UButton
+                  label="Today"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  @click="startDateFilter = today(getLocalTimeZone()); close()"
+                />
+                <UButton
+                  label="Clear"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  :disabled="!startDateFilter"
+                  @click="startDateFilter = undefined; close()"
+                />
+              </div>
+            </div>
+          </template>
+        </UPopover>
+
+        <UButton
+          type="button"
+          color="neutral"
+          variant="ghost"
+          icon="i-lucide-funnel-x"
+          aria-label="Clear filters"
+          :disabled="!hasFilters"
+          @click="clearFilters"
+        >
+          <span class="hidden sm:inline">Clear</span>
+        </UButton>
+      </div>
+
+      <UTable
+        v-model:global-filter="globalFilter"
+        v-model:column-filters="columnFilters"
+        v-model:column-sizing="columnSizing"
+        :data="bookings ?? []"
+        :columns="columns"
+        :loading="bookingsIsPending"
+        :global-filter-options="{ globalFilterFn }"
+        :column-sizing-options="{ enableColumnResizing: true, columnResizeMode: 'onChange' }"
+        :get-row-id="(row: Booking) => row.id ?? ''"
+        :virtualize="{ estimateSize: 53 }"
+        empty="No bookings found."
+        class="flex-1 min-h-0 rounded-lg border border-default"
+        :ui="{
+          base: 'border-separate border-spacing-0',
+          thead: 'sticky top-0 z-[1] bg-default/90 backdrop-blur',
+          th: 'relative border-b border-default',
+          td: 'border-b border-default',
+          separator: 'hidden',
+        }"
+        @select="onSelect"
       >
-        <template #body="slotProps">
-          <span>{{ (slotProps.data.endDateTime - slotProps.data.startDateTime) / (1000 * 60 * 60) }} hours</span>
+        <template #id-cell="{ row }">
+          <ULink
+            :to="`/booking/${row.original.id}`"
+            class="font-mono text-primary hover:underline"
+          >
+            {{ row.original.id?.substring(0, 8) }}
+          </ULink>
         </template>
-      </Column>
-      <Column
-        field="startDateTime"
-        filter-field="startDateTime"
-        data-type="date"
-        sortable
-        header="Start"
-        style="height: 50px;"
-        body-class="truncate"
-      >
-        <template #filter="{ filterModel }">
-          <DatePicker
-            v-model="filterModel.value"
-            date-format="mm/dd/yy"
-            placeholder="mm/dd/yyyy"
-          />
+
+        <template #facilityName-cell="{ row }">
+          <span class="font-medium text-highlighted">{{ row.original.facilityName }}</span>
         </template>
-        <template #body="slotProps">
-          <span>{{ slotProps.data.startDateTime.toLocaleString() }}</span>
+
+        <template #duration-cell="{ getValue }">
+          {{ getValue() }} {{ getValue() === 1 ? 'hour' : 'hours' }}
         </template>
-      </Column>
-      <Column
-        header="POC"
-        style="height: 50px;"
-        body-class="truncate"
-      >
-        <template #body="slotProps">
-          <span>{{ slotProps.data.pocName }} ({{ slotProps.data.pocPhone }})</span>
+
+        <template #startDateTime-cell="{ row }">
+          <template v-if="row.original.startDateTime">
+            {{ df.format(row.original.startDateTime) }}, {{ tf.format(row.original.startDateTime) }}
+          </template>
         </template>
-      </Column>
-    </DataTable>
-  </div>
+
+        <template #poc-cell="{ row }">
+          {{ row.original.pocName }} <span class="text-dimmed">({{ row.original.pocPhone }})</span>
+        </template>
+      </UTable>
+    </template>
+  </UDashboardPanel>
 </template>

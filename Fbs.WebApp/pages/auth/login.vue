@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { useToast } from 'primevue/usetoast'
-import type { FormResolverOptions, FormSubmitEvent } from '@primevue/forms/form'
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import type { FastEndpointsProblemDetails } from '~/api/models'
 
 definePageMeta({
@@ -14,52 +13,81 @@ const router = useRouter()
 const toast = useToast()
 const { mutate: mutateLogin, isPending: isPendingLogin } = useLoginMutation()
 
-function resolver({ values }: FormResolverOptions) {
-  const errors: Record<string, unknown> = {}
+const state = reactive({
+  phone: '',
+})
 
-  if (!values.phone) {
-    errors.phone = [{ message: 'Phone number is required.' }]
+// Mask the input as 9999-9999
+watch(() => state.phone, (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  const masked = digits.length > 4 ? `${digits.slice(0, 4)}-${digits.slice(4)}` : digits
+  if (masked !== value) {
+    state.phone = masked
+  }
+})
+
+function validate(values: typeof state): FormError[] {
+  const errors: FormError[] = []
+  const digits = values.phone.replace(/\D/g, '')
+
+  if (!digits) {
+    errors.push({ name: 'phone', message: 'Phone number is required.' })
+  }
+  else if (digits.length !== 8) {
+    errors.push({ name: 'phone', message: 'Phone number must be 8 digits.' })
   }
 
-  return {
-    values,
-    errors,
-  }
+  return errors
 }
 
-async function onFormSubmit({ valid, values }: FormSubmitEvent) {
-  if (!valid) {
-    toast.add({
-      severity: 'error',
-      summary: 'Form is invalid.',
-      life: 3000,
-    })
-    return
-  }
+function onFormError() {
+  toast.add({
+    title: 'Form is invalid.',
+    color: 'error',
+    icon: 'i-lucide-circle-x',
+    duration: 3000,
+  })
+}
+
+function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
+  const phone = `65${data.phone.replace('-', '')}`
 
   mutateLogin({
-    phone: `65${values.phone.replace('-', '')}`,
+    phone,
   }, {
     onError(error) {
       const e = error as FastEndpointsProblemDetails
       for (const error of e.errors ?? []) {
-        console.log(error)
         if (error.code === 'EX02') {
           showSignUpOnTelegramButton.value = true
         }
 
         toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: error.reason,
-          life: 3000,
+          title: 'Error',
+          description: error.reason ?? undefined,
+          color: 'error',
+          icon: 'i-lucide-circle-x',
+          duration: 3000,
+        })
+      }
+
+      // The API answers with a bare 401 when an OTP was requested less than a minute ago
+      if (!e.errors?.length) {
+        toast.add({
+          title: 'Error',
+          description: e.responseStatusCode === 401
+            ? 'Please wait a minute before requesting another OTP.'
+            : 'Something went wrong. Please try again.',
+          color: 'error',
+          icon: 'i-lucide-circle-x',
+          duration: 3000,
         })
       }
     },
     async onSuccess() {
       await router.push({
         path: '/auth/verify',
-        query: { phone: `65${values.phone.replace('-', '')}` },
+        query: { phone },
       })
     },
   })
@@ -67,78 +95,82 @@ async function onFormSubmit({ valid, values }: FormSubmitEvent) {
 </script>
 
 <template>
-  <div class="flex-2">
-    <div class="container mx-auto px-4 mt-6 max-w-md lg:mt-20">
-      <Form
-        v-slot="$form"
-        :resolver="resolver"
-        class="flex flex-col gap-4"
-        @submit="onFormSubmit"
-      >
-        <div class="flex flex-col gap-1">
-          <div class="my-6 space-y-3">
-            <h1 class="text-3xl font-semibold">
-              Login
-            </h1>
-            <span>
-              Use your registered phone number to login.
-            </span>
-          </div>
-
-          <InputMask
-            id="phone"
-            mask="9999-9999"
-            name="phone"
-            type="tel"
-            placeholder="Example: 8888-9999"
-            fluid
-            :disabled="isPendingLogin"
-          />
-
-          <Message
-            v-if="$form.phone?.invalid"
-            severity="error"
-            size="small"
-            variant="simple"
-          >
-            {{ $form.phone.error?.message }}
-          </Message>
+  <div class="flex flex-1 justify-center px-4 py-10 lg:py-20">
+    <div class="w-full max-w-sm">
+      <UPageCard variant="subtle">
+        <div class="space-y-1.5">
+          <h1 class="text-2xl font-semibold text-highlighted">
+            Login
+          </h1>
+          <p class="text-sm text-muted">
+            Use your registered phone number to login.
+          </p>
         </div>
 
-        <Button
-          v-if="showSignUpOnTelegramButton"
-          v-slot="slotProps"
-          outlined
-          as-child
+        <UForm
+          :state="state"
+          :validate="validate"
+          :validate-on="['input']"
+          class="flex flex-col gap-4"
+          @submit="onFormSubmit"
+          @error="onFormError"
         >
-          <a
+          <UFormField
+            label="Phone number"
+            name="phone"
+          >
+            <UInput
+              id="phone"
+              v-model="state.phone"
+              type="tel"
+              inputmode="numeric"
+              autocomplete="tel-national"
+              placeholder="Example: 8888-9999"
+              size="xl"
+              class="w-full"
+              :disabled="isPendingLogin"
+              :ui="{ base: 'ps-13', leading: 'pointer-events-none' }"
+            >
+              <template #leading>
+                <span class="text-sm text-muted">+65</span>
+              </template>
+            </UInput>
+          </UFormField>
+
+          <UButton
+            v-if="showSignUpOnTelegramButton"
+            to="https://t.me/temasek_facility_booking_bot"
             target="_blank"
-            v-bind="slotProps"
-            href="https://t.me/temasek_facility_booking_bot"
-          >
-            Sign up on Telegram</a>
-        </Button>
+            icon="i-simple-icons-telegram"
+            label="Sign up on Telegram"
+            color="neutral"
+            variant="outline"
+            size="lg"
+            block
+          />
 
-        <Button
-          :loading="isPendingLogin"
-          type="submit"
-          label="Login"
-        />
-      </Form>
-    </div>
+          <UButton
+            :loading="isPendingLogin"
+            type="submit"
+            label="Login"
+            size="lg"
+            block
+          />
+        </UForm>
+      </UPageCard>
 
-    <div v-if="me?.phone">
-      <div class="text-center mt-5">
-        <p class="text-sm text-gray-501">
-          You are already logged in as
-          <NuxtLink
-            to="/booking"
-            class="font-semibold text-gray-901"
-          >
-            {{ me?.phone }}
-          </NuxtLink>
-        </p>
-      </div>
+      <p
+        v-if="me?.phone"
+        class="mt-5 text-center text-sm text-muted"
+      >
+        You are already logged in as
+        <NuxtLink
+          to="/booking"
+          class="font-semibold text-highlighted hover:underline"
+        >
+          {{ me?.phone }}
+        </NuxtLink>
+      </p>
     </div>
   </div>
 </template>
