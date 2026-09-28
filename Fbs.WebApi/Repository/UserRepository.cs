@@ -62,6 +62,27 @@ public class UserRepository(
             .ToList();
     }
 
+    /// <summary>
+    /// Users by phone number, for looking up the users behind many bookings at once.
+    /// </summary>
+    public async Task<Dictionary<string, User>> GetByPhoneAsync(
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        var byPhone = new Dictionary<string, User>();
+        foreach (var user in await GetListAsync(cancellationToken))
+        {
+            if (user.Phone is not null)
+            {
+                byPhone.TryAdd(user.Phone, user);
+            }
+        }
+
+        return byPhone;
+    }
+
     public async Task<User?> FindAsync(
         Expression<Func<User, bool>> predicate,
         CancellationToken cancellationToken = default
@@ -164,9 +185,22 @@ public class UserRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var sheet = await sheetsService
-            .Spreadsheets.Get(options.Value.SpreadsheetId)
-            .ExecuteAsync(cancellationToken);
-        return sheet.Sheets.Single(s => s.Properties.Title == "Users").Properties.SheetId;
+        // Sheet IDs don't change, so there's no need to look it up for every delete
+        return await cache.GetOrCreateAsync(
+            "Users Sheet ID",
+            (sheetsService, options),
+            async (state, ct) =>
+            {
+                var request = state.sheetsService.Spreadsheets.Get(
+                    state.options.Value.SpreadsheetId
+                );
+                request.Fields = "sheets.properties(sheetId,title)";
+
+                var sheet = await request.ExecuteAsync(ct);
+                return sheet.Sheets.Single(s => s.Properties.Title == "Users").Properties.SheetId;
+            },
+            new HybridCacheEntryOptions { Expiration = TimeSpan.FromHours(1) },
+            cancellationToken: cancellationToken
+        );
     }
 }

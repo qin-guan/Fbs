@@ -1,8 +1,10 @@
+using System.IO.Compression;
 using System.Text;
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi;
+using Fbs.WebApi.Events;
 using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
@@ -10,6 +12,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using Telegram.Bot;
@@ -96,8 +99,25 @@ builder.Services.AddSingleton(sp =>
     return service;
 });
 
-builder.Services.AddFusionCache().AsHybridCache();
+builder
+    .Services.AddFusionCache()
+    .WithDefaultEntryOptions(
+        new FusionCacheEntryOptions
+        {
+            Duration = TimeSpan.FromSeconds(30),
+            // Once loaded, keep serving the last copy while it's refreshed in the background
+            // instead of making requests wait on Google Sheets
+            IsFailSafeEnabled = true,
+            FactorySoftTimeout = TimeSpan.FromMilliseconds(100),
+            EagerRefreshThreshold = 0.8f,
+        }
+    )
+    .AsHybridCache();
 builder.Services.AddSingleton<InstrumentationSource>();
+builder.Services.AddSingleton<BookingCache>();
+builder.Services.AddHostedService<CacheRefreshService>();
+builder.Services.AddSingleton<BackgroundPublisher>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundPublisher>());
 
 builder.Services.AddScoped<TraceIdMiddleware>();
 builder.Services.AddScoped<FacilityRepository>();
@@ -112,6 +132,21 @@ builder.Services.SwaggerDocument(options =>
 {
     options.EndpointFilter = ep => ep.EndpointTags?.Contains("Telegram") is false or null;
 });
+
+// Booking lists grow with every booking and compress well
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ["application/json", "application/problem+json"];
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+    options.Level = CompressionLevel.Fastest
+);
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+    options.Level = CompressionLevel.Fastest
+);
 
 builder.Services.AddCors(options =>
 {
@@ -150,6 +185,8 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 app.UseMiddleware<TraceIdMiddleware>();
+
+app.UseResponseCompression();
 
 app.UseCors();
 

@@ -274,7 +274,7 @@ public class BookingBatchTests : IDisposable
     [Fact]
     public async Task A_calendar_failure_part_way_through_rolls_back_the_batch()
     {
-        // 2 inserts per booking (main + carbon copy), so the 5th insert belongs to the 3rd booking
+        // Fail one of the 8 inserts (main and carbon copy calendars for each booking), after others have succeeded
         _factory.Google.FailInsertNumber = 5;
 
         var response = await PostBatchAsync(

@@ -1,20 +1,18 @@
 using System.Linq.Expressions;
 using System.Net;
-using System.Text.Json;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Options;
 using Google;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using MemoryPack;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace Fbs.WebApi.Repository;
 
 public class BookingRepository(
     InstrumentationSource instrumentation,
-    HybridCache cache,
+    BookingCache bookingCache,
     IOptions<GoogleOptions> options,
     CalendarService calendarService,
     UserRepository userRepository
@@ -31,61 +29,26 @@ public class BookingRepository(
             <= MaxEventDataLength;
     }
 
+    /// <remarks>The bookings are shared, so they must not be modified.</remarks>
     public async Task<List<Booking>> GetListAsync(CancellationToken cancellationToken = default)
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        return await cache.GetOrCreateAsync(
-            "Bookings",
-            (calendarService),
-            async (state, ct) =>
-            {
-                string? token = null;
-                var bookings = new List<Booking>();
+        return [.. await bookingCache.GetAsync(cancellationToken)];
+    }
 
-                do
-                {
-                    var request = state.Events.List(options.Value.CalendarId);
-                    if (token is not null)
-                    {
-                        request.PageToken = token;
-                    }
+    /// <summary>
+    /// Like <see cref="GetListAsync"/>, but first fetches changes made to the calendar since it
+    /// was last read. Use this when the bookings must be current, such as when checking for clashes.
+    /// </summary>
+    /// <remarks>The bookings are shared, so they must not be modified.</remarks>
+    public async Task<List<Booking>> GetLatestListAsync(
+        CancellationToken cancellationToken = default
+    )
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
 
-                    var items = await request.ExecuteAsync(ct);
-                    token = items.NextPageToken;
-
-                    var converted = items
-                        .Items.Select(item =>
-                        {
-                            var booking = MemoryPackSerializer.Deserialize<Booking>(
-                                Convert.FromBase64String(item.ExtendedProperties.Shared["Data"])
-                            );
-                            if (booking is null)
-                            {
-                                return null;
-                            }
-
-                            var eventStartDateTime = item.Start?.DateTimeDateTimeOffset;
-                            var eventEndDateTime = item.End?.DateTimeDateTimeOffset;
-                            if (eventStartDateTime is null || eventEndDateTime is null)
-                            {
-                                return null;
-                            }
-
-                            booking.StartDateTime = eventStartDateTime;
-                            booking.EndDateTime = eventEndDateTime;
-                            return booking;
-                        })
-                        .OfType<Booking>()
-                        .ToList();
-
-                    bookings.AddRange(converted);
-                } while (token is not null);
-
-                return bookings;
-            },
-            cancellationToken: cancellationToken
-        );
+        return [.. await bookingCache.GetLatestAsync(cancellationToken)];
     }
 
     public async Task<Booking?> FindAsync(
@@ -95,8 +58,9 @@ public class BookingRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var list = await GetListAsync(cancellationToken);
-        return list.SingleOrDefault(predicate.Compile());
+        var list = await bookingCache.GetAsync(cancellationToken);
+        // A copy, so callers can change it without affecting the cache
+        return list.SingleOrDefault(predicate.Compile())?.Clone();
     }
 
     public async Task<Booking> GetAsync(
@@ -106,8 +70,9 @@ public class BookingRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var list = await GetListAsync(cancellationToken);
-        return list.Single(predicate.Compile());
+        var list = await bookingCache.GetAsync(cancellationToken);
+        // A copy, so callers can change it without affecting the cache
+        return list.Single(predicate.Compile()).Clone();
     }
 
     public async Task<Booking> InsertAsync(
@@ -161,7 +126,7 @@ public class BookingRepository(
                 .ExecuteAsync(cancellationToken),
         ]);
 
-        await cache.RemoveAsync("Bookings", cancellationToken);
+        await bookingCache.SetAsync(entity.Clone());
 
         return entity;
     }
@@ -173,8 +138,8 @@ public class BookingRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var bookings = await GetListAsync(cancellationToken);
-        var booking = bookings.Single(b => b.Id == entity.Id);
+        var bookings = await bookingCache.GetAsync(cancellationToken);
+        var booking = bookings.Single(b => b.Id == entity.Id).Clone();
 
         booking.StartDateTime = entity.StartDateTime;
         booking.EndDateTime = entity.EndDateTime;
@@ -227,7 +192,7 @@ public class BookingRepository(
                 .ExecuteAsync(cancellationToken),
         ]);
 
-        await cache.RemoveAsync("Bookings", cancellationToken);
+        await bookingCache.SetAsync(booking.Clone());
 
         return booking;
     }
@@ -250,7 +215,7 @@ public class BookingRepository(
                 .ExecuteAsync(cancellationToken),
         ]);
 
-        await cache.RemoveAsync("Bookings", cancellationToken);
+        await bookingCache.RemoveAsync(booking.Id);
     }
 
     /// <summary>
@@ -273,6 +238,6 @@ public class BookingRepository(
                 when (e.HttpStatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone) { }
         }
 
-        await cache.RemoveAsync("Bookings", cancellationToken);
+        await bookingCache.RemoveAsync(id);
     }
 }

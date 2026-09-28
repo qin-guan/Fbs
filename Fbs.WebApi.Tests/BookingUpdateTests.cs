@@ -31,7 +31,7 @@ public class BookingUpdateTests : IDisposable
         return new DateTimeOffset(today.Year, today.Month, today.Day, 0, 0, 0, Singapore).AddDays(daysFromNow);
     }
 
-    private Booking AddBooking(string facility, DateTimeOffset start, DateTimeOffset end, string userPhone = Users.Booker)
+    private async Task<Booking> AddBookingAsync(string facility, DateTimeOffset start, DateTimeOffset end, string userPhone = Users.Booker)
     {
         var booking = new Booking
         {
@@ -42,7 +42,7 @@ public class BookingUpdateTests : IDisposable
             EndDateTime = end,
             UserPhone = userPhone,
         };
-        _factory.Google.AddBooking(booking);
+        await _factory.AddBookingAsync(booking);
         return booking;
     }
 
@@ -95,7 +95,7 @@ public class BookingUpdateTests : IDisposable
     [Fact]
     public async Task Moves_a_booking_to_a_free_slot_and_tells_everyone_the_old_time()
     {
-        var booking = AddBooking("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
+        var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
 
         var response = await UpdateAsync(_client, booking.Id, Midnight(11).AddHours(14), Midnight(11).AddHours(16));
 
@@ -119,7 +119,7 @@ public class BookingUpdateTests : IDisposable
     [Fact]
     public async Task A_booking_can_move_into_its_own_slot()
     {
-        var booking = AddBooking("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
+        var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
 
         var response = await UpdateAsync(_client, booking.Id, Midnight(10).AddHours(9), Midnight(10).AddHours(11));
 
@@ -130,9 +130,9 @@ public class BookingUpdateTests : IDisposable
     [Fact]
     public async Task Moving_onto_another_booking_is_rejected()
     {
-        var booking = AddBooking("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
-        var other = AddBooking("Field", Midnight(10).AddHours(12), Midnight(10).AddHours(14), Users.OtherUnit);
-        AddBooking("Eiger", Midnight(10).AddHours(9), Midnight(10).AddHours(13));
+        var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
+        var other = await AddBookingAsync("Field", Midnight(10).AddHours(12), Midnight(10).AddHours(14), Users.OtherUnit);
+        await AddBookingAsync("Eiger", Midnight(10).AddHours(9), Midnight(10).AddHours(13));
 
         var response = await UpdateAsync(_client, booking.Id, Midnight(10).AddHours(9), Midnight(10).AddHours(13));
 
@@ -147,7 +147,7 @@ public class BookingUpdateTests : IDisposable
     [Fact]
     public async Task Invalid_time_slots_are_rejected()
     {
-        var booking = AddBooking("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
+        var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
 
         var past = await UpdateAsync(_client, booking.Id, Midnight(-1).AddHours(8), Midnight(-1).AddHours(10));
         await AssertStatusAsync(HttpStatusCode.BadRequest, past);
@@ -170,7 +170,7 @@ public class BookingUpdateTests : IDisposable
     [Fact]
     public async Task A_booking_that_is_over_cannot_be_moved_but_its_details_can_still_change()
     {
-        var booking = AddBooking("Field", Midnight(-2).AddHours(8), Midnight(-2).AddHours(10));
+        var booking = await AddBookingAsync("Field", Midnight(-2).AddHours(8), Midnight(-2).AddHours(10));
 
         var move = await UpdateAsync(_client, booking.Id, Midnight(10).AddHours(8), Midnight(10).AddHours(10));
         await AssertStatusAsync(HttpStatusCode.BadRequest, move);
@@ -190,7 +190,7 @@ public class BookingUpdateTests : IDisposable
     [Fact]
     public async Task Leaving_out_the_times_keeps_the_time_slot()
     {
-        var booking = AddBooking("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
+        var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
 
         var response = await UpdateAsync(_client, booking.Id, null, null, conduct: "Renamed");
 
@@ -203,7 +203,7 @@ public class BookingUpdateTests : IDisposable
     [Fact]
     public async Task Someone_in_the_same_unit_can_move_a_booking()
     {
-        var booking = AddBooking("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
+        var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
         using var sameUnit = _factory.CreateClientFor(Users.SameUnit);
 
         var response = await UpdateAsync(sameUnit, booking.Id, Midnight(10).AddHours(12), Midnight(10).AddHours(14));
@@ -214,7 +214,7 @@ public class BookingUpdateTests : IDisposable
     [Fact]
     public async Task Other_units_cannot_update_a_booking()
     {
-        var booking = AddBooking("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
+        var booking = await AddBookingAsync("Field", Midnight(10).AddHours(8), Midnight(10).AddHours(10));
         using var otherUnit = _factory.CreateClientFor(Users.OtherUnit);
 
         var response = await UpdateAsync(otherUnit, booking.Id, Midnight(10).AddHours(12), Midnight(10).AddHours(14));

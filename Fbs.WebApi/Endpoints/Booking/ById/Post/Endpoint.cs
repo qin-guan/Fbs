@@ -8,7 +8,8 @@ namespace Fbs.WebApi.Endpoints.Booking.ById.Post;
 public class Endpoint(
     BookingRepository bookingRepository,
     UserRepository userRepository,
-    BookingWriteLock bookingWriteLock
+    BookingWriteLock bookingWriteLock,
+    BackgroundPublisher publisher
 ) : Endpoint<Request, Entities.Booking>
 {
     public override void Configure()
@@ -83,7 +84,7 @@ public class Endpoint(
             if (timeChanged)
             {
                 // Check against the latest bookings, ignoring this booking's current slot
-                var bookings = await bookingRepository.GetListAsync(ct);
+                var bookings = await bookingRepository.GetLatestListAsync(ct);
                 var overlapping = bookings.FirstOrDefault(b =>
                     b.Id != updated.Id
                     && b.FacilityName == updated.FacilityName
@@ -102,7 +103,7 @@ public class Endpoint(
             booking = await bookingRepository.UpdateAsync(updated, ct);
         }
 
-        await PublishAsync(
+        publisher.Publish(
             new BookingUpdatedEvent
             {
                 Id = booking.Id,
@@ -116,9 +117,7 @@ public class Endpoint(
                 PreviousStartDateTime = timeChanged ? previousStartDateTime : null,
                 PreviousEndDateTime = timeChanged ? previousEndDateTime : null,
                 UserPhone = booking.UserPhone,
-            },
-            Mode.WaitForAll,
-            ct
+            }
         );
 
         await Send.CreatedAtAsync<Booking.ById.Get.Endpoint>(

@@ -1,15 +1,18 @@
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Options;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace Fbs.WebApi.Repository;
 
-public class OtpRepository(
+public partial class OtpRepository(
     InstrumentationSource instrumentation,
     IOptions<GoogleOptions> options,
+    HybridCache cache,
     SheetsService sheetsService
 ) : IRepository<Otp>
 {
@@ -89,7 +92,15 @@ public class OtpRepository(
             .ValueInputOptionEnum
             .RAW;
 
-        await r.ExecuteAsync(cancellationToken);
+        var response = await r.ExecuteAsync(cancellationToken);
+
+        // The response says which row was written, e.g. "OTPs!A5:C5", so it needn't be read back
+        var row = AppendedRow().Match(response.Updates?.UpdatedRange ?? string.Empty);
+        if (row.Success)
+        {
+            entity.Row = int.Parse(row.Groups[1].Value);
+            return entity;
+        }
 
         return await GetAsync(o => o.Phone == entity.Phone, cancellationToken);
     }
@@ -158,9 +169,25 @@ public class OtpRepository(
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        var sheet = await sheetsService
-            .Spreadsheets.Get(options.Value.SpreadsheetId)
-            .ExecuteAsync(cancellationToken);
-        return sheet.Sheets.Single(s => s.Properties.Title == "OTPs").Properties.SheetId;
+        // Sheet IDs don't change, so there's no need to look it up for every delete
+        return await cache.GetOrCreateAsync(
+            "OTPs Sheet ID",
+            (sheetsService, options),
+            async (state, ct) =>
+            {
+                var request = state.sheetsService.Spreadsheets.Get(
+                    state.options.Value.SpreadsheetId
+                );
+                request.Fields = "sheets.properties(sheetId,title)";
+
+                var sheet = await request.ExecuteAsync(ct);
+                return sheet.Sheets.Single(s => s.Properties.Title == "OTPs").Properties.SheetId;
+            },
+            new HybridCacheEntryOptions { Expiration = TimeSpan.FromHours(1) },
+            cancellationToken: cancellationToken
+        );
     }
+
+    [GeneratedRegex(@"![A-Z]+(\d+)")]
+    private static partial Regex AppendedRow();
 }

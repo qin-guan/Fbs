@@ -15,9 +15,16 @@ public class Endpoint(
     BookingRepository bookingRepository,
     UserRepository userRepository,
     FacilityRepository facilityRepository,
-    BookingWriteLock bookingWriteLock
+    BookingWriteLock bookingWriteLock,
+    BackgroundPublisher publisher
 ) : Endpoint<Request, List<Entities.Booking>>
 {
+    /// <summary>
+    /// How many bookings are saved to the calendar at once. A few at a time is much quicker than
+    /// one by one, without sending the Calendar API a burst of requests.
+    /// </summary>
+    private const int MaxConcurrentInserts = 4;
+
     public override void Configure()
     {
         Post("/Booking/Batch");
@@ -74,7 +81,7 @@ public class Endpoint(
         List<Entities.Booking> created;
         using (await bookingWriteLock.AcquireAsync(ct))
         {
-            var existing = await bookingRepository.GetListAsync(ct);
+            var existing = await bookingRepository.GetLatestListAsync(ct);
             for (var i = 0; i < bookings.Count; i++)
             {
                 var booking = bookings[i];
@@ -98,38 +105,25 @@ public class Endpoint(
             created = await InsertAllOrNothingAsync(bookings, ct);
         }
 
-        await Send.OkAsync(created, ct);
-
-        // Finish the response before notifying so large batches don't keep the user waiting,
-        // then send the usual Telegram message for each booking.
-        await HttpContext.Response.CompleteAsync();
-
         foreach (var booking in created)
         {
-            try
-            {
-                await PublishAsync(
-                    new BookingCreatedEvent
-                    {
-                        Id = booking.Id,
-                        FacilityName = booking.FacilityName,
-                        Conduct = booking.Conduct,
-                        Description = booking.Description,
-                        PocName = booking.PocName,
-                        PocPhone = booking.PocPhone,
-                        StartDateTime = booking.StartDateTime,
-                        EndDateTime = booking.EndDateTime,
-                        UserPhone = booking.UserPhone,
-                    },
-                    Mode.WaitForAll,
-                    CancellationToken.None
-                );
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, "Failed to send notifications for booking {Id}", booking.Id);
-            }
+            publisher.Publish(
+                new BookingCreatedEvent
+                {
+                    Id = booking.Id,
+                    FacilityName = booking.FacilityName,
+                    Conduct = booking.Conduct,
+                    Description = booking.Description,
+                    PocName = booking.PocName,
+                    PocPhone = booking.PocPhone,
+                    StartDateTime = booking.StartDateTime,
+                    EndDateTime = booking.EndDateTime,
+                    UserPhone = booking.UserPhone,
+                }
+            );
         }
+
+        await Send.OkAsync(created, ct);
     }
 
     private static bool Overlaps(Entities.Booking a, Entities.Booking b)
@@ -149,27 +143,36 @@ public class Endpoint(
         CancellationToken ct
     )
     {
-        var attempted = new List<Entities.Booking>();
         try
         {
-            foreach (var booking in bookings)
-            {
-                attempted.Add(booking);
-                await bookingRepository.InsertAsync(booking, ct);
-            }
+            // Inserts use the request's token rather than the loop's, so when one fails the others
+            // finish instead of being cut off part way, leaving nothing half done to roll back
+            await Parallel.ForEachAsync(
+                bookings,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = MaxConcurrentInserts,
+                    CancellationToken = ct,
+                },
+                async (booking, _) => await bookingRepository.InsertAsync(booking, ct)
+            );
 
-            return attempted;
+            return bookings;
         }
         catch (Exception e)
         {
+            // Inserting gives a booking its ID, so these are the ones that may have been saved.
+            // Every insert has finished by now, as ForEachAsync waits for them before throwing
+            var attempted = bookings.Where(b => b.Id != Guid.Empty).ToList();
+
             logger.LogError(
                 e,
-                "Batch booking failed after {Created} of {Total} bookings, rolling back",
-                attempted.Count - 1,
+                "Batch booking failed after attempting {Attempted} of {Total} bookings, rolling back",
+                attempted.Count,
                 bookings.Count
             );
 
-            foreach (var booking in attempted.Where(b => b.Id != Guid.Empty))
+            foreach (var booking in attempted)
             {
                 try
                 {
