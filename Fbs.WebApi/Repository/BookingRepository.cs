@@ -206,37 +206,33 @@ public class BookingRepository(
 
         var booking = await GetAsync(predicate, cancellationToken);
 
-        await Task.WhenAll([
-            calendarService
-                .Events.Delete(options.Value.CalendarId, booking.Id.ToString("N"))
-                .ExecuteAsync(cancellationToken),
-            calendarService
-                .Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
-                .ExecuteAsync(cancellationToken),
-        ]);
-
-        await bookingCache.RemoveAsync(booking.Id);
+        // The carbon copy calendar accepts manual changes, so its event may already be gone
+        await RemoveEventsAsync(booking.Id, cancellationToken);
     }
 
     /// <summary>
     /// Removes a booking's events from both calendars, skipping calendars that don't have it.
-    /// Used to undo a partially created booking.
+    /// Also used to undo a partially created booking.
     /// </summary>
     public async Task RemoveEventsAsync(Guid id, CancellationToken cancellationToken = default)
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
 
-        foreach (var calendarId in new[] { options.Value.CalendarId, options.Value.CarbonCopyCalendarId })
-        {
-            try
-            {
-                await calendarService
-                    .Events.Delete(calendarId, id.ToString("N"))
-                    .ExecuteAsync(cancellationToken);
-            }
-            catch (GoogleApiException e)
-                when (e.HttpStatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone) { }
-        }
+        await Task.WhenAll(
+            new[] { options.Value.CalendarId, options.Value.CarbonCopyCalendarId }.Select(
+                async calendarId =>
+                {
+                    try
+                    {
+                        await calendarService
+                            .Events.Delete(calendarId, id.ToString("N"))
+                            .ExecuteAsync(cancellationToken);
+                    }
+                    catch (GoogleApiException e)
+                        when (e.HttpStatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone) { }
+                }
+            )
+        );
 
         await bookingCache.RemoveAsync(id);
     }

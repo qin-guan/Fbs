@@ -127,6 +127,15 @@ public partial class FakeGoogle
         }
     }
 
+    /// <summary>Removes a booking's event from one calendar, as if it was deleted by hand there.</summary>
+    public void RemoveEvent(string calendarId, Guid id)
+    {
+        lock (_lock)
+        {
+            Delete(calendarId, id.ToString("N"));
+        }
+    }
+
     /// <summary>Makes every sync token issued so far invalid, so the next incremental sync gets a 410.</summary>
     public void ExpireSyncTokens()
     {
