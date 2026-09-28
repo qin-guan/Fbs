@@ -13,6 +13,7 @@ const onboarded = useLocalStorage<boolean>('new-confirm-onboarded', false)
 const router = useRouter()
 const { df, tf } = useFormatter()
 const basket = useBookingBasket()
+const { data: me } = useMe()
 const { data: bookings } = useBookings()
 const { mutate: createMutate, isPending: createIsPending } = useCreateBookingBatchMutation()
 
@@ -74,6 +75,17 @@ const state = reactive({
   pocPhone: '',
   description: '',
 })
+
+// Default the POC to the signed-in user, without overwriting anything already entered.
+// User phones are stored with the 65 country code; the input only takes the local number.
+whenever(me, (user) => {
+  if (!state.pocName && user.name) {
+    state.pocName = user.name
+  }
+  if (!state.pocPhone && user.phone && /^65\d{8}$/.test(user.phone)) {
+    state.pocPhone = user.phone.slice(2)
+  }
+}, { immediate: true, once: true })
 
 function optionSelect({ phone }: { phone: string }) {
   state.pocPhone = phone.slice(2)
