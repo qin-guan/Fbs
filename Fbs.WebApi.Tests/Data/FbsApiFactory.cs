@@ -15,24 +15,15 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-// FastEndpoints keeps the running app's services in a static, so apps started side by side end
-// up sharing event handlers and send each other's notifications
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
-
-namespace Fbs.WebApi.Tests;
-
-public static class Users
-{
-    public const string Booker = "6591234567";
-    public const string SameUnit = "6598765432";
-    public const string AllGroup = "6581112222";
-    public const string OtherUnit = "6581113333";
-    public const string Admin = "6581114444";
-}
+namespace Fbs.WebApi.Tests.Data;
 
 /// <summary>
 /// Runs the real API in memory, with Google Sheets, Google Calendar and Telegram faked at the HTTP level.
 /// </summary>
+/// <remarks>
+/// Inject with <c>[ClassDataSource&lt;FbsApiFactory&gt;]</c> to get a fresh app and fakes for every test. The app
+/// starts on first use, so the fakes can be set up before then.
+/// </remarks>
 public class FbsApiFactory : WebApplicationFactory<Program>
 {
     public FakeGoogle Google { get; } = new();

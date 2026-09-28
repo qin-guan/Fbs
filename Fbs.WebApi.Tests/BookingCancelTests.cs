@@ -1,17 +1,15 @@
 using System.Net;
 using Fbs.WebApi.Entities;
+using Fbs.WebApi.Tests.Data;
 using Fbs.WebApi.Tests.Fakes;
+using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public class BookingCancelTests : IDisposable
+public class BookingCancelTests
 {
-    private readonly FbsApiFactory _factory = new();
-
-    public void Dispose()
-    {
-        _factory.Dispose();
-    }
+    [ClassDataSource<FbsApiFactory>]
+    public required FbsApiFactory Factory { get; init; }
 
     private Booking AddBooking(string userPhone = Users.Booker)
     {
@@ -25,85 +23,77 @@ public class BookingCancelTests : IDisposable
             EndDateTime = start.AddHours(2),
             UserPhone = userPhone,
         };
-        _factory.Google.AddBooking(booking);
+        Factory.Google.AddBooking(booking);
         return booking;
     }
 
     private async Task<HttpResponseMessage> CancelAsync(string phone, Guid id)
     {
-        using var client = _factory.CreateClientFor(phone);
+        using var client = Factory.CreateClientFor(phone);
         return await client.DeleteAsync($"/Booking/{id}");
     }
 
-    private static async Task AssertStatusAsync(HttpStatusCode expected, HttpResponseMessage response)
-    {
-        Assert.True(
-            response.StatusCode == expected,
-            $"Expected {expected} but got {response.StatusCode}: {await response.Content.ReadAsStringAsync()}"
-        );
-    }
-
-    [Fact]
+    [Test]
     public async Task The_booker_can_cancel_their_booking()
     {
         var booking = AddBooking();
 
         var response = await CancelAsync(Users.Booker, booking.Id);
 
-        await AssertStatusAsync(HttpStatusCode.NoContent, response);
-        Assert.Empty(_factory.Google.Events(FakeGoogle.MainCalendar));
-        Assert.Empty(_factory.Google.Events(FakeGoogle.CarbonCopyCalendar));
+        await Assert.That(response).HasStatus(HttpStatusCode.NoContent);
+        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).IsEmpty();
+        await Assert.That(Factory.Google.Events(FakeGoogle.CarbonCopyCalendar)).IsEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task Someone_in_the_same_unit_can_cancel_the_booking_and_the_booker_is_told_who()
     {
         var booking = AddBooking();
 
         var response = await CancelAsync(Users.SameUnit, booking.Id);
 
-        await AssertStatusAsync(HttpStatusCode.NoContent, response);
-        Assert.Empty(_factory.Google.Events(FakeGoogle.MainCalendar));
-        Assert.Empty(_factory.Google.Events(FakeGoogle.CarbonCopyCalendar));
+        await Assert.That(response).HasStatus(HttpStatusCode.NoContent);
+        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).IsEmpty();
+        await Assert.That(Factory.Google.Events(FakeGoogle.CarbonCopyCalendar)).IsEmpty();
 
-        var messages = await _factory.Telegram.WaitForMessagesAsync(3);
-        var toBooker = Assert.Single(messages, m => m.ChatId == 1001);
-        Assert.Contains("CANCELLED", toBooker.Text);
-        Assert.Contains("Name: LTA Same Unit", toBooker.Text);
-        Assert.Contains(booking.Id.ToString(), toBooker.Text);
+        var messages = await Factory.Telegram.WaitForMessagesAsync(3);
+        var toBooker = await Assert.That(messages).HasSingleItem(m => m.ChatId == 1001);
+        await Assert.That(toBooker.Text).Contains("CANCELLED");
+        await Assert.That(toBooker.Text).Contains("Name: LTA Same Unit");
+        await Assert.That(toBooker.Text).Contains(booking.Id.ToString());
     }
 
-    [Fact]
+    [Test]
     public async Task Other_units_cannot_cancel_the_booking()
     {
         var booking = AddBooking();
 
         var response = await CancelAsync(Users.OtherUnit, booking.Id);
 
-        await AssertStatusAsync(HttpStatusCode.Forbidden, response);
-        Assert.Single(_factory.Google.Events(FakeGoogle.MainCalendar));
-        Assert.Single(_factory.Google.Events(FakeGoogle.CarbonCopyCalendar));
+        await Assert.That(response).HasStatus(HttpStatusCode.Forbidden);
+        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).HasSingleItem();
+        await Assert.That(Factory.Google.Events(FakeGoogle.CarbonCopyCalendar)).HasSingleItem();
         await Task.Delay(200);
-        Assert.Empty(_factory.Telegram.Messages);
+        await Assert.That(Factory.Telegram.Messages).IsEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task Cancelling_a_missing_booking_is_not_found()
     {
         var response = await CancelAsync(Users.Booker, Guid.NewGuid());
 
-        await AssertStatusAsync(HttpStatusCode.NotFound, response);
+        await Assert.That(response).HasStatus(HttpStatusCode.NotFound);
     }
 
-    [Fact]
+    [Test]
     public async Task Requires_a_signed_in_user()
     {
         var booking = AddBooking();
-        using var anonymous = _factory.CreateClient();
+        using var anonymous = Factory.CreateClient();
 
         var response = await anonymous.DeleteAsync($"/Booking/{booking.Id}");
 
-        await AssertStatusAsync(HttpStatusCode.Unauthorized, response);
-        Assert.Single(_factory.Google.Events(FakeGoogle.MainCalendar));
+        await Assert.That(response).HasStatus(HttpStatusCode.Unauthorized);
+        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).HasSingleItem();
     }
 }

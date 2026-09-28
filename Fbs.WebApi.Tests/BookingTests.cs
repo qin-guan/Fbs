@@ -3,27 +3,26 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Repository;
+using Fbs.WebApi.Tests.Data;
 using Fbs.WebApi.Tests.Fakes;
+using Fbs.WebApi.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fbs.WebApi.Tests;
 
-public class BookingTests : IDisposable
+public class BookingTests
 {
     private static readonly TimeSpan Singapore = TimeSpan.FromHours(8);
 
-    private readonly FbsApiFactory _factory = new();
-    private readonly HttpClient _client;
+    [ClassDataSource<FbsApiFactory>]
+    public required FbsApiFactory Factory { get; init; }
 
-    public BookingTests()
-    {
-        _client = _factory.CreateClientFor(Users.Booker);
-    }
+    private HttpClient _client = null!;
 
-    public void Dispose()
+    [Before(Test)]
+    public void CreateClient()
     {
-        _client.Dispose();
-        _factory.Dispose();
+        _client = Factory.CreateClientFor(Users.Booker);
     }
 
     private static DateTimeOffset Midnight(int daysFromNow)
@@ -59,147 +58,136 @@ public class BookingTests : IDisposable
         (await (client ?? _client).GetFromJsonAsync<List<JsonElement>>("/Booking"))!;
 
     /// <summary>Does what the background sync does every few seconds.</summary>
-    private Task SyncAsync() => _factory.Services.GetRequiredService<BookingCache>().SyncAsync();
+    private Task SyncAsync() => Factory.Services.GetRequiredService<BookingCache>().SyncAsync();
 
     /// <summary>Adds bookings to the calendar as if they were made before the test.</summary>
     private async Task AddExistingAsync(params Booking[] bookings)
     {
         foreach (var booking in bookings)
         {
-            await _factory.AddBookingAsync(booking);
+            await Factory.AddBookingAsync(booking);
         }
     }
 
     private int FullCalendarLists() =>
-        _factory.Google.Requests.Count(r => r.IsFullEventList(FakeGoogle.MainCalendar));
+        Factory.Google.Requests.Count(r => r.IsFullEventList(FakeGoogle.MainCalendar));
 
     private int CalendarLists() =>
-        _factory.Google.Requests.Count(r => r.IsEventList(FakeGoogle.MainCalendar));
+        Factory.Google.Requests.Count(r => r.IsEventList(FakeGoogle.MainCalendar));
 
-    private static async Task AssertStatusAsync(HttpStatusCode expected, HttpResponseMessage response)
-    {
-        Assert.True(
-            response.StatusCode == expected,
-            $"Expected {expected} but got {response.StatusCode}: {await response.Content.ReadAsStringAsync()}"
-        );
-    }
-
-    [Fact]
+    [Test]
     public async Task Listing_bookings_does_not_call_the_calendar_once_they_are_loaded()
     {
         await AddExistingAsync(Existing("Eiger", Midnight(5), Midnight(6)));
-        Assert.Single(await ListAsync());
+        await Assert.That(await ListAsync()).HasSingleItem();
         var lists = CalendarLists();
 
         for (var i = 0; i < 5; i++)
         {
-            Assert.Single(await ListAsync());
+            await Assert.That(await ListAsync()).HasSingleItem();
         }
 
-        Assert.Equal(lists, CalendarLists());
-        Assert.Equal(1, FullCalendarLists());
+        await Assert.That(CalendarLists()).IsEqualTo(lists);
+        await Assert.That(FullCalendarLists()).IsEqualTo(1);
     }
 
-    [Fact]
+    [Test]
     public async Task Created_updated_and_deleted_bookings_are_listed_straight_away_without_reloading_the_calendar()
     {
         await ListAsync();
 
         var created = await CreateAsync("Field", Midnight(3).AddHours(8), Midnight(3).AddHours(10));
-        await AssertStatusAsync(HttpStatusCode.Created, created);
+        await Assert.That(created).HasStatus(HttpStatusCode.Created);
         var id = (await created.Content.ReadFromJsonAsync<Booking>())!.Id;
 
-        var listed = Assert.Single(await ListAsync());
-        Assert.Equal(id, listed.GetProperty("id").GetGuid());
-        Assert.Equal("Range", listed.GetProperty("conduct").GetString());
-        Assert.Equal("CPT Booker", listed.GetProperty("user").GetProperty("name").GetString());
+        var listed = await Assert.That(await ListAsync()).HasSingleItem();
+        await Assert.That(listed.GetProperty("id").GetGuid()).IsEqualTo(id);
+        await Assert.That(listed.GetProperty("conduct").GetString()).IsEqualTo("Range");
+        await Assert.That(listed.GetProperty("user").GetProperty("name").GetString()).IsEqualTo("CPT Booker");
 
         var updated = await _client.PostAsJsonAsync($"/Booking/{id}", new { conduct = "Range practice" });
-        await AssertStatusAsync(HttpStatusCode.Created, updated);
-        Assert.Equal("Range practice", Assert.Single(await ListAsync()).GetProperty("conduct").GetString());
-        Assert.Equal(
-            "Range practice",
-            (await _client.GetFromJsonAsync<JsonElement>($"/Booking/{id}")).GetProperty("conduct").GetString()
-        );
+        await Assert.That(updated).HasStatus(HttpStatusCode.Created);
+        var relisted = await Assert.That(await ListAsync()).HasSingleItem();
+        await Assert.That(relisted.GetProperty("conduct").GetString()).IsEqualTo("Range practice");
+        await Assert
+            .That((await _client.GetFromJsonAsync<JsonElement>($"/Booking/{id}")).GetProperty("conduct").GetString())
+            .IsEqualTo("Range practice");
 
         var deleted = await _client.DeleteAsync($"/Booking/{id}");
-        await AssertStatusAsync(HttpStatusCode.NoContent, deleted);
-        Assert.Empty(await ListAsync());
-        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync($"/Booking/{id}")).StatusCode);
+        await Assert.That(deleted).HasStatus(HttpStatusCode.NoContent);
+        await Assert.That(await ListAsync()).IsEmpty();
+        await Assert.That(await _client.GetAsync($"/Booking/{id}")).HasStatus(HttpStatusCode.NotFound);
 
-        Assert.Equal(1, FullCalendarLists());
-        Assert.Empty(_factory.Google.Events(FakeGoogle.MainCalendar));
-        Assert.Empty(_factory.Google.Events(FakeGoogle.CarbonCopyCalendar));
+        await Assert.That(FullCalendarLists()).IsEqualTo(1);
+        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).IsEmpty();
+        await Assert.That(Factory.Google.Events(FakeGoogle.CarbonCopyCalendar)).IsEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task Changes_made_directly_in_the_calendar_are_picked_up_by_the_sync()
     {
         var changed = Existing("Eiger", Midnight(5), Midnight(6));
         var removed = Existing("Field", Midnight(5), Midnight(6));
         await AddExistingAsync(changed, removed);
-        Assert.Equal(2, (await ListAsync()).Count);
+        await Assert.That(await ListAsync()).Count().IsEqualTo(2);
 
         var added = Existing("Gym", Midnight(5), Midnight(6));
-        _factory.Google.AddBooking(added);
+        Factory.Google.AddBooking(added);
         changed.Conduct = "Changed";
-        _factory.Google.AddBooking(changed);
-        _factory.Google.RemoveBooking(removed.Id);
+        Factory.Google.AddBooking(changed);
+        Factory.Google.RemoveBooking(removed.Id);
         await SyncAsync();
 
         var bookings = await ListAsync();
-        Assert.Equal(
-            new[] { added.Id, changed.Id }.Order(),
-            bookings.Select(b => b.GetProperty("id").GetGuid()).Order()
-        );
-        Assert.Equal(
-            "Changed",
-            bookings.Single(b => b.GetProperty("id").GetGuid() == changed.Id).GetProperty("conduct").GetString()
-        );
-        Assert.Equal(1, FullCalendarLists());
+        await Assert.That(bookings.Select(b => b.GetProperty("id").GetGuid())).IsEquivalentTo([added.Id, changed.Id]);
+        await Assert
+            .That(bookings.Single(b => b.GetProperty("id").GetGuid() == changed.Id).GetProperty("conduct").GetString())
+            .IsEqualTo("Changed");
+        await Assert.That(FullCalendarLists()).IsEqualTo(1);
     }
 
-    [Fact]
+    [Test]
     public async Task An_expired_sync_token_reloads_every_booking()
     {
         await ListAsync();
 
         var added = Existing("Gym", Midnight(5), Midnight(6));
-        _factory.Google.AddBooking(added);
-        _factory.Google.ExpireSyncTokens();
+        Factory.Google.AddBooking(added);
+        Factory.Google.ExpireSyncTokens();
         await SyncAsync();
 
-        Assert.Equal(added.Id, Assert.Single(await ListAsync()).GetProperty("id").GetGuid());
-        Assert.Equal(2, FullCalendarLists());
+        var listed = await Assert.That(await ListAsync()).HasSingleItem();
+        await Assert.That(listed.GetProperty("id").GetGuid()).IsEqualTo(added.Id);
+        await Assert.That(FullCalendarLists()).IsEqualTo(2);
     }
 
-    [Fact]
+    [Test]
     public async Task Clash_checks_include_bookings_made_directly_in_the_calendar_since_the_last_sync()
     {
         await ListAsync();
         var existing = Existing("Field", Midnight(4).AddHours(9), Midnight(4).AddHours(10));
-        _factory.Google.AddBooking(existing);
+        Factory.Google.AddBooking(existing);
 
         var response = await CreateAsync("Field", Midnight(4).AddHours(8), Midnight(4).AddHours(12));
 
-        await AssertStatusAsync(HttpStatusCode.BadRequest, response);
-        Assert.Contains(existing.Id.ToString(), await response.Content.ReadAsStringAsync());
-        Assert.Single(_factory.Google.Events(FakeGoogle.MainCalendar));
+        await Assert.That(response).HasStatus(HttpStatusCode.BadRequest);
+        await Assert.That(await response.Content.ReadAsStringAsync()).Contains(existing.Id.ToString());
+        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).HasSingleItem();
     }
 
-    [Fact]
+    [Test]
     public async Task Purging_the_cache_reloads_bookings()
     {
         await ListAsync();
-        _factory.Google.AddBooking(Existing("Gym", Midnight(5), Midnight(6)));
+        Factory.Google.AddBooking(Existing("Gym", Midnight(5), Midnight(6)));
 
         (await _client.GetAsync("/Cache/Purge")).EnsureSuccessStatusCode();
 
-        Assert.Single(await ListAsync());
-        Assert.Equal(2, FullCalendarLists());
+        await Assert.That(await ListAsync()).HasSingleItem();
+        await Assert.That(FullCalendarLists()).IsEqualTo(2);
     }
 
-    [Fact]
+    [Test]
     public async Task Bookings_by_users_no_longer_on_the_users_sheet_are_still_listed()
     {
         var orphaned = Existing("Eiger", Midnight(5), Midnight(6));
@@ -208,14 +196,13 @@ public class BookingTests : IDisposable
 
         var bookings = await ListAsync();
 
-        Assert.Equal(2, bookings.Count);
-        Assert.Equal(
-            JsonValueKind.Null,
-            bookings.Single(b => b.GetProperty("id").GetGuid() == orphaned.Id).GetProperty("user").ValueKind
-        );
+        await Assert.That(bookings).Count().IsEqualTo(2);
+        await Assert
+            .That(bookings.Single(b => b.GetProperty("id").GetGuid() == orphaned.Id).GetProperty("user").ValueKind)
+            .IsEqualTo(JsonValueKind.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task Bookings_are_compressed()
     {
         await AddExistingAsync(Existing("Eiger", Midnight(5), Midnight(6)));
@@ -225,58 +212,61 @@ public class BookingTests : IDisposable
         var response = await _client.SendAsync(request);
 
         response.EnsureSuccessStatusCode();
-        Assert.Equal(["br"], response.Content.Headers.ContentEncoding);
+        await Assert.That(response.Content.Headers.ContentEncoding).IsEquivalentTo(["br"]);
     }
 
-    [Fact]
+    [Test]
     public async Task Responds_without_waiting_for_notifications_to_be_sent()
     {
-        _factory.Telegram.Pause();
+        Factory.Telegram.Pause();
         var timeout = TimeSpan.FromSeconds(5);
 
         var created = await CreateAsync("Field", Midnight(3).AddHours(8), Midnight(3).AddHours(10)).WaitAsync(timeout);
-        await AssertStatusAsync(HttpStatusCode.Created, created);
+        await Assert.That(created).HasStatus(HttpStatusCode.Created);
         var id = (await created.Content.ReadFromJsonAsync<Booking>())!.Id;
 
         var updated = await _client
             .PostAsJsonAsync($"/Booking/{id}", new { conduct = "Range practice" })
             .WaitAsync(timeout);
-        await AssertStatusAsync(HttpStatusCode.Created, updated);
+        await Assert.That(updated).HasStatus(HttpStatusCode.Created);
 
         var deleted = await _client.DeleteAsync($"/Booking/{id}").WaitAsync(timeout);
-        await AssertStatusAsync(HttpStatusCode.NoContent, deleted);
+        await Assert.That(deleted).HasStatus(HttpStatusCode.NoContent);
 
-        Assert.Empty(_factory.Telegram.Messages);
-        _factory.Telegram.Resume();
+        await Assert.That(Factory.Telegram.Messages).IsEmpty();
+        Factory.Telegram.Resume();
 
         // The booker, their unit and the "All" group hear about each change, in order
-        var messages = await _factory.Telegram.WaitForMessagesAsync(9);
-        Assert.Equal(9, messages.Count);
-        Assert.All(messages.Take(3), m => Assert.Contains("CREATED", m.Text));
-        Assert.All(messages.Skip(3).Take(3), m => Assert.Contains("UPDATED", m.Text));
-        Assert.All(messages.Skip(6), m => Assert.Contains("CANCELLED", m.Text));
+        var messages = await Factory.Telegram.WaitForMessagesAsync(9);
+        await Assert.That(messages).Count().IsEqualTo(9);
+        await Assert.That(messages.Take(3)).All().Satisfy(m => m.Text, text => text.Contains("CREATED"));
+        await Assert.That(messages.Skip(3).Take(3)).All().Satisfy(m => m.Text, text => text.Contains("UPDATED"));
+        await Assert.That(messages.Skip(6)).All().Satisfy(m => m.Text, text => text.Contains("CANCELLED"));
     }
 
-    [Fact]
+    [Test]
     public async Task Admins_see_edit_and_delete_bookings()
     {
-        using var admin = _factory.CreateClientFor(Users.Admin);
+        using var admin = Factory.CreateClientFor(Users.Admin);
         var existing = Existing("Eiger", Midnight(5), Midnight(6));
         await AddExistingAsync(existing);
 
-        var listed = Assert.Single((await admin.GetFromJsonAsync<List<JsonElement>>("/Admin/Bookings"))!);
-        Assert.Equal("LTA Same Unit", listed.GetProperty("user").GetProperty("name").GetString());
+        var listed = await Assert
+            .That((await admin.GetFromJsonAsync<List<JsonElement>>("/Admin/Bookings"))!)
+            .HasSingleItem();
+        await Assert.That(listed.GetProperty("user").GetProperty("name").GetString()).IsEqualTo("LTA Same Unit");
 
         var edited = await admin.PutAsJsonAsync($"/Admin/Bookings/{existing.Id}", new { conduct = "Edited" });
-        await AssertStatusAsync(HttpStatusCode.OK, edited);
-        Assert.Equal("Edited", Assert.Single(await ListAsync()).GetProperty("conduct").GetString());
+        await Assert.That(edited).HasStatus(HttpStatusCode.OK);
+        var relisted = await Assert.That(await ListAsync()).HasSingleItem();
+        await Assert.That(relisted.GetProperty("conduct").GetString()).IsEqualTo("Edited");
 
         var deleted = await admin.DeleteAsync($"/Admin/Bookings/{existing.Id}");
-        await AssertStatusAsync(HttpStatusCode.NoContent, deleted);
-        Assert.Empty(await ListAsync());
-        Assert.Empty(_factory.Google.Events(FakeGoogle.MainCalendar));
+        await Assert.That(deleted).HasStatus(HttpStatusCode.NoContent);
+        await Assert.That(await ListAsync()).IsEmpty();
+        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).IsEmpty();
 
         // The booker, their unit and the "All" group hear about both changes
-        Assert.Equal(6, (await _factory.Telegram.WaitForMessagesAsync(6)).Count);
+        await Assert.That(await Factory.Telegram.WaitForMessagesAsync(6)).Count().IsEqualTo(6);
     }
 }

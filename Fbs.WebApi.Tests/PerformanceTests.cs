@@ -1,10 +1,8 @@
 using System.Diagnostics;
-using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Fbs.WebApi.Entities;
-using Fbs.WebApi.Tests.Fakes;
-using Xunit.Abstractions;
+using Fbs.WebApi.Tests.Data;
 
 namespace Fbs.WebApi.Tests;
 
@@ -12,27 +10,27 @@ namespace Fbs.WebApi.Tests;
 /// Checks every operation stays under a second with years of bookings and realistic round trips to
 /// Google and Telegram.
 /// </summary>
-public class PerformanceTests : IDisposable
+public class PerformanceTests
 {
     private const int ExistingBookings = 5000;
     private const int Subscribers = 20;
     private static readonly TimeSpan Budget = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan Singapore = TimeSpan.FromHours(8);
 
-    private readonly ITestOutputHelper _output;
-    private readonly FbsApiFactory _factory = new();
+    [ClassDataSource<FbsApiFactory>]
+    public required FbsApiFactory Factory { get; init; }
+
     private readonly List<(string Operation, TimeSpan Elapsed)> _timings = [];
 
-    public PerformanceTests(ITestOutputHelper output)
+    [Before(Test)]
+    public void AddBookingsAndSubscribers()
     {
-        _output = output;
-
         var facilities = new[] { "Eiger", "Field", "Gym" };
         var users = new[] { Users.Booker, Users.SameUnit, Users.AllGroup, Users.OtherUnit };
         for (var i = 0; i < ExistingBookings; i++)
         {
             var start = Midnight(-1 - i / 3).AddHours(8 + i % 3 * 3);
-            _factory.Google.AddBooking(
+            Factory.Google.AddBooking(
                 new Booking
                 {
                     Id = Guid.NewGuid(),
@@ -50,18 +48,13 @@ public class PerformanceTests : IDisposable
 
         for (var i = 0; i < Subscribers; i++)
         {
-            _factory.Google.Sheets["Users"].Add(
+            Factory.Google.Sheets["Users"].Add(
                 ["Delta", $"Subscriber {i}", $"6570000{i:000}", $"{2000 + i}", "All", "FALSE"]
             );
         }
 
-        _factory.Google.Latency = TimeSpan.FromMilliseconds(150);
-        _factory.Telegram.Latency = TimeSpan.FromMilliseconds(100);
-    }
-
-    public void Dispose()
-    {
-        _factory.Dispose();
+        Factory.Google.Latency = TimeSpan.FromMilliseconds(150);
+        Factory.Telegram.Latency = TimeSpan.FromMilliseconds(100);
     }
 
     private static DateTimeOffset Midnight(int daysFromNow)
@@ -76,21 +69,22 @@ public class PerformanceTests : IDisposable
         var response = await send();
         await response.Content.LoadIntoBufferAsync();
         _timings.Add((operation, stopwatch.Elapsed));
-        Assert.True(
-            response.IsSuccessStatusCode,
-            $"{operation} failed with {response.StatusCode}: {await response.Content.ReadAsStringAsync()}"
-        );
+        if (!response.IsSuccessStatusCode)
+        {
+            Assert.Fail($"{operation} failed with {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+        }
+
         return response;
     }
 
-    [Fact]
+    [Test]
     public async Task Every_operation_takes_under_a_second_with_thousands_of_bookings()
     {
-        using var client = _factory.CreateClientFor(Users.Booker);
+        using var client = Factory.CreateClientFor(Users.Booker);
 
         await TimeAsync("List bookings (first request)", () => client.GetAsync("/Booking"));
         var list = await TimeAsync("List bookings", () => client.GetAsync("/Booking"));
-        Assert.Equal(ExistingBookings, (await list.Content.ReadFromJsonAsync<List<JsonElement>>())!.Count);
+        await Assert.That((await list.Content.ReadFromJsonAsync<List<JsonElement>>())!).Count().IsEqualTo(ExistingBookings);
 
         var created = await TimeAsync(
             "Create booking",
@@ -139,19 +133,22 @@ public class PerformanceTests : IDisposable
                 )
         );
         var afterBatch = await TimeAsync("List bookings after batch", () => client.GetAsync("/Booking"));
-        Assert.Equal(
-            ExistingBookings + 8,
-            (await afterBatch.Content.ReadFromJsonAsync<List<JsonElement>>())!.Count
-        );
+        await Assert
+            .That((await afterBatch.Content.ReadFromJsonAsync<List<JsonElement>>())!)
+            .Count()
+            .IsEqualTo(ExistingBookings + 8);
 
         await TimeAsync("List facilities", () => client.GetAsync("/Facility"));
         await TimeAsync("Get signed in user", () => client.GetAsync("/Auth/Me"));
 
         foreach (var (operation, elapsed) in _timings)
         {
-            _output.WriteLine($"{operation,-32} {elapsed.TotalMilliseconds,7:0} ms");
+            TestContext.Current!.Output.WriteLine($"{operation,-32} {elapsed.TotalMilliseconds,7:0} ms");
         }
 
-        Assert.All(_timings, t => Assert.True(t.Elapsed < Budget, $"{t.Operation} took {t.Elapsed.TotalMilliseconds:0} ms"));
+        var slow = _timings
+            .Where(t => t.Elapsed >= Budget)
+            .Select(t => $"{t.Operation} took {t.Elapsed.TotalMilliseconds:0} ms");
+        await Assert.That(slow).IsEmpty();
     }
 }
