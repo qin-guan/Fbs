@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormError, FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
-import { useQuery } from '@tanstack/vue-query'
-import type { FastEndpointsProblemDetails } from '~/api/models'
+import type { FastEndpointsProblemDetails, FbsWebApiEntitiesBooking } from '~/api/models'
+import type { BookingSlot } from '~/composables/booking-slots'
 
 definePageMeta({
   layout: 'app',
@@ -12,7 +12,9 @@ const onboarded = useLocalStorage<boolean>('new-confirm-onboarded', false)
 
 const router = useRouter()
 const { df, tf } = useFormatter()
-const { mutate: createMutate, isPending: createIsPending } = useCreateBookingMutation()
+const basket = useBookingBasket()
+const { data: bookings } = useBookings()
+const { mutate: createMutate, isPending: createIsPending } = useCreateBookingBatchMutation()
 
 const route = useRoute()
 const toast = useToast()
@@ -40,21 +42,30 @@ onMounted(() => {
   }
 })
 
-const { data: prefilledData, error: prefilledDataError } = useQuery({
-  queryKey: ['bookings', 'new', route.query],
-  retry: false,
-  queryFn: () => {
-    if (!route.query['start-date'] || !route.query['end-date'] || !route.query['facility-name']) {
-      throw new Error('Missing required query parameters')
-    }
+// A single slot arrives in the URL; several come from the booking list
+const querySlot = computed<BookingSlot | undefined>(() => {
+  const query = route.query
+  if (!query['start-date'] || !query['end-date'] || !query['facility-name']) return undefined
 
-    return {
-      startDateTime: new Date(route.query['start-date'] as string),
-      endDateTime: new Date(route.query['end-date'] as string),
-      facilityName: route.query['facility-name'] as string,
-      originalQuery: route.query['original-query'] as string,
-    }
-  },
+  return {
+    id: 'query',
+    facilityName: query['facility-name'] as string,
+    start: new Date(query['start-date'] as string),
+    end: new Date(query['end-date'] as string),
+  }
+})
+const fromList = computed(() => !querySlot.value)
+const slots = computed(() => querySlot.value ? [querySlot.value] : basket.slots.value)
+const originalQuery = computed(() => (route.query['original-query'] as string | undefined) ?? '')
+
+const clashes = computed(() => findClashes(slots.value, bookings.value))
+const serverErrors = ref<Record<number, string>>({})
+const problemCount = computed(() => slots.value.filter((_, i) => clashes.value[i] || serverErrors.value[i]).length)
+const created = ref<FbsWebApiEntitiesBooking[]>([])
+let errorToastId: string | number | undefined
+
+watch(slots, () => {
+  serverErrors.value = {}
 })
 
 const state = reactive({
@@ -66,6 +77,15 @@ const state = reactive({
 
 function optionSelect({ phone }: { phone: string }) {
   state.pocPhone = phone.slice(2)
+}
+
+function removeSlot(index: number) {
+  const slot = slots.value[index]
+  if (slot && fromList.value) basket.remove([slot.id])
+}
+
+function removeProblemSlots() {
+  basket.remove(slots.value.filter((_, i) => clashes.value[i] || serverErrors.value[i]).map(s => s.id))
 }
 
 function validate(values: typeof state): FormError[] {
@@ -98,41 +118,74 @@ function onFormError(event: FormErrorEvent) {
 }
 
 function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
-  if (!prefilledData.value) return
+  const submitted = slots.value
+  if (!submitted.length || problemCount.value) return
 
-  const facilityName = prefilledData.value.facilityName
+  if (errorToastId !== undefined) {
+    toast.remove(errorToastId)
+    errorToastId = undefined
+  }
 
   createMutate({
     conduct: data.conduct,
     pocName: data.pocName,
     pocPhone: '65' + data.pocPhone,
     description: data.description,
-    startDateTime: prefilledData.value.startDateTime,
-    endDateTime: prefilledData.value.endDateTime,
-    facilityName,
+    slots: submitted.map(slot => ({
+      facilityName: slot.facilityName,
+      startDateTime: slot.start,
+      endDateTime: slot.end,
+    })),
   }, {
     onError(error) {
       const e = error as FastEndpointsProblemDetails
-      toast.add({
-        title: 'Error creating booking',
-        description: e.errors?.find(a => a)?.reason ?? undefined,
+      const slotErrors: Record<number, string> = {}
+      const otherErrors: string[] = []
+      for (const err of e.errors ?? []) {
+        const match = /^slots\[(\d+)\]/i.exec(err.name ?? '')
+        if (match) {
+          slotErrors[Number(match[1])] ??= err.reason ?? 'This slot can\'t be booked'
+        }
+        else if (err.reason) {
+          otherErrors.push(err.reason)
+        }
+      }
+      serverErrors.value = slotErrors
+
+      // The batch is all or nothing, so nothing was booked
+      const count = Object.keys(slotErrors).length
+      errorToastId = toast.add({
+        title: submitted.length > 1 && count ? 'Nothing was booked' : 'Error creating booking',
+        description: submitted.length > 1 && count
+          ? `${count} ${count === 1 ? 'slot' : 'slots'} can't be booked. Remove ${count === 1 ? 'it' : 'them'} and try again.`
+          : Object.values(slotErrors)[0] ?? otherErrors[0],
         color: 'error',
         icon: 'i-lucide-circle-x',
-      })
+      }).id
     },
-    async onSuccess(data) {
+    async onSuccess(result) {
+      if (fromList.value) {
+        basket.remove(submitted.map(s => s.id))
+      }
+
+      const first = result?.[0]
+      if (result?.length === 1 && first?.id) {
+        toast.add({
+          title: 'Booking created successfully',
+          description: `Booking for ${first.facilityName} has been created.`,
+          color: 'success',
+          icon: 'i-lucide-circle-check',
+        })
+        await router.push(`/booking/${first.id}`)
+        return
+      }
+
+      created.value = result ?? []
       toast.add({
-        title: 'Booking created successfully',
-        description: `Booking for ${facilityName} has been created.`,
+        title: `${created.value.length} bookings created`,
         color: 'success',
         icon: 'i-lucide-circle-check',
       })
-      if (data?.id) {
-        await router.push(`/booking/${data?.id}`)
-      }
-      else {
-        await router.push(`/booking`)
-      }
     },
   })
 }
@@ -146,8 +199,8 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
           <UBreadcrumb
             :items="[
               { label: 'Bookings', to: '/booking' },
-              { label: 'New', to: `/booking/new${prefilledData?.originalQuery ?? ''}`, slot: 'crumbs' },
-              { label: prefilledData?.facilityName },
+              { label: 'New', to: `/booking/new${originalQuery}`, slot: 'crumbs' },
+              { label: querySlot?.facilityName ?? (created.length ? 'Done' : `${slots.length} ${slots.length === 1 ? 'slot' : 'slots'}`) },
             ]"
           >
             <template #crumbs-label="{ item }">
@@ -160,18 +213,70 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
 
     <template #body>
       <div class="w-full lg:max-w-3xl mx-auto">
+        <UPageCard
+          v-if="created.length"
+          :title="`${created.length} bookings created`"
+          description="A Telegram message is sent for each booking, as usual."
+          icon="i-lucide-circle-check"
+          variant="subtle"
+          :ui="{ leadingIcon: 'text-success' }"
+        >
+          <ul class="divide-y divide-default">
+            <li
+              v-for="booking in created"
+              :key="booking.id ?? undefined"
+            >
+              <ULink
+                :to="`/booking/${booking.id}`"
+                class="flex items-center justify-between gap-3 py-2 hover:text-highlighted"
+              >
+                <span class="min-w-0">
+                  <span class="block truncate text-sm font-medium text-highlighted">{{ booking.facilityName }}</span>
+                  <span
+                    v-if="booking.startDateTime && booking.endDateTime"
+                    class="block truncate text-xs text-muted"
+                  >
+                    {{ describeSlot({ start: booking.startDateTime, end: booking.endDateTime }, df, tf).date }}
+                    · {{ describeSlot({ start: booking.startDateTime, end: booking.endDateTime }, df, tf).time }}
+                  </span>
+                </span>
+                <UIcon
+                  name="i-lucide-chevron-right"
+                  class="size-4 shrink-0 text-dimmed"
+                />
+              </ULink>
+            </li>
+          </ul>
+
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <UButton
+              to="/booking"
+              label="View all bookings"
+              color="neutral"
+              variant="outline"
+              class="justify-center"
+            />
+            <UButton
+              :to="`/booking/new${originalQuery}`"
+              label="Make another booking"
+              icon="i-lucide-calendar-plus"
+              class="justify-center"
+            />
+          </div>
+        </UPageCard>
+
         <UAlert
-          v-if="prefilledDataError"
+          v-else-if="!slots.length"
           color="error"
           variant="subtle"
           icon="i-lucide-circle-alert"
           title="No time slot selected"
           description="Pick a facility and time slot on the timeline first."
-          :actions="[{ label: 'Back to new booking', to: '/booking/new', color: 'error', variant: 'outline' }]"
+          :actions="[{ label: 'Back to new booking', to: `/booking/new${originalQuery}`, color: 'error', variant: 'outline' }]"
         />
 
         <UForm
-          v-if="prefilledData"
+          v-else
           :state="state"
           :validate="validate"
           :validate-on="['input']"
@@ -179,27 +284,54 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
           @submit="onFormSubmit"
           @error="onFormError"
         >
-          <div class="flex flex-col gap-3">
-            <h2 class="text-lg font-semibold text-highlighted">
-              Confirm your booking
-            </h2>
+          <h2 class="text-lg font-semibold text-highlighted">
+            {{ slots.length === 1 ? 'Confirm your booking' : `Confirm ${slots.length} bookings` }}
+          </h2>
 
-            <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
-              <UBadge
-                :label="prefilledData.facilityName"
-                icon="i-lucide-map-pin"
+          <UPageCard
+            variant="subtle"
+            :ui="{ container: 'gap-y-3' }"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold text-highlighted">
+                {{ slots.length === 1 ? 'Slot' : `${slots.length} slots` }}
+              </h3>
+              <UButton
+                v-if="fromList"
+                :to="`/booking/new${originalQuery}`"
+                label="Add more"
+                icon="i-lucide-plus"
                 color="neutral"
-                variant="subtle"
+                variant="ghost"
+                size="xs"
               />
-              <span class="flex items-center gap-1.5">
-                <UIcon
-                  name="i-lucide-clock"
-                  class="size-4"
-                />
-                {{ df.format(prefilledData.startDateTime) }}, {{ tf.format(prefilledData.startDateTime) }} – {{ tf.format(prefilledData.endDateTime) }}
-              </span>
             </div>
-          </div>
+
+            <BookingSlotList
+              :slots="slots"
+              :clashes="clashes"
+              :errors="serverErrors"
+              :removable="fromList"
+              class="max-h-80 overflow-y-auto"
+              @remove="removeSlot"
+            />
+
+            <UAlert
+              v-if="problemCount"
+              color="error"
+              variant="subtle"
+              icon="i-lucide-circle-alert"
+              :title="slots.length === 1
+                ? 'This slot can\'t be booked.'
+                : `${problemCount} ${problemCount === 1 ? 'slot' : 'slots'} can't be booked.`"
+              :description="slots.length === 1
+                ? 'Go back and pick another time.'
+                : 'Bookings are made all at once, so remove the slots that clash to continue.'"
+              :actions="fromList
+                ? [{ label: problemCount === 1 ? 'Remove it' : 'Remove them', color: 'error', variant: 'outline', onClick: removeProblemSlots }]
+                : [{ label: 'Pick another time', to: `/booking/new${originalQuery}`, color: 'error', variant: 'outline' }]"
+            />
+          </UPageCard>
 
           <UPageCard variant="subtle">
             <div class="grid gap-5 sm:grid-cols-2">
@@ -259,24 +391,6 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
                   class="w-full"
                 />
               </UFormField>
-
-              <UFormField label="Start">
-                <UInput
-                  :model-value="`${df.format(prefilledData.startDateTime)}, ${tf.format(prefilledData.startDateTime)}`"
-                  icon="i-lucide-calendar"
-                  disabled
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField label="End">
-                <UInput
-                  :model-value="`${df.format(prefilledData.endDateTime)}, ${tf.format(prefilledData.endDateTime)}`"
-                  icon="i-lucide-calendar"
-                  disabled
-                  class="w-full"
-                />
-              </UFormField>
             </div>
           </UPageCard>
 
@@ -294,7 +408,8 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
 
           <UButton
             :loading="createIsPending"
-            label="Confirm"
+            :label="slots.length === 1 ? 'Confirm' : `Confirm ${slots.length} bookings`"
+            :disabled="!!problemCount"
             type="submit"
             size="lg"
             block

@@ -1,3 +1,11 @@
+### 28/09/2026
+
+#### What's new
+
+- Refreshed look, with dark mode
+- Book a facility for the whole day with **All day**
+- Book several facilities and days at once with **Book multiple**, or build up a list of slots on the timeline
+
 ### 02/06/2025
 
 #### What's fixed

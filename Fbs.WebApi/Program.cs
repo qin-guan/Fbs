@@ -104,6 +104,7 @@ builder.Services.AddScoped<FacilityRepository>();
 builder.Services.AddScoped<OtpRepository>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<BookingRepository>();
+builder.Services.AddSingleton<BookingWriteLock>();
 builder.Services.AddScoped<NominalRollRepository>();
 
 builder.Services.AddFastEndpoints();

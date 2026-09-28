@@ -1,7 +1,9 @@
 using System.Linq.Expressions;
+using System.Net;
 using System.Text.Json;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Options;
+using Google;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using MemoryPack;
@@ -18,6 +20,17 @@ public class BookingRepository(
     UserRepository userRepository
 ) : IRepository<Booking>
 {
+    private const int MaxEventDataLength = 1000;
+
+    /// <summary>
+    /// Whether the booking fits in the data embedded in its calendar event.
+    /// </summary>
+    public static bool FitsInEventData(Booking entity)
+    {
+        return Convert.ToBase64String(MemoryPackSerializer.Serialize(entity)).Length
+            <= MaxEventDataLength;
+    }
+
     public async Task<List<Booking>> GetListAsync(CancellationToken cancellationToken = default)
     {
         using var activity = instrumentation.ActivitySource.StartActivity();
@@ -112,7 +125,7 @@ public class BookingRepository(
         entity.Id = Guid.NewGuid();
         var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(entity));
 
-        if (data.Length > 1000)
+        if (data.Length > MaxEventDataLength)
         {
             throw new Exception("Event information is too long.");
         }
@@ -174,7 +187,7 @@ public class BookingRepository(
 
         var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(booking));
 
-        if (data.Length > 1000)
+        if (data.Length > MaxEventDataLength)
         {
             throw new Exception("Event information is too long.");
         }
@@ -236,6 +249,29 @@ public class BookingRepository(
                 .Events.Delete(options.Value.CarbonCopyCalendarId, booking.Id.ToString("N"))
                 .ExecuteAsync(cancellationToken),
         ]);
+
+        await cache.RemoveAsync("Bookings", cancellationToken);
+    }
+
+    /// <summary>
+    /// Removes a booking's events from both calendars, skipping calendars that don't have it.
+    /// Used to undo a partially created booking.
+    /// </summary>
+    public async Task RemoveEventsAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        using var activity = instrumentation.ActivitySource.StartActivity();
+
+        foreach (var calendarId in new[] { options.Value.CalendarId, options.Value.CarbonCopyCalendarId })
+        {
+            try
+            {
+                await calendarService
+                    .Events.Delete(calendarId, id.ToString("N"))
+                    .ExecuteAsync(cancellationToken);
+            }
+            catch (GoogleApiException e)
+                when (e.HttpStatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone) { }
+        }
 
         await cache.RemoveAsync("Bookings", cancellationToken);
     }

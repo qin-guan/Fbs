@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { VueCal } from 'vue-cal'
 import 'vue-cal/style'
+import type { NewBookingSlot, SlotClash } from '~/composables/booking-slots'
 
 definePageMeta({
   layout: 'app',
@@ -13,17 +14,19 @@ const tomorrow = new Date(today)
 tomorrow.setDate(today.getDate() + 1)
 
 const router = useRouter()
+const toast = useToast()
 const colorMode = useColorMode()
 const { df, tf } = useFormatter()
-const cal = useTemplateRef('cal')
+const basket = useBookingBasket()
 
-const selection = ref<{ start: Date, end: Date, facilityName: string }>()
+const selection = ref<NewBookingSlot>()
 const confirmation = ref({
   message: '',
   visible: false,
 })
 const helpVisible = ref(false)
 const helpMaximized = ref(false)
+const builderOpen = ref(false)
 
 const { data: help } = await useLazyAsyncData(() => queryCollection('content').path('/help').first())
 const { data: facilities, isPending: facilitiesIsPending } = useFacilities()
@@ -88,6 +91,10 @@ const bookingsUnderFacilityType = computed(() => {
   return bookings.value?.filter(n => facilitiesUnderFacilityType.value?.some(nn => nn.name == n.facilityName))
 })
 
+function scheduleOf(facilityName: string) {
+  return (facilitiesUnderFacilityType.value?.findIndex(n => n.name === facilityName) ?? -1) + 1
+}
+
 const calOptions = computed(() => {
   const events = []
 
@@ -101,6 +108,38 @@ const calOptions = computed(() => {
       content: '<br>' + booking?.description + '<br>' + booking?.pocName + '<br>' + booking?.pocPhone,
       draggable: false,
       resizable: false,
+      deletable: false,
+    })
+  }
+
+  // Slots already added to the list
+  for (const slot of basket.slots.value) {
+    const schedule = scheduleOf(slot.facilityName)
+    if (!schedule) continue
+    events.push({
+      id: `basket-${slot.id}`,
+      start: slot.start,
+      end: slot.end,
+      schedule,
+      title: 'In your list',
+      class: 'queued-booking',
+      draggable: false,
+      resizable: false,
+      deletable: false,
+    })
+  }
+
+  // The slot being picked, kept here rather than inside vue-cal so it survives data refreshes
+  if (selection.value && scheduleOf(selection.value.facilityName)) {
+    events.push({
+      id: 'new-booking',
+      start: new Date(selection.value.start),
+      end: new Date(selection.value.end),
+      schedule: scheduleOf(selection.value.facilityName),
+      title: 'New booking',
+      class: 'new-booking',
+      draggable: true,
+      resizable: true,
       deletable: false,
     })
   }
@@ -125,17 +164,36 @@ const calOptions = computed(() => {
   }
 })
 
+const basketClashes = computed(() => findClashes(basket.slots.value, bookings.value))
+const basketClashCount = computed(() => basketClashes.value.filter(Boolean).length)
+
+const clashMessages: Record<SlotClash['kind'], string> = {
+  past: 'This time has already passed',
+  existing: 'Clashes with an existing booking',
+  selection: 'Overlaps a slot in your list',
+}
+
 const selectionSummary = computed(() => {
   if (!selection.value) return undefined
 
-  const { start, end, facilityName } = selection.value
-  const sameDay = start.toDateString() === end.toDateString()
-  const range = sameDay
-    ? `${df.format(start)}, ${tf.format(start)} – ${tf.format(end)}`
-    : `${df.format(start)}, ${tf.format(start)} – ${df.format(end)}, ${tf.format(end)}`
-
-  return { facilityName, range }
+  const clash = findClashes([...basket.slots.value, selection.value], bookings.value).at(-1)
+  return {
+    facilityName: selection.value.facilityName,
+    ...describeSlot(selection.value, df, tf),
+    clash: clash && clashMessages[clash.kind],
+  }
 })
+
+const selectionIsWholeDay = computed(() => {
+  if (!selection.value) return false
+  const whole = wholeDay(selection.value.start)
+  return whole.start.getTime() === selection.value.start.getTime() && whole.end.getTime() === selection.value.end.getTime()
+})
+
+const slotCount = computed(() => basket.slots.value.length + (selection.value ? 1 : 0))
+const continueLabel = computed(() => basket.slots.value.length
+  ? `Continue with ${slotCount.value} ${slotCount.value === 1 ? 'slot' : 'slots'}`
+  : 'Confirm selection')
 
 whenever(facilityTypes, (f) => {
   if (!facilityType.value && f[0]) {
@@ -151,12 +209,65 @@ function onReady({ view }) {
   view.scrollToCurrentTime()
 }
 
-function confirmSelection(fromDialog: boolean) {
-  if (!selection.value) {
+function selectWholeDay() {
+  if (!selection.value) return
+
+  const { start, end } = wholeDay(selection.value.start)
+  if (end <= start) {
+    toast.add({ title: 'This day is almost over.', description: 'Pick a later day to book it whole.', color: 'warning', icon: 'i-lucide-triangle-alert', duration: 3000 })
     return
   }
 
-  const showEigerConfirmation = selection.value.facilityName === 'Eiger' || selection.value.facilityName === 'Temasek Square'
+  selection.value = { facilityName: selection.value.facilityName, start, end }
+}
+
+function hasRoomFor(count: number) {
+  if (basket.slots.value.length + count <= MAX_BATCH_SLOTS) return true
+
+  toast.add({
+    title: `You can book up to ${MAX_BATCH_SLOTS} slots at a time.`,
+    color: 'warning',
+    icon: 'i-lucide-triangle-alert',
+    duration: 3000,
+  })
+  return false
+}
+
+function addSelectionToList() {
+  if (!selection.value || !hasRoomFor(1)) return
+
+  basket.add([selection.value])
+  selection.value = undefined
+}
+
+function onBuilderAdd(slots: NewBookingSlot[]) {
+  if (!hasRoomFor(slots.length)) return
+
+  basket.add(slots)
+  toast.add({
+    title: `Added ${slots.length} ${slots.length === 1 ? 'slot' : 'slots'} to your list`,
+    color: 'success',
+    icon: 'i-lucide-circle-check',
+    duration: 3000,
+  })
+}
+
+function removeFromList(index: number) {
+  const slot = basket.slots.value[index]
+  if (slot) basket.remove([slot.id])
+}
+
+function removeClashing() {
+  basket.remove(basket.slots.value.filter((_, i) => basketClashes.value[i]).map(s => s.id))
+}
+
+function confirmSelection(fromDialog: boolean) {
+  const slots = [...basket.slots.value, ...(selection.value ? [selection.value] : [])]
+  if (!slots.length) {
+    return
+  }
+
+  const showEigerConfirmation = slots.some(s => s.facilityName === 'Eiger' || s.facilityName === 'Temasek Square')
   if (showEigerConfirmation && !fromDialog) {
     confirmation.value = {
       visible: true,
@@ -172,73 +283,67 @@ function confirmSelection(fromDialog: boolean) {
     }
   }
 
+  // A single slot goes straight to the confirm page, as before
+  if (!basket.slots.value.length && selection.value) {
+    router.push({
+      path: '/booking/new/confirm',
+      query: {
+        ['start-date']: selection.value.start.toISOString(),
+        ['end-date']: selection.value.end.toISOString(),
+        ['facility-name']: selection.value.facilityName,
+        ['original-query']: window.location.search,
+      },
+    })
+    return
+  }
+
+  if (selection.value) {
+    if (!hasRoomFor(1)) return
+    basket.add([selection.value])
+    selection.value = undefined
+  }
+
   router.push({
     path: '/booking/new/confirm',
-    query: {
-      ['start-date']: selection.value.start.toISOString(),
-      ['end-date']: selection.value.end.toISOString(),
-      ['facility-name']: selection.value.facilityName,
-      ['original-query']: window.location.search,
-    },
+    query: { ['original-query']: window.location.search },
   })
+}
+
+function facilityOf(event: { schedule: number }) {
+  const facilityName = facilitiesUnderFacilityType.value?.[event.schedule - 1]?.name
+  if (!facilityName) {
+    throw new Error('Invalid facility name')
+  }
+  return facilityName
 }
 
 async function onEventResizeEnd({ event, ...rest }) {
-  const facilityName = facilitiesUnderFacilityType.value?.[event.schedule - 1]?.name
-  if (!facilityName) {
-    throw new Error('Invalid facility name')
+  if (rest.overlaps.length) {
+    return false
   }
 
-  selection.value = {
-    start: event.start,
-    end: event.end,
-    facilityName,
-  }
-
-  return !rest.overlaps.length
+  selection.value = { start: new Date(event.start), end: new Date(event.end), facilityName: facilityOf(event) }
+  return true
 }
 
 async function onEventDrop({ event, ...rest }) {
-  const facilityName = facilitiesUnderFacilityType.value?.[event.schedule - 1]?.name
-  if (!facilityName) {
-    throw new Error('Invalid facility name')
+  if (rest.overlaps.length) {
+    return false
   }
 
-  selection.value = {
-    start: event.start,
-    end: event.end,
-    facilityName,
-  }
-
-  return !rest.overlaps.length
+  selection.value = { start: new Date(event.start), end: new Date(event.end), facilityName: facilityOf(event) }
+  return true
 }
 
 async function onEventCreate({ event, resolve }) {
-  cal.value.view.deleteEvent({ id: 'new-booking' }, 3)
+  selection.value = { start: new Date(event.start), end: new Date(event.end), facilityName: facilityOf(event) }
 
-  const facilityName = facilitiesUnderFacilityType.value?.[event.schedule - 1]?.name
-  if (!facilityName) {
-    throw new Error('Invalid facility name')
-  }
-
-  selection.value = {
-    start: event.start,
-    end: event.end,
-    facilityName,
-  }
-
-  resolve({
-    ...event,
-    id: 'new-booking',
-    title: 'New booking',
-    class: 'new-booking',
-    resizable: true,
-    draggable: true,
-  })
+  // The selection is rendered from `calOptions.events`, so don't let vue-cal keep its own copy
+  resolve(false)
 }
 
 async function eventDoubleClick({ event }) {
-  if (event.id === 'new-booking') {
+  if (event.id === 'new-booking' || String(event.id).startsWith('basket-')) {
     return
   }
 
@@ -329,6 +434,11 @@ function onViewChange({ start, id }) {
         </template>
       </UModal>
 
+      <BookingBuilder
+        v-model:open="builderOpen"
+        @add="onBuilderAdd"
+      />
+
       <div class="flex flex-wrap items-end justify-between gap-3">
         <UFormField
           label="Facility Type"
@@ -344,19 +454,30 @@ function onViewChange({ start, id }) {
           />
         </UFormField>
 
-        <p class="hidden md:flex items-center gap-1.5 text-sm text-muted">
-          <UIcon
-            name="i-lucide-mouse-pointer-click"
-            class="size-4"
+        <div class="flex w-full items-center justify-between gap-3 sm:w-auto">
+          <p class="hidden lg:flex items-center gap-1.5 text-sm text-muted">
+            <UIcon
+              name="i-lucide-mouse-pointer-click"
+              class="size-4"
+            />
+            Click and drag on the timeline to select a slot. Double-click a booking to view it.
+          </p>
+
+          <UButton
+            id="book-multiple"
+            label="Book multiple"
+            icon="i-lucide-calendar-range"
+            color="neutral"
+            variant="outline"
+            class="w-full justify-center sm:w-auto"
+            @click="builderOpen = true"
           />
-          Click and drag on the timeline to select a slot. Double-click a booking to view it.
-        </p>
+        </div>
       </div>
 
-      <div class="relative flex flex-1 min-h-[28rem]">
+      <div class="relative flex flex-1 min-h-80">
         <div class="absolute inset-0">
           <VueCal
-            ref="cal"
             v-bind="calOptions"
             @event-dblclick="eventDoubleClick"
             @view-change="onViewChange"
@@ -371,6 +492,48 @@ function onViewChange({ start, id }) {
         </div>
       </div>
 
+      <section
+        v-if="basket.slots.value.length"
+        aria-label="Your list"
+        class="rounded-lg border border-default bg-elevated/30"
+      >
+        <div class="flex items-center justify-between gap-2 border-b border-default px-3 py-2">
+          <h2 class="text-sm font-semibold text-highlighted">
+            Your list
+            <UBadge
+              :label="basket.slots.value.length"
+              variant="subtle"
+              size="sm"
+              class="ms-1"
+            />
+          </h2>
+          <div class="flex items-center gap-1">
+            <UButton
+              v-if="basketClashCount"
+              :label="`Remove ${basketClashCount} unavailable`"
+              color="error"
+              variant="ghost"
+              size="xs"
+              @click="removeClashing"
+            />
+            <UButton
+              label="Clear"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="basket.clear()"
+            />
+          </div>
+        </div>
+        <BookingSlotList
+          :slots="basket.slots.value"
+          :clashes="basketClashes"
+          removable
+          class="max-h-32 overflow-y-auto px-2"
+          @remove="removeFromList"
+        />
+      </section>
+
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="min-w-0 text-sm">
           <template v-if="selectionSummary">
@@ -378,26 +541,51 @@ function onViewChange({ start, id }) {
               {{ selectionSummary.facilityName }}
             </p>
             <p class="text-muted">
-              {{ selectionSummary.range }}
+              {{ selectionSummary.date }} · {{ selectionSummary.time }}
+            </p>
+            <p
+              v-if="selectionSummary.clash"
+              class="text-xs text-error"
+            >
+              {{ selectionSummary.clash }}
             </p>
           </template>
           <p
             v-else
             class="text-muted"
           >
-            No time slot selected yet.
+            {{ basket.slots.value.length ? 'Pick another slot, or continue with your list.' : 'No time slot selected yet.' }}
           </p>
         </div>
 
-        <UButton
-          id="confirm-selection"
-          label="Confirm selection"
-          trailing-icon="i-lucide-arrow-right"
-          size="lg"
-          class="justify-center sm:min-w-56"
-          :disabled="!selection?.start"
-          @click="confirmSelection(false)"
-        />
+        <div class="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
+          <template v-if="selection">
+            <UButton
+              label="All day"
+              icon="i-lucide-unfold-vertical"
+              color="neutral"
+              variant="outline"
+              :disabled="selectionIsWholeDay"
+              @click="selectWholeDay"
+            />
+            <UButton
+              label="Add to list"
+              icon="i-lucide-list-plus"
+              color="neutral"
+              variant="outline"
+              @click="addSelectionToList"
+            />
+          </template>
+          <UButton
+            id="confirm-selection"
+            :label="continueLabel"
+            trailing-icon="i-lucide-arrow-right"
+            size="lg"
+            class="w-full justify-center sm:w-auto sm:min-w-56"
+            :disabled="!slotCount"
+            @click="confirmSelection(false)"
+          />
+        </div>
       </div>
     </template>
   </UDashboardPanel>
@@ -507,6 +695,20 @@ function onViewChange({ start, id }) {
   border-inline-start-color: color-mix(in oklab, var(--ui-primary) 70%, black);
   box-shadow: 0 4px 12px -4px color-mix(in oklab, var(--ui-primary) 60%, transparent);
   z-index: 2;
+}
+
+/* Slots already added to the list */
+:deep(.vuecal__event.queued-booking) {
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklab, var(--ui-primary) 22%, var(--ui-bg)),
+    color-mix(in oklab, var(--ui-primary) 22%, var(--ui-bg)) 6px,
+    color-mix(in oklab, var(--ui-primary) 10%, var(--ui-bg)) 6px,
+    color-mix(in oklab, var(--ui-primary) 10%, var(--ui-bg)) 12px
+  );
+  border: 1px dashed var(--ui-primary);
+  border-inline-start-width: 3px;
+  border-inline-start-style: solid;
 }
 
 :deep(.vuecal__event-placeholder) {

@@ -8,7 +8,8 @@ namespace Fbs.WebApi.Endpoints.Booking.Post;
 public class Endpoint(
     BookingRepository bookingRepository,
     UserRepository userRepository,
-    FacilityRepository facilityRepository
+    FacilityRepository facilityRepository,
+    BookingWriteLock bookingWriteLock
 ) : Endpoint<Request, Entities.Booking>
 {
     public override void Configure()
@@ -41,20 +42,6 @@ public class Endpoint(
             return;
         }
 
-        var bookings = await bookingRepository.GetListAsync(ct);
-        var overlapping = bookings.FirstOrDefault(b =>
-            b.FacilityName == facility.Name
-            && b.StartDateTime < req.EndDateTime
-            && b.EndDateTime > req.StartDateTime
-        );
-
-        if (overlapping is not null)
-        {
-            AddError(r => r.EndDateTime, $"Overlaps with booking {overlapping.Id}");
-            await Send.ErrorsAsync(cancellation: ct);
-            return;
-        }
-
         var booking = new Entities.Booking
         {
             StartDateTime = req.StartDateTime,
@@ -67,7 +54,24 @@ public class Endpoint(
             UserPhone = phone,
         };
 
-        await bookingRepository.InsertAsync(booking, ct);
+        using (await bookingWriteLock.AcquireAsync(ct))
+        {
+            var bookings = await bookingRepository.GetListAsync(ct);
+            var overlapping = bookings.FirstOrDefault(b =>
+                b.FacilityName == facility.Name
+                && b.StartDateTime < req.EndDateTime
+                && b.EndDateTime > req.StartDateTime
+            );
+
+            if (overlapping is not null)
+            {
+                AddError(r => r.EndDateTime, $"Overlaps with booking {overlapping.Id}");
+                await Send.ErrorsAsync(cancellation: ct);
+                return;
+            }
+
+            await bookingRepository.InsertAsync(booking, ct);
+        }
 
         await PublishAsync(
             new BookingCreatedEvent
