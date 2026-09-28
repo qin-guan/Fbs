@@ -297,8 +297,10 @@ export function deserializeIntoFbsWebApiEndpointsBookingByIdPostRequest(fbsWebAp
     return {
         "conduct": n => { fbsWebApiEndpointsBookingByIdPostRequest.conduct = n.getStringValue(); },
         "description": n => { fbsWebApiEndpointsBookingByIdPostRequest.description = n.getStringValue(); },
+        "endDateTime": n => { fbsWebApiEndpointsBookingByIdPostRequest.endDateTime = n.getDateValue(); },
         "pocName": n => { fbsWebApiEndpointsBookingByIdPostRequest.pocName = n.getStringValue(); },
         "pocPhone": n => { fbsWebApiEndpointsBookingByIdPostRequest.pocPhone = n.getStringValue(); },
+        "startDateTime": n => { fbsWebApiEndpointsBookingByIdPostRequest.startDateTime = n.getDateValue(); },
     }
 }
 /**
@@ -585,6 +587,10 @@ export interface FbsWebApiEndpointsBookingByIdPostRequest extends Parsable {
      */
     description?: string | null;
     /**
+     * New end of the booking. Leave both times out to keep the current time slot.
+     */
+    endDateTime?: Date | null;
+    /**
      * The pocName property
      */
     pocName?: string | null;
@@ -592,6 +598,10 @@ export interface FbsWebApiEndpointsBookingByIdPostRequest extends Parsable {
      * The pocPhone property
      */
     pocPhone?: string | null;
+    /**
+     * New start of the booking. Leave both times out to keep the current time slot.
+     */
+    startDateTime?: Date | null;
 }
 export interface FbsWebApiEndpointsBookingPostRequest extends Parsable {
     /**
@@ -865,8 +875,10 @@ export function serializeFbsWebApiEndpointsBookingByIdPostRequest(writer: Serial
     if (fbsWebApiEndpointsBookingByIdPostRequest) {
         writer.writeStringValue("conduct", fbsWebApiEndpointsBookingByIdPostRequest.conduct);
         writer.writeStringValue("description", fbsWebApiEndpointsBookingByIdPostRequest.description);
+        writer.writeDateValue("endDateTime", fbsWebApiEndpointsBookingByIdPostRequest.endDateTime);
         writer.writeStringValue("pocName", fbsWebApiEndpointsBookingByIdPostRequest.pocName);
         writer.writeStringValue("pocPhone", fbsWebApiEndpointsBookingByIdPostRequest.pocPhone);
+        writer.writeDateValue("startDateTime", fbsWebApiEndpointsBookingByIdPostRequest.startDateTime);
     }
 }
 /**

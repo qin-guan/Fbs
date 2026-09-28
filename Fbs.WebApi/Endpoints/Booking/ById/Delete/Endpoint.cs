@@ -12,14 +12,28 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
     public override void Configure()
     {
         Delete("/Booking/{Id:guid}");
+        Claims("Phone");
     }
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
+        var phone = User.ClaimValue("Phone");
+
         var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
         if (booking is null)
         {
             await Send.NotFoundAsync(ct);
+            return;
+        }
+
+        var bookedBy = await userRepository.FindAsync(u => u.Phone == booking.UserPhone, ct);
+        var currentUser = await userRepository.GetAsync(u => u.Phone == phone, ct);
+
+        // Anyone in the same unit can cancel each other's bookings. Admins can cancel any booking.
+        if (!currentUser.IsAdmin && !currentUser.CanManageBookingsOf(bookedBy))
+        {
+            AddError("You can only cancel bookings made by your unit.");
+            await Send.ErrorsAsync(StatusCodes.Status403Forbidden, ct);
             return;
         }
 
@@ -36,6 +50,7 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
                 StartDateTime = booking.StartDateTime,
                 EndDateTime = booking.EndDateTime,
                 UserPhone = booking.UserPhone,
+                CancelledByPhone = phone,
             },
             Mode.WaitForAll,
             ct

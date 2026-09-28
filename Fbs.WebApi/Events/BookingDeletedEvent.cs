@@ -11,4 +11,9 @@ public class BookingDeletedEvent
     public DateTimeOffset? StartDateTime { get; set; }
     public DateTimeOffset? EndDateTime { get; set; }
     public string? UserPhone { get; set; }
+
+    /// <summary>
+    /// Who cancelled the booking, which may be someone else in the booker's unit.
+    /// </summary>
+    public string? CancelledByPhone { get; set; }
 }

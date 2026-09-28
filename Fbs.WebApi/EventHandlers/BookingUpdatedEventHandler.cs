@@ -35,6 +35,17 @@ public class BookingUpdatedEventHandler(
                 || (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
             );
 
+        // Point out when the time slot moved, so nobody turns up at the old time
+        var previously =
+            booking.PreviousStartDateTime is null || booking.PreviousEndDateTime is null
+                ? string.Empty
+                : $"""
+
+
+                    <u>Previously</u>
+                    {booking.PreviousStartDateTime?.ToLocalTime():f} to {booking.PreviousEndDateTime?.ToLocalTime():f}
+                    """;
+
         await botClient.SendMessage(
             user.TelegramChatId!,
             $"""
@@ -47,7 +58,7 @@ public class BookingUpdatedEventHandler(
             {booking.StartDateTime?.ToLocalTime():f}
 
             <u>To</u>
-            {booking.EndDateTime?.ToLocalTime():f}
+            {booking.EndDateTime?.ToLocalTime():f}{previously}
 
             <u>Point of contact</u>
             Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
@@ -89,7 +100,7 @@ public class BookingUpdatedEventHandler(
                     {booking.StartDateTime?.ToLocalTime():f}
 
                     <u>To</u>
-                    {booking.EndDateTime?.ToLocalTime():f}
+                    {booking.EndDateTime?.ToLocalTime():f}{previously}
 
                     <u>Point of contact</u>
                     Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}

@@ -112,6 +112,18 @@ public class FakeGoogle
                 return Json(HttpStatusCode.OK, body.DeepClone());
             }
 
+            if (eventId is not null && request.Method == HttpMethod.Put)
+            {
+                if (!calendar.ContainsKey(eventId))
+                {
+                    return Error(HttpStatusCode.NotFound, "Not Found");
+                }
+
+                var body = JsonNode.Parse(await ReadBodyAsync(request, ct))!.AsObject();
+                calendar[eventId] = body;
+                return Json(HttpStatusCode.OK, body.DeepClone());
+            }
+
             if (eventId is not null && request.Method == HttpMethod.Delete)
             {
                 return calendar.TryRemove(eventId, out _)

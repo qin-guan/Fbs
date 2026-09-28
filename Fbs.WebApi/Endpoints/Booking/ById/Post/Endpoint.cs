@@ -5,46 +5,102 @@ using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Booking.ById.Post;
 
-public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
-    : Endpoint<Request, Entities.Booking>
+public class Endpoint(
+    BookingRepository bookingRepository,
+    UserRepository userRepository,
+    BookingWriteLock bookingWriteLock
+) : Endpoint<Request, Entities.Booking>
 {
     public override void Configure()
     {
         Post("/Booking/{Id:guid}");
+        Claims("Phone");
     }
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
         var phone = User.ClaimValue("Phone");
-        if (phone is null)
-        {
-            throw new Exception("User does not exist");
-        }
 
         var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
         if (booking is null)
         {
-            throw new Exception("Booking does not exist.");
+            await Send.NotFoundAsync(ct);
+            return;
         }
 
         var bookingCreatedBy = await userRepository.FindAsync(
             u => u.Phone == booking.UserPhone,
             ct
         );
-        var currentUser = await userRepository.FindAsync(u => u.Phone == phone, ct);
+        var currentUser = await userRepository.GetAsync(u => u.Phone == phone, ct);
 
-        if (bookingCreatedBy?.Unit != currentUser?.Unit)
+        if (!currentUser.CanManageBookingsOf(bookingCreatedBy))
         {
-            throw new Exception("You are not allowed to update this booking.");
+            AddError("You can only update bookings made by your unit.");
+            await Send.ErrorsAsync(StatusCodes.Status403Forbidden, ct);
+            return;
         }
 
-        booking.Conduct = req.Conduct;
-        booking.Description = req.Description;
-        booking.PocName = req.PocName;
-        booking.PocPhone = req.PocPhone;
-        booking.UserPhone = phone;
+        var previousStartDateTime = booking.StartDateTime;
+        var previousEndDateTime = booking.EndDateTime;
+        var startDateTime = req.StartDateTime ?? booking.StartDateTime;
+        var endDateTime = req.EndDateTime ?? booking.EndDateTime;
+        var timeChanged =
+            startDateTime != previousStartDateTime || endDateTime != previousEndDateTime;
 
-        await bookingRepository.UpdateAsync(booking, ct);
+        if (timeChanged)
+        {
+            ValidateTimeChange(
+                previousStartDateTime,
+                previousEndDateTime,
+                startDateTime!.Value,
+                endDateTime!.Value
+            );
+            ThrowIfAnyErrors();
+        }
+
+        var updated = new Entities.Booking
+        {
+            Id = booking.Id,
+            FacilityName = booking.FacilityName,
+            StartDateTime = startDateTime,
+            EndDateTime = endDateTime,
+            Conduct = req.Conduct,
+            Description = req.Description,
+            PocName = req.PocName,
+            PocPhone = req.PocPhone,
+            UserPhone = phone,
+        };
+
+        if (!BookingRepository.FitsInEventData(updated))
+        {
+            AddError(r => r.Description, "Event information is too long.");
+            ThrowIfAnyErrors();
+        }
+
+        using (await bookingWriteLock.AcquireAsync(ct))
+        {
+            if (timeChanged)
+            {
+                // Check against the latest bookings, ignoring this booking's current slot
+                var bookings = await bookingRepository.GetListAsync(ct);
+                var overlapping = bookings.FirstOrDefault(b =>
+                    b.Id != updated.Id
+                    && b.FacilityName == updated.FacilityName
+                    && b.StartDateTime < updated.EndDateTime
+                    && b.EndDateTime > updated.StartDateTime
+                );
+
+                if (overlapping is not null)
+                {
+                    AddError(r => r.EndDateTime, $"Overlaps with booking {overlapping.Id}");
+                    await Send.ErrorsAsync(cancellation: ct);
+                    return;
+                }
+            }
+
+            booking = await bookingRepository.UpdateAsync(updated, ct);
+        }
 
         await PublishAsync(
             new BookingUpdatedEvent
@@ -57,6 +113,8 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
                 PocPhone = booking.PocPhone,
                 StartDateTime = booking.StartDateTime,
                 EndDateTime = booking.EndDateTime,
+                PreviousStartDateTime = timeChanged ? previousStartDateTime : null,
+                PreviousEndDateTime = timeChanged ? previousEndDateTime : null,
                 UserPhone = booking.UserPhone,
             },
             Mode.WaitForAll,
@@ -69,5 +127,43 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
             verb: Http.GET,
             cancellation: ct
         );
+    }
+
+    /// <summary>
+    /// Bookings that are over can't be moved. A booking that hasn't started can move anywhere in
+    /// the future; one that is underway keeps its start and can only have its end changed.
+    /// </summary>
+    private void ValidateTimeChange(
+        DateTimeOffset? previousStartDateTime,
+        DateTimeOffset? previousEndDateTime,
+        DateTimeOffset startDateTime,
+        DateTimeOffset endDateTime
+    )
+    {
+        var now = DateTimeOffset.Now;
+
+        if (previousEndDateTime <= now)
+        {
+            AddError(
+                r => r.StartDateTime,
+                "This booking is over, so its time can no longer be changed"
+            );
+            return;
+        }
+
+        if (startDateTime != previousStartDateTime && startDateTime < now)
+        {
+            AddError(
+                r => r.StartDateTime,
+                previousStartDateTime <= now
+                    ? "This booking has started, so only its end time can be changed"
+                    : "Start Date Time must be in the future"
+            );
+        }
+
+        if (endDateTime <= now)
+        {
+            AddError(r => r.EndDateTime, "End time must be in the future");
+        }
     }
 }

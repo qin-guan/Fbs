@@ -27,6 +27,8 @@ public class BookingDeletedEventHandler(
     {
         var users = await userRepository.GetListAsync(ct);
         var user = await userRepository.GetAsync(u => u.Phone == booking.UserPhone, ct);
+        var cancelledBy =
+            users.SingleOrDefault(u => u.Phone == booking.CancelledByPhone) ?? user;
         var subscribedUsers = users
             .Where(u => !string.IsNullOrWhiteSpace(u.TelegramChatId))
             .Where(u => u.Phone != booking.UserPhone)
@@ -54,9 +56,9 @@ public class BookingDeletedEventHandler(
             Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
 
             <u>Cancelled by</u>
-            Unit: {user.Unit}
-            Name: {user.Name}
-            Contact: {user.Phone}
+            Unit: {cancelledBy.Unit}
+            Name: {cancelledBy.Name}
+            Contact: {cancelledBy.Phone}
 
             <u>Description</u>
             {(
@@ -96,9 +98,9 @@ public class BookingDeletedEventHandler(
                     Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
 
                     <u>Cancelled by</u>
-                    Unit: {user.Unit}
-                    Name: {user.Name}
-                    Contact: {user.Phone}
+                    Unit: {cancelledBy.Unit}
+                    Name: {cancelledBy.Name}
+                    Contact: {cancelledBy.Phone}
 
                     <u>Description</u>
                     {(

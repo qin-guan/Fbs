@@ -228,3 +228,54 @@ export const useBookingBasket = createSharedComposable(() => {
 
   return { slots, add, remove, clear }
 })
+
+export type RescheduleProblem
+  = | { kind: 'over' }
+    | { kind: 'started' }
+    | { kind: 'past' }
+    | { kind: 'order' }
+    | { kind: 'interval' }
+    | { kind: 'existing', booking: FbsWebApiDtosBookingWithUser }
+
+/**
+ * Why a booking can't be moved to a new time slot, mirroring the API's checks: bookings that are
+ * over can't move, ones underway keep their start, and the new slot can't clash with other bookings.
+ */
+export function findRescheduleProblem(
+  booking: { id?: string | null, facilityName?: string | null, start: Date, end: Date },
+  slot: { start: Date, end: Date },
+  bookings: FbsWebApiDtosBookingWithUser[] | undefined,
+  now = new Date(),
+): RescheduleProblem | undefined {
+  if (booking.end <= now) {
+    return { kind: 'over' }
+  }
+
+  if (slot.start.getTime() !== booking.start.getTime() && slot.start < now) {
+    return booking.start <= now ? { kind: 'started' } : { kind: 'past' }
+  }
+
+  if (slot.end <= slot.start) {
+    return { kind: 'order' }
+  }
+
+  if (slot.start.getMinutes() % 30 || slot.end.getMinutes() % 30) {
+    return { kind: 'interval' }
+  }
+
+  if (slot.end <= now) {
+    return { kind: 'past' }
+  }
+
+  const clash = bookings?.find(b =>
+    b.id !== booking.id
+    && b.facilityName === booking.facilityName
+    && b.startDateTime && b.endDateTime
+    && overlaps(slot, { start: b.startDateTime, end: b.endDateTime }),
+  )
+  if (clash) {
+    return { kind: 'existing', booking: clash }
+  }
+
+  return undefined
+}
