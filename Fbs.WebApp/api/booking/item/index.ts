@@ -12,9 +12,8 @@ import { type BaseRequestBuilder, type Parsable, type ParsableFactory, type Requ
 export interface BookingItemRequestBuilder extends BaseRequestBuilder<BookingItemRequestBuilder> {
     /**
      * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-     * @returns {Promise<FbsWebApiDtosBookingWithUser>}
      */
-     delete(requestConfiguration?: RequestConfiguration<object> | undefined) : Promise<FbsWebApiDtosBookingWithUser | undefined>;
+     delete(requestConfiguration?: RequestConfiguration<object> | undefined) : Promise<void>;
     /**
      * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
      * @returns {Promise<FbsWebApiDtosBookingWithUser>}
@@ -54,9 +53,7 @@ export const BookingItemRequestBuilderUriTemplate = "{+baseurl}/Booking/{id}";
 export const BookingItemRequestBuilderRequestsMetadata: RequestsMetadata = {
     delete: {
         uriTemplate: BookingItemRequestBuilderUriTemplate,
-        responseBodyContentType: "application/json",
-        adapterMethodName: "send",
-        responseBodyFactory:  createFbsWebApiDtosBookingWithUserFromDiscriminatorValue,
+        adapterMethodName: "sendNoResponseContent",
     },
     get: {
         uriTemplate: BookingItemRequestBuilderUriTemplate,

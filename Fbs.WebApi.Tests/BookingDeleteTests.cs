@@ -91,6 +91,20 @@ public class BookingDeleteTests : IAsyncLifetime
         await AssertBookingIsGoneAsync();
     }
 
+    [Theory]
+    [InlineData("/Booking/{id}")]
+    [InlineData("/Admin/Bookings/{id}")]
+    public async Task Is_documented_as_having_no_response_body(string path)
+    {
+        // The generated web app client decodes whatever the spec says, so it must match the 204 sent
+        var spec = JsonDocument.Parse(await _client.GetStringAsync("/openapi/v1.json"));
+        var responses = spec.RootElement.GetProperty("paths").GetProperty(path).GetProperty("delete").GetProperty("responses");
+
+        Assert.True(responses.TryGetProperty("204", out var noContent), responses.ToString());
+        Assert.False(noContent.TryGetProperty("content", out _), responses.ToString());
+        Assert.False(responses.TryGetProperty("200", out _), responses.ToString());
+    }
+
     [Fact]
     public async Task Returns_not_found_for_an_unknown_booking()
     {
