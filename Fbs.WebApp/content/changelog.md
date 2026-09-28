@@ -5,6 +5,8 @@
 - Refreshed look, with dark mode
 - Book a facility for the whole day with **All day**
 - Book several facilities and days at once with **Book multiple**, or build up a list of slots on the timeline
+- Change the date and time of an existing booking, as long as the new slot is free
+- Anyone in the same unit can cancel each other's bookings
 
 ### 02/06/2025
 

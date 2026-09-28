@@ -55,6 +55,7 @@ public class Endpoint(BookingRepository bookingRepository, UserRepository userRe
                 StartDateTime = booking.StartDateTime,
                 EndDateTime = booking.EndDateTime,
                 UserPhone = booking.UserPhone,
+                CancelledByPhone = phone,
             },
             Mode.WaitForAll,
             ct
