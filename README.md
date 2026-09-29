@@ -107,6 +107,22 @@ that lists them, not one for each. People with no Telegram are left out, and so 
 Telegram outage is tried again later without telling twice the people who were told already. Times are in the tenant's
 time zone. Sending is kept to `Telegram:MessagesPerSecond` (25) across everything, as Telegram allows a bot about 30.
 
+### Google Calendar
+
+A tenant can have a Google Calendar its bookings are copied to, one way: what is in the calendar is never read back. The
+`CalendarConnection` table says which (`CalendarId`, which the service account in `Google:ServiceAccountJsonCredential`
+must have been given access to). While its `Status` is `Active`, every booking made, changed or cancelled writes an
+outbox message, and `CalendarBookingSync` sends the booking as it is when the message is handled, so retries and messages
+handled out of order can't send old news. The event's ID is the booking's ID without dashes, as it was when bookings
+were kept in the calendar, so events already there are updated rather than added again, and cancelling removes them.
+
+Google refusing the calendar (401, 404, or 403 for anything but the rate limit) marks the connection `Failed`, with the
+error in `LastError`, and stops sending to it until someone puts it right and sets it `Active` again. Anything else, such
+as a rate limit or a problem at Google, is tried again like any outbox message. `BookingCalendarEvent` records which
+version of each booking was sent. `CalendarReconciler` finds bookings that aren't in the calendar as they are now, and
+sends them, every `CalendarSync:Interval` (24 hours), which is also how a calendar connected after bookings were made gets
+them. Bookings that ended over a week ago are left alone.
+
 ## Testing
 
 The API tests use [TUnit](https://tunit.dev) and run the API in memory, with Google and Telegram faked, so they need

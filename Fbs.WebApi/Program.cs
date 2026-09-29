@@ -5,6 +5,7 @@ using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi;
 using Fbs.WebApi.Bookings;
+using Fbs.WebApi.CalendarSync;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Events;
@@ -178,6 +179,9 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
     builder.Services.AddHostedService(sp => sp.GetRequiredService<OutboxDispatcher>());
     builder.Services.AddSingleton<TelegramThrottle>();
     builder.Services.AddScoped<IOutboxHandler, TelegramBookingNotifier>();
+    builder.Services.AddScoped<IOutboxHandler, CalendarBookingSync>();
+    builder.Services.Configure<CalendarSyncOptions>(builder.Configuration.GetSection("CalendarSync"));
+    builder.Services.AddHostedService<CalendarReconciler>();
 }
 else
 {

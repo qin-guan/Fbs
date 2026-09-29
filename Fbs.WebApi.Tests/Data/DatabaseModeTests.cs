@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Outbox;
+using Fbs.WebApi.Tests.Fakes;
 using Fbs.WebApi.Tests.Helpers;
 using Booking = Fbs.WebApi.Entities.Booking;
 using DataBooking = Fbs.WebApi.Data.Entities.Booking;
@@ -149,5 +150,44 @@ public class DatabaseModeTests(DatabaseFbsApiFactory factory)
         // Each told once, including those told before it failed
         await Assert.That(factory.Telegram.Messages.Select(m => m.ChatId)).IsEquivalentTo([1001L, 1002L, 1003L]);
         await Assert.That(factory.Db.Queryable<OutboxMessage>().Single(m => m.TenantId == tenantId).Status).IsEqualTo(OutboxStatus.Done);
+    }
+
+    [Test]
+    public async Task Bookings_are_copied_to_the_tenants_calendar_when_it_has_one()
+    {
+        factory.Db.Insertable(new CalendarConnection { Id = Guid.NewGuid(), TenantId = factory.TenantId, CalendarId = FakeGoogle.MainCalendar }).ExecuteCommand();
+        using var client = factory.CreateClientFor(Users.Booker);
+
+        var created = await client.PostAsJsonAsync(
+            "/Booking",
+            new
+            {
+                conduct = "Range",
+                facilityName = "Field",
+                startDateTime = Midnight(3).AddHours(8),
+                endDateTime = Midnight(3).AddHours(10),
+            }
+        );
+        var id = (await created.Content.ReadFromJsonAsync<Booking>())!.Id;
+
+        await WaitForEventsAsync(1);
+        var @event = factory.Google.Events(FakeGoogle.MainCalendar).Single();
+        await Assert.That(@event["id"]!.GetValue<string>()).IsEqualTo(id.ToString("N"));
+        await Assert.That(@event["summary"]!.GetValue<string>()).IsEqualTo("Alpha Range");
+
+        (await client.DeleteAsync($"/Booking/{id}")).EnsureSuccessStatusCode();
+
+        await WaitForEventsAsync(0);
+    }
+
+    private async Task WaitForEventsAsync(int count)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (factory.Google.Events(FakeGoogle.MainCalendar).Count != count && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(100);
+        }
+
+        await Assert.That(factory.Google.Events(FakeGoogle.MainCalendar).Count).IsEqualTo(count);
     }
 }
