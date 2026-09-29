@@ -154,6 +154,13 @@ public class DatabaseFbsApiFactory : FbsApiFactory
     public override IReadOnlyList<int> StoredBookingCounts =>
         [_db.Queryable<DataBooking>().Count(b => b.TenantId == _tenantId && b.CancelledAt == null)];
 
+    /// <summary>The ID of the member with the phone number, as they were seeded.</summary>
+    public Guid MemberIdOf(string phone)
+    {
+        var stored = PhoneNumbers.ToStored(phone);
+        return _db.Queryable<TenantMember>().First(m => m.TenantId == _tenantId && m.Phone == stored).Id;
+    }
+
     public override string? TelegramChatIdOf(string phone)
     {
         var stored = PhoneNumbers.ToStored(phone);
