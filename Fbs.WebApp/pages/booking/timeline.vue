@@ -370,10 +370,12 @@ function open(booking: Booking) {
                   '--day': `${DAY_WIDTH}px`,
                 }"
               >
+                <!-- Tooltips are a fixed height by default, which cuts off the background behind multiple lines -->
                 <UTooltip
                   v-for="block in row.blocks"
                   :key="block.booking.id"
                   :delay-duration="100"
+                  :ui="{ content: 'h-auto' }"
                 >
                   <button
                     type="button"
