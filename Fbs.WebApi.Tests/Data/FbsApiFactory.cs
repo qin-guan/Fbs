@@ -26,6 +26,9 @@ namespace Fbs.WebApi.Tests.Data;
 /// </remarks>
 public class FbsApiFactory : WebApplicationFactory<Program>
 {
+    /// <summary>The secret the API registers with Telegram and expects on bot updates.</summary>
+    public const string TelegramWebhookSecret = "test-webhook-secret-0123456789";
+
     public FakeGoogle Google { get; } = new();
     public FakeTelegram Telegram { get; } = new();
 
@@ -55,6 +58,7 @@ public class FbsApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Google:CarbonCopyCalendarId", FakeGoogle.CarbonCopyCalendar);
         builder.UseSetting("Telegram:Token", "123456:test-token");
         builder.UseSetting("Telegram:WebhookUrl", "https://fbs.test/Bot");
+        builder.UseSetting("Telegram:WebhookSecret", TelegramWebhookSecret);
 
         builder.ConfigureTestServices(services =>
         {

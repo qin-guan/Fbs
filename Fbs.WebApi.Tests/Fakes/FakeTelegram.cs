@@ -16,6 +16,9 @@ public class FakeTelegram
 
     public ConcurrentQueue<(long ChatId, string Text)> Messages { get; } = new();
 
+    /// <summary>The body of every setWebhook call, oldest first.</summary>
+    public ConcurrentQueue<JsonNode> WebhookRegistrations { get; } = new();
+
     /// <summary>
     /// How long each request takes, to stand in for the round trip to Telegram.
     /// </summary>
@@ -55,6 +58,7 @@ public class FakeTelegram
         switch (method)
         {
             case "setwebhook":
+                WebhookRegistrations.Enqueue(body!);
                 return Ok(true);
 
             case "sendmessage":
