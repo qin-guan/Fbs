@@ -13,16 +13,6 @@ public class BookingDeletedEventHandler(
     TelegramBotClient botClient
 ) : IEventHandler<BookingDeletedEvent>
 {
-    private const string PurpleLightLyrics = """
-        <i>
-        Purple light
-        In the valley
-        That is where, I wanna be
-        Infantry, best companions
-        (With my rifle and my buddy and me)
-        </i>
-        """;
-
     public async Task HandleAsync(BookingDeletedEvent booking, CancellationToken ct)
     {
         var users = await userRepository.GetListAsync(ct);
@@ -37,39 +27,22 @@ public class BookingDeletedEventHandler(
                 || (u.NotificationGroup == "Unit" && u.Unit == user.Unit)
             );
 
+        var description = string.IsNullOrWhiteSpace(booking.Description)
+            ? string.Empty
+            : $"\n{htmlEncoder.Encode(booking.Description)}";
+
+        var message = $"""
+            <b>CANCELLED</b> · <b>{booking.FacilityName}</b>
+            {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+            {booking.StartDateTime?.ToLocalTime():f} – {booking.EndDateTime?.ToLocalTime():f}
+            POC: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}, {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+            Cancelled by: {cancelledBy.Unit} / {cancelledBy.Name}, {cancelledBy.Phone}{description}
+            Ref: {booking.Id}
+            """;
+
         await botClient.SendMessage(
             user.TelegramChatId!,
-            $"""
-            <b>CANCELLED</b> booking for <b>{booking.FacilityName}</b>!
-
-            <u>Conduct</u>
-            {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
-
-            <u>From</u>
-            {booking.StartDateTime?.ToLocalTime():f}
-
-            <u>To</u>
-            {booking.EndDateTime?.ToLocalTime():f}
-
-            <u>Point of contact</u>
-            Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
-            Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
-
-            <u>Cancelled by</u>
-            Unit: {cancelledBy.Unit}
-            Name: {cancelledBy.Name}
-            Contact: {cancelledBy.Phone}
-
-            <u>Description</u>
-            {(
-                string.IsNullOrWhiteSpace(booking.Description)
-                    ? PurpleLightLyrics
-                    : htmlEncoder.Encode(booking.Description)
-            )}
-
-            <u>Confirmation</u>
-            {booking.Id}
-            """,
+            message,
             ParseMode.Html,
             cancellationToken: ct
         );
@@ -81,37 +54,7 @@ public class BookingDeletedEventHandler(
             {
                 await botClient.SendMessage(
                     u.TelegramChatId!,
-                    $"""
-                    <b>CANCELLED</b> booking for <b>{booking.FacilityName}</b>!
-
-                    <u>Conduct</u>
-                    {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
-
-                    <u>From</u>
-                    {booking.StartDateTime?.ToLocalTime():f}
-
-                    <u>To</u>
-                    {booking.EndDateTime?.ToLocalTime():f}
-
-                    <u>Point of contact</u>
-                    Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
-                    Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
-
-                    <u>Cancelled by</u>
-                    Unit: {cancelledBy.Unit}
-                    Name: {cancelledBy.Name}
-                    Contact: {cancelledBy.Phone}
-
-                    <u>Description</u>
-                    {(
-                        string.IsNullOrWhiteSpace(booking.Description)
-                            ? PurpleLightLyrics
-                            : htmlEncoder.Encode(booking.Description)
-                    )}
-
-                    <u>Confirmation</u>
-                    {booking.Id}
-                    """,
+                    message,
                     ParseMode.Html,
                     cancellationToken: ct2
                 );

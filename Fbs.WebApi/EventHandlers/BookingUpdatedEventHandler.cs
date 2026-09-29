@@ -13,16 +13,6 @@ public class BookingUpdatedEventHandler(
     TelegramBotClient botClient
 ) : IEventHandler<BookingUpdatedEvent>
 {
-    private const string PurpleLightLyrics = """
-        <i>
-        Purple light
-        In the valley
-        That is where, I wanna be
-        Infantry, best companions
-        (With my rifle and my buddy and me)
-        </i>
-        """;
-
     public async Task HandleAsync(BookingUpdatedEvent booking, CancellationToken ct)
     {
         var users = await userRepository.GetListAsync(ct);
@@ -39,46 +29,24 @@ public class BookingUpdatedEventHandler(
         var previously =
             booking.PreviousStartDateTime is null || booking.PreviousEndDateTime is null
                 ? string.Empty
-                : $"""
+                : $"\nWas: {booking.PreviousStartDateTime?.ToLocalTime():f} – {booking.PreviousEndDateTime?.ToLocalTime():f}";
 
+        var description = string.IsNullOrWhiteSpace(booking.Description)
+            ? string.Empty
+            : $"\n{htmlEncoder.Encode(booking.Description)}";
 
-                    <u>Previously</u>
-                    {booking.PreviousStartDateTime?.ToLocalTime():f} to {booking.PreviousEndDateTime?.ToLocalTime():f}
-                    """;
+        var message = $"""
+            <b>UPDATED</b> · <b>{booking.FacilityName}</b>
+            {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
+            {booking.StartDateTime?.ToLocalTime():f} – {booking.EndDateTime?.ToLocalTime():f}{previously}
+            POC: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}, {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
+            Updated by: {user.Unit} / {user.Name}, {user.Phone}{description}
+            Ref: {booking.Id}
+            """;
 
         await botClient.SendMessage(
             user.TelegramChatId!,
-            $"""
-            <b>UPDATED</b> booking for <b>{booking.FacilityName}</b>!
-
-            <u>Conduct</u>
-            {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
-
-            <u>From</u>
-            {booking.StartDateTime?.ToLocalTime():f}
-
-            <u>To</u>
-            {booking.EndDateTime?.ToLocalTime():f}{previously}
-
-            <u>Point of contact</u>
-            Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
-            Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
-
-            <u>Booked by</u>
-            Unit: {user.Unit}
-            Name: {user.Name}
-            Contact: {user.Phone}
-
-            <u>Description</u>
-            {(
-                string.IsNullOrWhiteSpace(booking.Description)
-                    ? PurpleLightLyrics
-                    : htmlEncoder.Encode(booking.Description)
-            )}
-
-            <u>Confirmation</u>
-            {booking.Id}
-            """,
+            message,
             ParseMode.Html,
             cancellationToken: ct
         );
@@ -90,37 +58,7 @@ public class BookingUpdatedEventHandler(
             {
                 await botClient.SendMessage(
                     u.TelegramChatId!,
-                    $"""
-                    <b>UPDATED</b> booking for <b>{booking.FacilityName}</b>!
-
-                    <u>Conduct</u>
-                    {htmlEncoder.Encode(booking.Conduct ?? string.Empty)}
-
-                    <u>From</u>
-                    {booking.StartDateTime?.ToLocalTime():f}
-
-                    <u>To</u>
-                    {booking.EndDateTime?.ToLocalTime():f}{previously}
-
-                    <u>Point of contact</u>
-                    Name: {htmlEncoder.Encode(booking.PocName ?? string.Empty)}
-                    Contact: {htmlEncoder.Encode(booking.PocPhone ?? string.Empty)}
-
-                    <u>Updated by</u>
-                    Unit: {user.Unit}
-                    Name: {user.Name}
-                    Contact: {user.Phone}
-
-                    <u>Description</u>
-                    {(
-                        string.IsNullOrWhiteSpace(booking.Description)
-                            ? PurpleLightLyrics
-                            : htmlEncoder.Encode(booking.Description)
-                    )}
-
-                    <u>Confirmation</u>
-                    {booking.Id}
-                    """,
+                    message,
                     ParseMode.Html,
                     cancellationToken: ct2
                 );

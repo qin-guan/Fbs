@@ -59,7 +59,7 @@ public class BookingCancelTests
         var messages = await Factory.Telegram.WaitForMessagesAsync(3);
         var toBooker = await Assert.That(messages).HasSingleItem(m => m.ChatId == 1001);
         await Assert.That(toBooker.Text).Contains("CANCELLED");
-        await Assert.That(toBooker.Text).Contains("Name: LTA Same Unit");
+        await Assert.That(toBooker.Text).Contains("LTA Same Unit");
         await Assert.That(toBooker.Text).Contains(booking.Id.ToString());
     }
 
