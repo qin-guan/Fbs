@@ -4,6 +4,7 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi;
+using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Options;
@@ -140,6 +141,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundPublishe
 builder.Services.AddScoped<TraceIdMiddleware>();
 builder.Services.AddScoped<FacilityRepository>();
 builder.Services.AddScoped<OtpRepository>();
+builder.Services.AddSingleton<OtpAttemptTracker>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<BookingRepository>();
 builder.Services.AddSingleton<BookingWriteLock>();
