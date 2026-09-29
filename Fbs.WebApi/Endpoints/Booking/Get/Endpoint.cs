@@ -4,7 +4,7 @@ using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Booking.Get;
 
-public class Endpoint(UserRepository userRepository, BookingRepository bookingRepository)
+public class Endpoint(IUserRepository userRepository, BookingRepository bookingRepository)
     : EndpointWithoutRequest<IEnumerable<BookingWithUser>>
 {
     public override void Configure()

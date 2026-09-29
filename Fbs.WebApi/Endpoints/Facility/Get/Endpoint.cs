@@ -4,7 +4,7 @@ using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Facility.Get;
 
-public class Endpoint(FacilityRepository facilityRepository, UserRepository userRepository)
+public class Endpoint(IFacilityRepository facilityRepository, IUserRepository userRepository)
     : EndpointWithoutRequest<IEnumerable<Dtos.Facility>>
 {
     public override void Configure()

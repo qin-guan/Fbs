@@ -14,7 +14,7 @@ public partial class OtpRepository(
     IOptions<GoogleOptions> options,
     HybridCache cache,
     SheetsService sheetsService
-) : IRepository<Otp>
+) : IOtpRepository
 {
     private readonly string[] _header = ["Phone", "Code", "CreatedAt"];
 

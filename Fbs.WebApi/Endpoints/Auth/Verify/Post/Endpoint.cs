@@ -9,8 +9,8 @@ namespace Fbs.WebApi.Endpoints.Auth.Verify.Post;
 
 public class Endpoint(
     ILogger<Endpoint> logger,
-    OtpRepository otpRepository,
-    UserRepository userRepository,
+    IOtpRepository otpRepository,
+    IUserRepository userRepository,
     OtpAttemptTracker attempts
 ) : Endpoint<Request>
 {

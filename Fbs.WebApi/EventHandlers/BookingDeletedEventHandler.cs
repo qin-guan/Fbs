@@ -8,7 +8,7 @@ using Telegram.Bot.Types.Enums;
 namespace Fbs.WebApi.EventHandlers;
 
 public class BookingDeletedEventHandler(
-    UserRepository userRepository,
+    IUserRepository userRepository,
     HtmlEncoder htmlEncoder,
     TelegramBotClient botClient
 ) : IEventHandler<BookingDeletedEvent>

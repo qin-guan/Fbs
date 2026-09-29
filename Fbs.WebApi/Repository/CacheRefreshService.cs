@@ -20,10 +20,10 @@ public sealed class CacheRefreshService(
             await Task.WhenAll(
                 bookingCache.SyncAsync(stoppingToken),
                 scope
-                    .ServiceProvider.GetRequiredService<UserRepository>()
+                    .ServiceProvider.GetRequiredService<IUserRepository>()
                     .GetListAsync(stoppingToken),
                 scope
-                    .ServiceProvider.GetRequiredService<FacilityRepository>()
+                    .ServiceProvider.GetRequiredService<IFacilityRepository>()
                     .GetListAsync(stoppingToken)
             );
         }

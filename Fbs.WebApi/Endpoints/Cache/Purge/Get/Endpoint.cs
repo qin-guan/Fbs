@@ -9,7 +9,7 @@ namespace Fbs.WebApi.Endpoints.Cache.Purge.Get;
 /// Drops everything read from Google, so changes made straight to the spreadsheet or calendar
 /// show up now. Each purge reloads every booking, so it is only for admins.
 /// </summary>
-public class Endpoint(HybridCache cache, BookingCache bookingCache, UserRepository userRepository)
+public class Endpoint(HybridCache cache, BookingCache bookingCache, IUserRepository userRepository)
     : EndpointWithoutRequest
 {
     public override void Configure()

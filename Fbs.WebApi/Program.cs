@@ -150,13 +150,13 @@ builder.Services.AddSingleton<BackgroundPublisher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundPublisher>());
 
 builder.Services.AddScoped<TraceIdMiddleware>();
-builder.Services.AddScoped<FacilityRepository>();
-builder.Services.AddScoped<OtpRepository>();
+builder.Services.AddScoped<IFacilityRepository, FacilityRepository>();
+builder.Services.AddScoped<IOtpRepository, OtpRepository>();
 builder.Services.AddSingleton<OtpAttemptTracker>();
-builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<BookingRepository>();
 builder.Services.AddSingleton<BookingWriteLock>();
-builder.Services.AddScoped<NominalRollRepository>();
+builder.Services.AddScoped<INominalRollRepository, NominalRollRepository>();
 
 builder.Services.AddFastEndpoints();
 builder.Services.SwaggerDocument(options =>

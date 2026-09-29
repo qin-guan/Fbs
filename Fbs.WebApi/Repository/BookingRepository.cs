@@ -15,7 +15,7 @@ public class BookingRepository(
     BookingCache bookingCache,
     IOptions<GoogleOptions> options,
     CalendarService calendarService,
-    UserRepository userRepository
+    IUserRepository userRepository
 ) : IRepository<Booking>
 {
     private const int MaxEventDataLength = 1000;

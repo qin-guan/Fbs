@@ -13,7 +13,7 @@ public class UserRepository(
     IOptions<GoogleOptions> options,
     HybridCache cache,
     SheetsService sheetsService
-) : IRepository<User>
+) : IUserRepository
 {
     private readonly string[] _header =
     [

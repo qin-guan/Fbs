@@ -13,7 +13,7 @@ public class Request
 
 public class Endpoint(
     BookingRepository bookingRepository,
-    UserRepository userRepository,
+    IUserRepository userRepository,
     BackgroundPublisher publisher
 ) : Endpoint<Request>
 {

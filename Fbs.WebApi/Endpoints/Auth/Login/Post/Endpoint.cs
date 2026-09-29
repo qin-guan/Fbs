@@ -9,8 +9,8 @@ namespace Fbs.WebApi.Endpoints.Auth.Login.Post;
 
 public class Endpoint(
     ILogger<Endpoint> logger,
-    OtpRepository otpRepository,
-    UserRepository userRepository,
+    IOtpRepository otpRepository,
+    IUserRepository userRepository,
     TelegramBotClient client
 ) : Endpoint<Request>
 {

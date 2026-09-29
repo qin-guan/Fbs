@@ -12,7 +12,7 @@ public class FacilityRepository(
     HybridCache cache,
     IOptions<GoogleOptions> options,
     SheetsService sheetsService
-) : IRepository<Facility>
+) : IFacilityRepository
 {
     private readonly string[] _header = ["Name", "Group", "Scope"];
 

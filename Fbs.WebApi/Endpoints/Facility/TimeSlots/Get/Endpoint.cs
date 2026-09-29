@@ -5,8 +5,8 @@ using Fbs.WebApi.Repository;
 namespace Fbs.WebApi.Endpoints.Facility.TimeSlots.Get;
 
 public class Endpoint(
-    FacilityRepository facilityRepository,
-    UserRepository userRepository,
+    IFacilityRepository facilityRepository,
+    IUserRepository userRepository,
     BookingRepository bookingRepository
 ) : Endpoint<Request, IEnumerable<TimeSlot>>
 {

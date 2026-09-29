@@ -4,7 +4,7 @@ using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Admin.Users.Get;
 
-public class Endpoint(UserRepository userRepository)
+public class Endpoint(IUserRepository userRepository)
     : EndpointWithoutRequest<IEnumerable<Entities.User>>
 {
     public override void Configure()
