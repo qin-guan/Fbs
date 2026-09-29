@@ -181,7 +181,8 @@ public class BookingTests
         await ListAsync();
         Factory.Google.AddBooking(Existing("Gym", Midnight(5), Midnight(6)));
 
-        (await _client.GetAsync("/Cache/Purge")).EnsureSuccessStatusCode();
+        using var admin = Factory.CreateClientFor(Users.Admin);
+        (await admin.GetAsync("/Cache/Purge")).EnsureSuccessStatusCode();
 
         await Assert.That(await ListAsync()).HasSingleItem();
         await Assert.That(FullCalendarLists()).IsEqualTo(2);
