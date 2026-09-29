@@ -10,7 +10,8 @@ namespace Fbs.WebApi.Endpoints.Auth.Verify.Post;
 public class Endpoint(
     ILogger<Endpoint> logger,
     OtpRepository otpRepository,
-    UserRepository userRepository
+    UserRepository userRepository,
+    OtpAttemptTracker attempts
 ) : Endpoint<Request>
 {
     public override void Configure()
@@ -28,6 +29,21 @@ public class Endpoint(
             return;
         }
 
+        // A code is only good for a few minutes, however long ago it was sent
+        if (otp.CreatedAt is not { } createdAt || createdAt + OtpAttemptTracker.Lifetime < DateTimeOffset.UtcNow)
+        {
+            await Send.UnauthorizedAsync(ct);
+            return;
+        }
+
+        // And only for a few tries, or it could be guessed. Asking for a new code starts again
+        if (!attempts.TryStartAttempt(req.Phone, otp.Code))
+        {
+            logger.LogWarning("User {Phone} used up the attempts for their OTP", req.Phone);
+            await Send.UnauthorizedAsync(ct);
+            return;
+        }
+
         var hash = SCryptGenerate(
             Encoding.Default.GetBytes(req.Code),
             Encoding.Default.GetBytes(req.Phone)
@@ -39,6 +55,8 @@ public class Endpoint(
             await Send.UnauthorizedAsync(ct);
             return;
         }
+
+        attempts.Reset(req.Phone);
 
         var user = await userRepository.FindAsync(u => u.Phone == req.Phone);
         if (user is null or { Phone: null })

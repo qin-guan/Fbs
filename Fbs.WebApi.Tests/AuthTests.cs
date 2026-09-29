@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.RegularExpressions;
+using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Tests.Data;
 using Fbs.WebApi.Tests.Helpers;
 using TUnit.Assertions.Enums;
@@ -31,6 +32,17 @@ public class AuthTests
 
     private Task<HttpResponseMessage> VerifyAsync(string phone, string code) =>
         _client.PostAsJsonAsync("/Auth/Verify", new { phone, code });
+
+    /// <summary>Makes the code that was sent to the phone look like it was sent a while ago.</summary>
+    private void AgeCode(string phone, TimeSpan age)
+    {
+        var row = Factory.Google.Sheets["OTPs"].Single(r => r[0] == phone);
+        row[2] = DateTimeOffset.UtcNow.Subtract(age).ToString();
+    }
+
+    /// <summary>Six digit codes that aren't the real one.</summary>
+    private static IEnumerable<string> WrongCodes(string code, int count) =>
+        Enumerable.Range(0, count + 1).Select(i => $"{i}00000").Where(c => c != code).Take(count);
 
     /// <summary>The requests made to Google Sheets while running the action.</summary>
     private async Task<List<string>> SheetRequestsDuringAsync(Func<Task> action)
@@ -102,5 +114,78 @@ public class AuthTests
                 ],
                 CollectionOrdering.Matching
             );
+    }
+
+    [Test]
+    public async Task A_code_works_just_before_it_expires()
+    {
+        var code = await RequestCodeAsync(Users.Booker);
+        AgeCode(Users.Booker, TimeSpan.FromMinutes(4));
+
+        var response = await VerifyAsync(Users.Booker, code);
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    [Test]
+    public async Task A_code_expires_after_five_minutes()
+    {
+        var code = await RequestCodeAsync(Users.Booker);
+        AgeCode(Users.Booker, TimeSpan.FromMinutes(6));
+
+        var response = await VerifyAsync(Users.Booker, code);
+
+        await Assert.That(response).HasStatus(HttpStatusCode.Unauthorized);
+        await Assert.That(response.Headers.Contains("Set-Cookie")).IsFalse();
+    }
+
+    [Test]
+    public async Task A_code_can_only_be_tried_five_times()
+    {
+        var code = await RequestCodeAsync(Users.Booker);
+
+        foreach (var wrong in WrongCodes(code, OtpAttemptTracker.MaxAttempts))
+        {
+            await Assert.That(await VerifyAsync(Users.Booker, wrong)).HasStatus(HttpStatusCode.Unauthorized);
+        }
+
+        // Even the right code is refused now, so guessing can't get through by persistence
+        var response = await VerifyAsync(Users.Booker, code);
+
+        await Assert.That(response).HasStatus(HttpStatusCode.Unauthorized);
+        await Assert.That(response.Headers.Contains("Set-Cookie")).IsFalse();
+    }
+
+    [Test]
+    public async Task Fewer_wrong_guesses_do_not_use_up_the_code()
+    {
+        var code = await RequestCodeAsync(Users.Booker);
+
+        foreach (var wrong in WrongCodes(code, OtpAttemptTracker.MaxAttempts - 1))
+        {
+            await Assert.That(await VerifyAsync(Users.Booker, wrong)).HasStatus(HttpStatusCode.Unauthorized);
+        }
+
+        var response = await VerifyAsync(Users.Booker, code);
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    [Test]
+    public async Task A_new_code_gets_a_fresh_set_of_attempts()
+    {
+        var code = await RequestCodeAsync(Users.Booker);
+        foreach (var wrong in WrongCodes(code, OtpAttemptTracker.MaxAttempts))
+        {
+            await VerifyAsync(Users.Booker, wrong);
+        }
+
+        // A new code can only be asked for a minute after the last one
+        AgeCode(Users.Booker, TimeSpan.FromMinutes(2));
+        var newCode = await RequestCodeAsync(Users.Booker);
+
+        var response = await VerifyAsync(Users.Booker, newCode);
+
+        response.EnsureSuccessStatusCode();
     }
 }
