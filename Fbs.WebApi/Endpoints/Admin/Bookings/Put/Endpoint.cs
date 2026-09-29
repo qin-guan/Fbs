@@ -53,7 +53,7 @@ public class Endpoint(
         booking.PocName = req.PocName;
         booking.PocPhone = req.PocPhone;
 
-        await bookingService.UpdateAsync(booking, checkForClash: false, ct);
+        await bookingService.UpdateAsync(booking, phone, checkForClash: false, ct);
 
         publisher.Publish(
             new BookingUpdatedEvent

@@ -136,8 +136,8 @@ builder
         }
     )
     .AsHybridCache();
-// The database is only there once a connection string is configured, while bookings and users are
-// still read from Google
+// The database is only there once a connection string is configured, and is only used once
+// Storage:Provider says Database
 if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseConnectionString)
 {
     builder.Services.AddSingleton<ISqlSugarClient>(_ =>
@@ -146,15 +146,13 @@ if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseC
 }
 
 builder.Services.AddSingleton<InstrumentationSource>();
-builder.Services.AddSingleton<BookingCache>();
-builder.Services.AddHostedService<CacheRefreshService>();
 builder.Services.AddSingleton<BackgroundPublisher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundPublisher>());
 
 builder.Services.AddScoped<TraceIdMiddleware>();
 builder.Services.AddSingleton<OtpAttemptTracker>();
-// Users, facilities, the roster and login codes are read from Google Sheets, until Storage:Provider says
-// Database. Bookings still are from Google Calendar
+// Bookings, users, facilities, the roster and login codes are kept in Google (bookings in Google Calendar,
+// the rest in Google Sheets), until Storage:Provider says Database
 if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringComparison.OrdinalIgnoreCase))
 {
     if (builder.Configuration.GetConnectionString("db") is not { Length: > 0 })
@@ -167,18 +165,20 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
     builder.Services.AddScoped<IFacilityRepository, DatabaseFacilityRepository>();
     builder.Services.AddScoped<INominalRollRepository, DatabaseNominalRollRepository>();
     builder.Services.AddScoped<IOtpRepository, DatabaseOtpRepository>();
+    builder.Services.AddScoped<IBookingService, DatabaseBookingService>();
 }
 else
 {
+    builder.Services.AddSingleton<BookingCache>();
+    builder.Services.AddHostedService<CacheRefreshService>();
+    builder.Services.AddSingleton<BookingWriteLock>();
     builder.Services.AddScoped<IUserRepository, UserRepository>();
     builder.Services.AddScoped<IFacilityRepository, FacilityRepository>();
     builder.Services.AddScoped<INominalRollRepository, NominalRollRepository>();
     builder.Services.AddScoped<IOtpRepository, OtpRepository>();
+    builder.Services.AddScoped<BookingRepository>();
+    builder.Services.AddScoped<IBookingService, CalendarBookingService>();
 }
-
-builder.Services.AddScoped<BookingRepository>();
-builder.Services.AddScoped<IBookingService, CalendarBookingService>();
-builder.Services.AddSingleton<BookingWriteLock>();
 
 builder.Services.AddFastEndpoints();
 builder.Services.SwaggerDocument(options =>

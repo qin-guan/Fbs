@@ -9,15 +9,18 @@ namespace Fbs.WebApi.Repository.Database;
 /// </summary>
 public sealed class DefaultTenant(ISqlSugarClient sql, IConfiguration configuration)
 {
-    private Guid? _id;
+    private Tenant? _tenant;
 
     public string Slug => configuration["Storage:TenantSlug"] ?? "3sib";
 
-    public async Task<Guid> GetIdAsync(CancellationToken cancellationToken = default)
+    public async Task<Guid> GetIdAsync(CancellationToken cancellationToken = default) =>
+        (await GetAsync(cancellationToken)).Id;
+
+    public async Task<Tenant> GetAsync(CancellationToken cancellationToken = default)
     {
-        if (_id is { } id)
+        if (_tenant is { } cached)
         {
-            return id;
+            return cached;
         }
 
         var slug = Slug;
@@ -29,7 +32,7 @@ public sealed class DefaultTenant(ISqlSugarClient sql, IConfiguration configurat
             );
         }
 
-        _id = tenant.Id;
-        return tenant.Id;
+        _tenant = tenant;
+        return tenant;
     }
 }

@@ -79,7 +79,7 @@ public class Endpoint(
             ThrowIfAnyErrors();
         }
 
-        var result = await bookingService.UpdateAsync(updated, checkForClash: timeChanged, ct);
+        var result = await bookingService.UpdateAsync(updated, phone, checkForClash: timeChanged, ct);
         if (result.Updated is not { } saved)
         {
             AddError(r => r.EndDateTime, $"Overlaps with booking {result.ClashesWith}");

@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Tests.Data;
-using Fbs.WebApi.Tests.Fakes;
 using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
@@ -92,13 +91,7 @@ public abstract class BookingUpdateTests(FbsApiFactory factory)
         await Assert.That(response).HasStatus(HttpStatusCode.Created);
         await Assert.That(await TimesAsync(booking.Id)).IsEqualTo((Midnight(11).AddHours(14), Midnight(11).AddHours(16)));
 
-        foreach (var calendarId in new[] { FakeGoogle.MainCalendar, FakeGoogle.CarbonCopyCalendar })
-        {
-            var @event = await Assert.That(Factory.Google.Events(calendarId)).HasSingleItem();
-            await Assert
-                .That(DateTimeOffset.Parse(@event["start"]!["dateTime"]!.GetValue<string>()))
-                .IsEqualTo(Midnight(11).AddHours(14));
-        }
+        await Factory.AssertStoredBookingsAsync(1);
 
         var messages = await Factory.Telegram.WaitForMessagesAsync(3);
         await Assert.That(messages).Count().IsEqualTo(3);

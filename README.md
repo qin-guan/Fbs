@@ -56,9 +56,9 @@ aspire run;
 
 ## Database
 
-Bookings still come from Google Calendar, and users, facilities, the roster and login codes from Google Sheets. The
-database is where they are moving to (see `docs/adr/`), on [TiDB](https://www.pingcap.com/tidb/) through SqlSugar. Its
-schema is applied with the migrator, which the API never does itself:
+Bookings are kept in Google Calendar, and users, facilities, the roster and login codes in Google Sheets. The database
+is where they are moving to (see `docs/adr/`), on [TiDB](https://www.pingcap.com/tidb/) through SqlSugar. Its schema is
+applied with the migrator, which the API never does itself:
 
 ```powershell
 $env:ConnectionStrings__db = "Server=<host>;Port=4000;User ID=<user>;Password=<password>;Database=fbs;SslMode=VerifyFull";
@@ -76,10 +76,15 @@ needs, and refuses to start if not, so a version deployed before its schema was 
 columns and indexes are fine, so the previous version keeps working after the next one has been applied. Turn the
 check off with `Startup:ValidateDatabaseSchema=false`.
 
-Set `Storage:Provider=Database` to read users, facilities, the roster and login codes from the database instead of
-Google Sheets. It needs `ConnectionStrings:db`, and the API refuses to start without it. They belong to the tenant
-named by `Storage:TenantSlug` (`3sib` by default), which has to exist. The Sheets stay the default until the data has
-been imported.
+Set `Storage:Provider=Database` to keep bookings, users, facilities, the roster and login codes in the database instead,
+and to stop using Google Calendar and Sheets altogether. It needs `ConnectionStrings:db`, and the API refuses to start
+without it. They belong to the tenant named by `Storage:TenantSlug` (`3sib` by default), which has to exist. Google
+stays the default until the data has been imported.
+
+A facility is never booked twice, including by requests at the same moment: booking, or moving a booking onto a
+facility, first locks the facility's row, then looks for a clash with a locking read. Cancelling keeps the booking,
+marked as cancelled. Whoever made a booking never changes; changing one records who did, and the point of contact is
+stored with the booking.
 
 ## Testing
 

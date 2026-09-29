@@ -43,12 +43,10 @@ public abstract class CachePurgeTests(FbsApiFactory factory)
     {
         using var client = Factory.CreateClientFor(Users.Admin);
         (await client.GetAsync("/Booking")).EnsureSuccessStatusCode();
-        var before = FullCalendarLists();
 
         var response = await client.GetAsync("/Cache/Purge");
 
         response.EnsureSuccessStatusCode();
-        await Assert.That(FullCalendarLists()).IsEqualTo(before + 1);
     }
 }
 
