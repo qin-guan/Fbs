@@ -13,21 +13,16 @@ public class TenantsTests
     [ClassDataSource<ClerkFbsApiFactory>]
     public required ClerkFbsApiFactory Factory { get; init; }
 
-    private static string NewSlug() => $"org-{Guid.NewGuid():N}"[..20];
+    private static string NewSlug() => ClerkFbsApiFactory.NewSlug();
 
-    private static string NewUser() => $"user_{Guid.NewGuid():N}";
+    private static string NewUser() => ClerkFbsApiFactory.NewUserId();
 
-    private HttpClient ClientFor(string userId, string? name = "Some One")
-    {
-        var client = Factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new("Bearer", Factory.Clerk.Token(userId, $"{userId}@example.com", name));
-        return client;
-    }
+    private HttpClient ClientFor(string userId, string? name = "Some One") => Factory.ClientFor(userId, name);
 
     private static Task<HttpResponseMessage> CreateAsync(HttpClient client, string slug, string name = "Test Org", string? timeZone = "Asia/Singapore") =>
         client.PostAsJsonAsync("/Tenants", new { name, slug, timeZone });
 
-    private async Task<Guid> AccountIdAsync(HttpClient client) => (await client.GetFromJsonAsync<JsonElement>("/Me")).GetProperty("id").GetGuid();
+    private Task<Guid> AccountIdAsync(HttpClient client) => Factory.AccountIdOfAsync(client);
 
     /// <summary>Makes someone a member of an organisation the way an invite would, for tests that aren't about how they got in.</summary>
     private async Task JoinAsync(HttpClient client, string slug, MemberRole role = MemberRole.Member, MemberStatus status = MemberStatus.Active)

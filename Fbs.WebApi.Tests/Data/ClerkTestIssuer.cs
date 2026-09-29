@@ -1,5 +1,7 @@
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Fbs.WebApi.Data.Entities;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -81,7 +83,43 @@ public sealed class ClerkTestIssuer
 /// <summary>The API with signing in with Clerk on, as well as the phone number the tests otherwise use.</summary>
 public class ClerkFbsApiFactory : DatabaseFbsApiFactory
 {
+    private readonly List<HttpClient> _clients = [];
+
     public ClerkTestIssuer Clerk { get; } = new();
+
+    public static string NewUserId() => $"user_{Guid.NewGuid():N}";
+
+    public static string NewSlug() => $"org-{Guid.NewGuid():N}"[..20];
+
+    /// <summary>A client signed in as the person with the Clerk user ID, which is disposed with the factory.</summary>
+    public HttpClient ClientFor(string userId, string? name = "Some One")
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", Clerk.Token(userId, $"{userId}@example.com", name));
+        _clients.Add(client);
+        return client;
+    }
+
+    /// <summary>An organisation made the way anyone would, through the API, by someone who is then its admin.</summary>
+    public async Task<TestOrg> CreateOrgAsync(string founderName = "Founder", string orgName = "Test Org")
+    {
+        var founder = ClientFor(NewUserId(), founderName);
+        var slug = NewSlug();
+        (await founder.PostAsJsonAsync("/Tenants", new { name = orgName, slug, timeZone = "Asia/Singapore" })).EnsureSuccessStatusCode();
+        return new TestOrg(this, slug, Db.Queryable<Tenant>().First(t => t.Slug == slug).Id, founder);
+    }
+
+    public async Task<Guid> AccountIdOfAsync(HttpClient client) => (await client.GetFromJsonAsync<JsonElement>("/Me")).GetProperty("id").GetGuid();
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _clients.ForEach(c => c.Dispose());
+        }
+
+        base.Dispose(disposing);
+    }
 
     public HttpClient CreateClientSignedInAs(string userId, string? email = "someone@example.com", string? name = "Some One")
     {
@@ -96,5 +134,51 @@ public class ClerkFbsApiFactory : DatabaseFbsApiFactory
         builder.UseSetting("Clerk:Issuer", ClerkTestIssuer.Issuer);
         builder.UseSetting("Clerk:AuthorizedParties:0", ClerkTestIssuer.App);
         builder.UseSetting("Clerk:JwksJson", Clerk.JwksJson);
+    }
+}
+
+/// <summary>An organisation made for a test, and its founder, who is its admin.</summary>
+public sealed class TestOrg(ClerkFbsApiFactory factory, string slug, Guid tenantId, HttpClient founder)
+{
+    public string Slug { get; } = slug;
+
+    public Guid TenantId { get; } = tenantId;
+
+    public HttpClient Admin { get; } = founder;
+
+    /// <summary>Someone signed in who belongs to the organisation, made one the way an invite would, for tests that aren't about how they got in.</summary>
+    public async Task<(HttpClient Client, Guid MemberId)> AddMemberAsync(
+        string name = "A Member",
+        MemberRole role = MemberRole.Member,
+        MemberStatus status = MemberStatus.Active,
+        Guid? unitId = null,
+        string? phone = null
+    )
+    {
+        var client = factory.ClientFor(ClerkFbsApiFactory.NewUserId(), name);
+        var accountId = await factory.AccountIdOfAsync(client);
+        var id = Guid.NewGuid();
+        factory.Db.Insertable(
+                new TenantMember
+                {
+                    Id = id,
+                    TenantId = TenantId,
+                    UserId = accountId,
+                    DisplayName = name,
+                    Role = role,
+                    Status = status,
+                    UnitId = unitId,
+                    Phone = phone,
+                }
+            )
+            .ExecuteCommand();
+        return (client, id);
+    }
+
+    public Guid AddUnit(string name)
+    {
+        var id = Guid.NewGuid();
+        factory.Db.Insertable(new Fbs.WebApi.Data.Entities.Unit { Id = id, TenantId = TenantId, Name = name }).ExecuteCommand();
+        return id;
     }
 }

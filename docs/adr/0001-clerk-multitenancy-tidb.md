@@ -322,8 +322,8 @@ Each is a small PR stacked on the one before, and additive: the phone number and
 until the web app moves over.
 
 - [x] Clerk session tokens accepted alongside it, with accounts made on first sight, `GET /Me` (#237)
-- [x] Organisations: `POST /Tenants`, `/t/{slug}` routing that only lets active members in, settings for admins
-- [ ] Units, facilities and members, managed by admins
+- [x] Organisations: `POST /Tenants`, `/t/{slug}` routing that only lets active members in, settings for admins (#238)
+- [x] Units, facilities and members, managed by admins, with the last admin protected
 - [ ] Bookings under `/t/{slug}`, with windowed lists
 - [ ] Invites and approval
 - [ ] Telegram linking by deep link, notifications per user
