@@ -65,6 +65,10 @@ dotnet test;
 
 ## Deploying
 
+The API answers `GET /health` with `Healthy` in every environment. Point the host's health check at it (port
+8080). The image includes `curl` because hosts like Coolify run the health check inside the container, and Coolify
+only replaces the old container once it passes.
+
 Set `Telegram__WebhookSecret` (see above) in the environment before deploying. The API registers it with
 Telegram on startup and rejects bot updates that don't carry it.
 

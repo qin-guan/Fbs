@@ -118,13 +118,16 @@ namespace Microsoft.Extensions.Hosting
 
         public static WebApplication MapDefaultEndpoints(this WebApplication app)
         {
-            // Adding health checks endpoints to applications in non-development environments has security implications.
-            // See https://aka.ms/dotnet/aspire/healthchecks for details before enabling these endpoints in non-development environments.
+            // All health checks must pass for app to be considered ready to accept traffic after starting.
+            // Hosts such as Coolify call this from inside the container to decide when a new version can
+            // replace the old one. It only answers Healthy or Unhealthy, with no details, so it is safe
+            // to expose. See https://aka.ms/dotnet/aspire/healthchecks before adding checks that
+            // report more.
+            app.MapHealthChecks(HealthEndpointPath);
+
+            // Adding more health checks endpoints to applications in non-development environments has security implications.
             if (app.Environment.IsDevelopment())
             {
-                // All health checks must pass for app to be considered ready to accept traffic after starting
-                app.MapHealthChecks(HealthEndpointPath);
-
                 // Only health checks tagged with the "live" tag must pass for app to be considered alive
                 app.MapHealthChecks(
                     AlivenessEndpointPath,

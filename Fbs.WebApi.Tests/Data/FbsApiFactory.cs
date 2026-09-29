@@ -29,6 +29,9 @@ public class FbsApiFactory : WebApplicationFactory<Program>
     /// <summary>The secret the API registers with Telegram and expects on bot updates.</summary>
     public const string TelegramWebhookSecret = "test-webhook-secret-0123456789";
 
+    /// <summary>The hosting environment the API runs in.</summary>
+    protected virtual string EnvironmentName => "Development";
+
     public FakeGoogle Google { get; } = new();
     public FakeTelegram Telegram { get; } = new();
 
@@ -51,7 +54,7 @@ public class FbsApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Development");
+        builder.UseEnvironment(EnvironmentName);
         builder.UseSetting("Google:ServiceAccountJsonCredential", "unused");
         builder.UseSetting("Google:SpreadsheetId", "spreadsheet");
         builder.UseSetting("Google:CalendarId", FakeGoogle.MainCalendar);
@@ -86,6 +89,14 @@ public class FbsApiFactory : WebApplicationFactory<Program>
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Scheme, _ => { });
         });
     }
+}
+
+/// <summary>
+/// The same API running as it does when deployed, for things that only differ in production.
+/// </summary>
+public class ProductionFbsApiFactory : FbsApiFactory
+{
+    protected override string EnvironmentName => "Production";
 }
 
 /// <summary>
