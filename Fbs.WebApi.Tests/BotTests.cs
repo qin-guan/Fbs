@@ -6,16 +6,15 @@ using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public class BotTests
+public abstract class BotTests(FbsApiFactory factory)
 {
     private const long OwnChatId = 9001;
     private const long SomeoneElsesId = 7777;
 
-    [ClassDataSource<FbsApiFactory>]
-    public required FbsApiFactory Factory { get; init; }
+    protected FbsApiFactory Factory { get; } = factory;
 
-    /// <summary>What the Users sheet holds as the booker's Telegram chat ID.</summary>
-    private string BookerChatId => Factory.Google.Sheets["Users"].Single(row => row[2] == Users.Booker)[3];
+    /// <summary>The booker's Telegram chat ID, as stored.</summary>
+    private string BookerChatId => Factory.TelegramChatIdOf(Users.Booker)!;
 
     /// <summary>
     /// A Telegram update in which <paramref name="sender"/> shares the booker's number from a chat.
@@ -143,3 +142,13 @@ public class BotTests
         await Assert.That(BookerChatId).IsEqualTo(before);
     }
 }
+
+/// <summary>BotTests with users, facilities, the roster and login codes in Google Sheets.</summary>
+[ClassDataSource<FbsApiFactory>]
+[InheritsTests]
+public class GoogleBotTests(FbsApiFactory factory) : BotTests(factory);
+
+/// <summary>BotTests with users, facilities, the roster and login codes in the database.</summary>
+[ClassDataSource<DatabaseFbsApiFactory>]
+[InheritsTests]
+public class DatabaseBotTests(DatabaseFbsApiFactory factory) : BotTests(factory);

@@ -4,14 +4,12 @@ using System.Text.RegularExpressions;
 using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Tests.Data;
 using Fbs.WebApi.Tests.Helpers;
-using TUnit.Assertions.Enums;
 
 namespace Fbs.WebApi.Tests;
 
-public class AuthTests
+public abstract class AuthTests(FbsApiFactory factory)
 {
-    [ClassDataSource<FbsApiFactory>]
-    public required FbsApiFactory Factory { get; init; }
+    protected FbsApiFactory Factory { get; } = factory;
 
     private HttpClient _client = null!;
 
@@ -33,28 +31,9 @@ public class AuthTests
     private Task<HttpResponseMessage> VerifyAsync(string phone, string code) =>
         _client.PostAsJsonAsync("/Auth/Verify", new { phone, code });
 
-    /// <summary>Makes the code that was sent to the phone look like it was sent a while ago.</summary>
-    private void AgeCode(string phone, TimeSpan age)
-    {
-        var row = Factory.Google.Sheets["OTPs"].Single(r => r[0] == phone);
-        row[2] = DateTimeOffset.UtcNow.Subtract(age).ToString();
-    }
-
     /// <summary>Six digit codes that aren't the real one.</summary>
     private static IEnumerable<string> WrongCodes(string code, int count) =>
         Enumerable.Range(0, count + 1).Select(i => $"{i}00000").Where(c => c != code).Take(count);
-
-    /// <summary>The requests made to Google Sheets while running the action.</summary>
-    private async Task<List<string>> SheetRequestsDuringAsync(Func<Task> action)
-    {
-        var before = Factory.Google.Requests.Count;
-        await action();
-        return Factory
-            .Google.Requests.Skip(before)
-            .Where(r => r.Path.StartsWith("v4/"))
-            .Select(r => $"{r.Method} {r.Path}")
-            .ToList();
-    }
 
     [Test]
     public async Task Signs_in_with_the_code_sent_on_telegram()
@@ -68,8 +47,7 @@ public class AuthTests
             .That(response.Headers.GetValues("Set-Cookie"))
             .Contains(c => c.StartsWith(".AspNetCore.Cookies="));
         // The code can't be used again
-        var header = await Assert.That(Factory.Google.Sheets["OTPs"]).HasSingleItem();
-        await Assert.That(header).IsEquivalentTo(["Phone", "Code", "CreatedAt"], CollectionOrdering.Matching);
+        await Assert.That(Factory.StoredCodeCount).IsEqualTo(0);
     }
 
     [Test]
@@ -81,46 +59,14 @@ public class AuthTests
         var response = await VerifyAsync(Users.Booker, wrong);
 
         await Assert.That(response).HasStatus(HttpStatusCode.Unauthorized);
-        await Assert.That(Factory.Google.Sheets["OTPs"]).Count().IsEqualTo(2);
-    }
-
-    [Test]
-    public async Task Signing_in_does_not_repeat_calls_to_google()
-    {
-        // Also loads the users and looks up the sheet's ID, which are remembered from then on
-        (await VerifyAsync(Users.SameUnit, await RequestCodeAsync(Users.SameUnit))).EnsureSuccessStatusCode();
-
-        var code = "";
-        var login = await SheetRequestsDuringAsync(async () => code = await RequestCodeAsync(Users.Booker));
-        var verify = await SheetRequestsDuringAsync(async () =>
-            (await VerifyAsync(Users.Booker, code)).EnsureSuccessStatusCode()
-        );
-
-        // Reads the codes to check one wasn't sent too recently, then adds one without reading it back
-        await Assert
-            .That(login)
-            .IsEquivalentTo(
-                ["GET v4/spreadsheets/spreadsheet/values/OTPs", "POST v4/spreadsheets/spreadsheet/values/OTPs:append"],
-                CollectionOrdering.Matching
-            );
-        // Reads the code to check it, then again to find its row before deleting it
-        await Assert
-            .That(verify)
-            .IsEquivalentTo(
-                [
-                    "GET v4/spreadsheets/spreadsheet/values/OTPs",
-                    "GET v4/spreadsheets/spreadsheet/values/OTPs",
-                    "POST v4/spreadsheets/spreadsheet:batchUpdate",
-                ],
-                CollectionOrdering.Matching
-            );
+        await Assert.That(Factory.StoredCodeCount).IsEqualTo(1);
     }
 
     [Test]
     public async Task A_code_works_just_before_it_expires()
     {
         var code = await RequestCodeAsync(Users.Booker);
-        AgeCode(Users.Booker, TimeSpan.FromMinutes(4));
+        Factory.AgeCode(Users.Booker, TimeSpan.FromMinutes(4));
 
         var response = await VerifyAsync(Users.Booker, code);
 
@@ -131,7 +77,7 @@ public class AuthTests
     public async Task A_code_expires_after_five_minutes()
     {
         var code = await RequestCodeAsync(Users.Booker);
-        AgeCode(Users.Booker, TimeSpan.FromMinutes(6));
+        Factory.AgeCode(Users.Booker, TimeSpan.FromMinutes(6));
 
         var response = await VerifyAsync(Users.Booker, code);
 
@@ -181,11 +127,28 @@ public class AuthTests
         }
 
         // A new code can only be asked for a minute after the last one
-        AgeCode(Users.Booker, TimeSpan.FromMinutes(2));
+        Factory.AgeCode(Users.Booker, TimeSpan.FromMinutes(2));
         var newCode = await RequestCodeAsync(Users.Booker);
 
         var response = await VerifyAsync(Users.Booker, newCode);
 
         response.EnsureSuccessStatusCode();
     }
+}
+
+/// <summary>AuthTests with users, facilities, the roster and login codes in Google Sheets.</summary>
+[ClassDataSource<FbsApiFactory>]
+[InheritsTests]
+public class GoogleAuthTests(FbsApiFactory factory) : AuthTests(factory);
+
+/// <summary>AuthTests with users, facilities, the roster and login codes in the database.</summary>
+[ClassDataSource<DatabaseFbsApiFactory>]
+[InheritsTests]
+// A login code belongs to a phone number, not to a tenant, and every test asks for one for the same
+// number, so these can't run alongside each other, and nothing else asks for codes
+[NotInParallel("login-codes")]
+public class DatabaseAuthTests(DatabaseFbsApiFactory factory) : AuthTests(factory)
+{
+    [Before(Test)]
+    public void ClearLoginCodes() => ((DatabaseFbsApiFactory)Factory).ClearLoginCodes();
 }

@@ -35,6 +35,20 @@ public class FbsApiFactory : WebApplicationFactory<Program>
     public FakeGoogle Google { get; } = new();
     public FakeTelegram Telegram { get; } = new();
 
+    /// <summary>Adds someone to the users, as if they were there before the test.</summary>
+    public virtual void AddUser(string unit, string name, string phone, string? telegramChatId, string notificationGroup, bool isAdmin = false) =>
+        Google.Sheets["Users"].Add([unit, name, phone, telegramChatId ?? "", notificationGroup, isAdmin ? "TRUE" : "FALSE"]);
+
+    /// <summary>The Telegram chat the user has linked, as stored.</summary>
+    public virtual string? TelegramChatIdOf(string phone) => Google.Sheets["Users"].Single(row => row[2] == phone)[3];
+
+    /// <summary>How many login codes are stored.</summary>
+    public virtual int StoredCodeCount => Google.Sheets["OTPs"].Count - 1;
+
+    /// <summary>Makes the login code that was sent to the phone look like it was sent a while ago.</summary>
+    public virtual void AgeCode(string phone, TimeSpan age) =>
+        Google.Sheets["OTPs"].Single(row => row[0] == phone)[2] = DateTimeOffset.UtcNow.Subtract(age).ToString();
+
     public HttpClient CreateClientFor(string phone)
     {
         var client = CreateClient();

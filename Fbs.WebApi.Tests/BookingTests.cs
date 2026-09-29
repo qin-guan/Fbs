@@ -10,12 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fbs.WebApi.Tests;
 
-public class BookingTests
+public abstract class BookingTests(FbsApiFactory factory)
 {
     private static readonly TimeSpan Singapore = TimeSpan.FromHours(8);
 
-    [ClassDataSource<FbsApiFactory>]
-    public required FbsApiFactory Factory { get; init; }
+    protected FbsApiFactory Factory { get; } = factory;
 
     private HttpClient _client = null!;
 
@@ -271,3 +270,13 @@ public class BookingTests
         await Assert.That(await Factory.Telegram.WaitForMessagesAsync(6)).Count().IsEqualTo(6);
     }
 }
+
+/// <summary>BookingTests with users, facilities, the roster and login codes in Google Sheets.</summary>
+[ClassDataSource<FbsApiFactory>]
+[InheritsTests]
+public class GoogleBookingTests(FbsApiFactory factory) : BookingTests(factory);
+
+/// <summary>BookingTests with users, facilities, the roster and login codes in the database.</summary>
+[ClassDataSource<DatabaseFbsApiFactory>]
+[InheritsTests]
+public class DatabaseBookingTests(DatabaseFbsApiFactory factory) : BookingTests(factory);

@@ -11,6 +11,7 @@ using Fbs.WebApi.Events;
 using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
+using Fbs.WebApi.Repository.Database;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
@@ -151,14 +152,33 @@ builder.Services.AddSingleton<BackgroundPublisher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundPublisher>());
 
 builder.Services.AddScoped<TraceIdMiddleware>();
-builder.Services.AddScoped<IFacilityRepository, FacilityRepository>();
-builder.Services.AddScoped<IOtpRepository, OtpRepository>();
 builder.Services.AddSingleton<OtpAttemptTracker>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+// Users, facilities, the roster and login codes are read from Google Sheets, until Storage:Provider says
+// Database. Bookings still are from Google Calendar
+if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringComparison.OrdinalIgnoreCase))
+{
+    if (builder.Configuration.GetConnectionString("db") is not { Length: > 0 })
+    {
+        throw new InvalidOperationException("Storage:Provider is Database, which needs ConnectionStrings:db.");
+    }
+
+    builder.Services.AddSingleton<DefaultTenant>();
+    builder.Services.AddScoped<IUserRepository, DatabaseUserRepository>();
+    builder.Services.AddScoped<IFacilityRepository, DatabaseFacilityRepository>();
+    builder.Services.AddScoped<INominalRollRepository, DatabaseNominalRollRepository>();
+    builder.Services.AddScoped<IOtpRepository, DatabaseOtpRepository>();
+}
+else
+{
+    builder.Services.AddScoped<IUserRepository, UserRepository>();
+    builder.Services.AddScoped<IFacilityRepository, FacilityRepository>();
+    builder.Services.AddScoped<INominalRollRepository, NominalRollRepository>();
+    builder.Services.AddScoped<IOtpRepository, OtpRepository>();
+}
+
 builder.Services.AddScoped<BookingRepository>();
 builder.Services.AddScoped<IBookingService, CalendarBookingService>();
 builder.Services.AddSingleton<BookingWriteLock>();
-builder.Services.AddScoped<INominalRollRepository, NominalRollRepository>();
 
 builder.Services.AddFastEndpoints();
 builder.Services.SwaggerDocument(options =>

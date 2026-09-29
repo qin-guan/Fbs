@@ -35,6 +35,31 @@ public sealed class TestDatabase : IAsyncDisposable
     /// <summary>The connection string of the TiDB server, without a database. It is started the first time it is asked for.</summary>
     public static Task<string> ServerAsync() => Server.Value;
 
+    private static readonly Lazy<Task<TestDatabase>> SharedInstance = new(CreateSharedAsync);
+
+    /// <summary>
+    /// A database with the schema applied, shared by every test that asks for it, as making one for
+    /// each would take longer than the tests do. Tests keep out of each other's way by having tenants of
+    /// their own in it.
+    /// </summary>
+    public static Task<TestDatabase> SharedAsync() => SharedInstance.Value;
+
+    /// <summary>Drops the shared database, if any test made it.</summary>
+    public static async Task DropSharedAsync()
+    {
+        if (SharedInstance.IsValueCreated)
+        {
+            await (await SharedInstance.Value).DisposeAsync();
+        }
+    }
+
+    private static async Task<TestDatabase> CreateSharedAsync()
+    {
+        var database = await CreateAsync();
+        database.CreateClient().CodeFirst.InitTables(SchemaDifferenceInspector.GetEntityTypes());
+        return database;
+    }
+
     /// <summary>Creates an empty database with a unique name.</summary>
     public static async Task<TestDatabase> CreateAsync()
     {
