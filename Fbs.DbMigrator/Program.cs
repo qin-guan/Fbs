@@ -39,6 +39,7 @@ var app = ConsoleApp
             services.AddGoogleStorage();
             services.AddScoped<LegacyImporter>();
             services.AddScoped<LegacyVerifier>();
+            services.AddScoped<LegacyExporter>();
         }
     )
     .ConfigureLogging(logging =>
@@ -51,5 +52,6 @@ app.Add<DiffCommand>();
 app.Add<ApplyCommand>();
 app.Add<ImportLegacyCommand>();
 app.Add<VerifyLegacyCommand>();
+app.Add<ExportLegacyCommand>();
 
 await app.RunAsync(args);
