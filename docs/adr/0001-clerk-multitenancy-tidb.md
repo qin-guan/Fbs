@@ -186,10 +186,15 @@ index.
   chiseled runtime image has neither. Install `curl` and `tzdata` (tenant time zones need
   `tzdata`). Rolling updates need a passing health check. (From search results; coolify.io was not
   reachable. Verify.)
-- Aspire `MapDefaultEndpoints` only maps `/health` and `/alive` in Development. Map a DB-ping
-  `/health` in production.
-- Behind Coolify's proxy, configure `ForwardedHeadersOptions`, otherwise `CreatedAtAsync` builds
-  `http://` Location headers and IP rate limiting sees the proxy address.
+- Aspire `MapDefaultEndpoints` only mapped `/health` and `/alive` in Development. `/health` is now
+  mapped everywhere (liveness only); it should ping the DB once the DB exists.
+- Behind Coolify's proxy the API sees plain `http` from the proxy's Docker-network address.
+  Nothing depends on that today: bookings return no `Location` header, and NSwag already reads
+  `X-Forwarded-Proto` for the OpenAPI server URL. (An earlier draft of this ADR claimed
+  `CreatedAtAsync` would build `http://` Location headers; that was wrong.) Configure
+  `ForwardedHeadersOptions` together with the first feature that needs the client IP or scheme,
+  which is IP rate limiting for the self-serve endpoints in phase 2. Trust private ranges only
+  (`KnownIPNetworks`) and test both a trusted proxy and a client spoofing the headers.
 - Set `Startup:ValidateDatabaseSchema=true` in production: a new container whose schema is behind
   fails its health check and never takes traffic. Rolling updates run old and new against the same
   schema briefly, so migrations must be backward-compatible (expand/contract).
@@ -261,9 +266,9 @@ Delivered as small stacked PRs. Sizes are rough, for one developer.
 
 | Phase | Scope | Size |
 |---|---|---|
-| 0 | Hotfixes above, Coolify prerequisites (image, `/health`, forwarded headers). Spikes: S1 `@clerk/nuxt` on `ssr:false` plus Bearer token to .NET; S2 SqlSugar tenant filter under singleton scope; S3 TiDB concurrency semantics (lock + plain read vs lock + `FOR UPDATE` read vs READ COMMITTED); S4 TiDB reachability from Coolify, health check, rolling update, migrator step | 3-4 days |
+| 0 | Hotfixes above, Coolify prerequisites (image, `/health`). Spikes: S1 `@clerk/nuxt` on `ssr:false` plus Bearer token to .NET; S2 SqlSugar tenant filter under singleton scope; S3 TiDB concurrency semantics (lock + plain read vs lock + `FOR UPDATE` read vs READ COMMITTED); S4 TiDB reachability from Coolify, health check, rolling update, migrator step | 3-4 days |
 | 1 | Cutover 1: TiDB entities and migrator, `BookingService`, outbox, Telegram handlers, optional calendar sync, importer, Sheets as inbound reference data, test rewrite (real DB, one tenant per test, TiDB concurrency suite) | 3-4 weeks |
-| 2 | Cutover 2: Clerk auth, `/t/{slug}` routing, self-serve creation, invites and approval, quotas, tenant admin screens, Telegram linking, claim flow, windowed lists, batch notifications | 4-5 weeks |
+| 2 | Cutover 2: Clerk auth, `/t/{slug}` routing, self-serve creation, invites and approval, quotas, tenant admin screens, Telegram linking, claim flow, windowed lists, batch notifications, forwarded headers with IP rate limiting | 4-5 weeks |
 | 3 | Offboarding and deletion, PDPA export, per-tenant limits, audit log, legacy sunset | 1-2 weeks |
 
 ### Phase 0 stack
@@ -273,7 +278,6 @@ Delivered as small stacked PRs. Sizes are rough, for one developer.
 - [x] OTP: expiry and attempt limit
 - [x] `/Cache/Purge`: admins only
 - [x] Coolify readiness: production `/health`, image with `curl` and `tzdata`
-- [ ] Forwarded headers behind the Coolify proxy
 - [ ] Spikes S1 to S4
 
 ## Open items
