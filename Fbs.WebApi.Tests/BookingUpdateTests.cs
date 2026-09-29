@@ -103,7 +103,7 @@ public class BookingUpdateTests
 
         var messages = await Factory.Telegram.WaitForMessagesAsync(3);
         await Assert.That(messages).Count().IsEqualTo(3);
-        await Assert.That(messages).All().Satisfy(m => m.Text, text => text.Contains("Previously"));
+        await Assert.That(messages).All().Satisfy(m => m.Text, text => text.Contains("Was:"));
     }
 
     [Test]
@@ -187,7 +187,7 @@ public class BookingUpdateTests
         await Assert.That(response).HasStatus(HttpStatusCode.Created);
         await Assert.That(await TimesAsync(booking.Id)).IsEqualTo((Midnight(10).AddHours(8), Midnight(10).AddHours(10)));
         var messages = await Factory.Telegram.WaitForMessagesAsync(3);
-        await Assert.That(messages).All().Satisfy(m => m.Text, text => text.DoesNotContain("Previously"));
+        await Assert.That(messages).All().Satisfy(m => m.Text, text => text.DoesNotContain("Was:"));
     }
 
     [Test]
