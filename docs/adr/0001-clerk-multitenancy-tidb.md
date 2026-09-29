@@ -316,6 +316,22 @@ Each is a small PR stacked on the one before.
   switch has been verified in production (a separate change, so the switch can be undone by
   configuration alone until then)
 
+### Phase 2 stack (Cutover 2)
+
+Each is a small PR stacked on the one before, and additive: the phone number and cookie sign-in keeps working
+until the web app moves over.
+
+- [x] Clerk session tokens accepted alongside it, with accounts made on first sight, `GET /Me` (#237)
+- [x] Organisations: `POST /Tenants`, `/t/{slug}` routing that only lets active members in, settings for admins
+- [ ] Units, facilities and members, managed by admins
+- [ ] Bookings under `/t/{slug}`, with windowed lists
+- [ ] Invites and approval
+- [ ] Telegram linking by deep link, notifications per user
+- [ ] Claiming a member carried over from before
+- [ ] Clerk `user.deleted` webhook
+- [ ] Forwarded headers and IP rate limiting
+- [ ] The web app moves to Clerk and `/t/{slug}`
+
 ## Open items
 
 1. Web hosting (Cloudflare Pages or Coolify static) and a domain whose DNS we control for Clerk.

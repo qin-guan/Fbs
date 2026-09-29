@@ -100,6 +100,20 @@ Whoever signs in gets an account (`UserAccount`), made the first time they are s
 organisation until they are a member of one. `GET /Me` says who is signed in and which organisations they belong to. Enums are
 written in words in JSON.
 
+### Organisations
+
+Anyone signed in with Clerk can make an organisation with `POST /Tenants` (`name`, `slug`, and optionally `timeZone`, an IANA
+name that is UTC if left out, and `defaultCountryCode`), and becomes its admin. The slug is its address, `/t/{slug}`: lower case
+letters, digits and hyphens, 3 to 63 of them, starting and ending with a letter or digit. Some words, such as `api` and `admin`,
+are kept back. Nobody can make more than `Limits:MaxTenantsPerUser` (3) themselves, and a slug that is taken is a 409.
+
+Everything that belongs to an organisation is under `/t/{slug}`, and the organisation is found from the address, never from what
+is sent. Only an active member gets in. Someone who isn't a member, or has left, is told there is no such organisation, the same as
+for an address that isn't one, so addresses can't be tried to find which exist; someone waiting to be let in gets a 403 saying so,
+and so does anyone in an organisation that has been suspended. `GET /t/{slug}` says what the organisation is and who the caller is
+in it. `GET` and `PUT /t/{slug}/Settings` are for admins: name, time zone, calling code, the length of a slot (15, 30 or 60
+minutes) and whether people who join with an invite wait to be approved (they do unless it's turned off).
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and
