@@ -150,6 +150,17 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
     builder.Services.AddScoped<IOutboxHandler, CalendarBookingSync>();
     builder.Services.Configure<CalendarSyncOptions>(builder.Configuration.GetSection("CalendarSync"));
     builder.Services.AddHostedService<CalendarReconciler>();
+
+    // Until there are screens to manage people and facilities in, the sheets can stay where they are edited
+    if (builder.Configuration.GetValue<bool>("ReferenceData:Sheets:Enabled"))
+    {
+        builder.Services.Configure<SheetsSyncOptions>(builder.Configuration.GetSection("ReferenceData:Sheets"));
+        builder.Services.AddScoped<UserRepository>();
+        builder.Services.AddScoped<FacilityRepository>();
+        builder.Services.AddScoped<NominalRollRepository>();
+        builder.Services.AddScoped<SheetsReferenceSync>();
+        builder.Services.AddHostedService<SheetsReferenceSyncService>();
+    }
 }
 else
 {

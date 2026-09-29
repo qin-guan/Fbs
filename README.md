@@ -109,6 +109,19 @@ Running it again only adds what is new, so it can be run days ahead, and again j
 what was imported with what Google has now, and is refused once anything has been done in the database, as Google is by then
 out of date.
 
+### Sheets after the switch
+
+Until there are screens to manage people and facilities in, the Users, Facilities and Nominal Roll sheets can stay where they
+are edited: `ReferenceData:Sheets:Enabled=true` (with `Storage:Provider=Database` and the `Google:*` settings) reads them every
+`ReferenceData:Sheets:Interval` (5 minutes) and keeps the database in step. The sheet decides who is a member, their name and
+unit, and every facility and roster entry. The database keeps what is changed in the app (who is an admin, whom someone hears
+about, which Telegram chat is theirs), so those columns of the sheet no longer have any effect.
+
+Someone taken off the Users sheet is marked as having left, and comes back by being put back on it; a facility taken off can no
+longer be booked; what they made, and what was booked, is kept. An empty sheet, or taking more than
+`ReferenceData:Sheets:MaxRemovedFraction` (half) of the members off at once (when there are at least five), is taken to be a
+mistake, and removes nobody. Problems with rows (a phone number twice, none at all) are logged once, until they change.
+
 ### Outbox
 
 Work that follows a change, such as telling people about it, is written to the `OutboxMessage` table in the same
