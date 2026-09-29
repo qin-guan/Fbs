@@ -272,7 +272,7 @@ Delivered as small stacked PRs. Sizes are rough, for one developer.
 - [x] Telegram webhook: secret token and contact-ownership check
 - [x] OTP: expiry and attempt limit
 - [x] `/Cache/Purge`: admins only
-- [ ] Coolify readiness: production `/health`, image with `curl` and `tzdata`
+- [x] Coolify readiness: production `/health`, image with `curl` and `tzdata`
 - [ ] Forwarded headers behind the Coolify proxy
 - [ ] Spikes S1 to S4
 
