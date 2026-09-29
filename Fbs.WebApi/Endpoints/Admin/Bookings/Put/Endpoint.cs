@@ -1,6 +1,7 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using Fbs.WebApi.Events;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Admin.Bookings.Put;
@@ -16,7 +17,7 @@ public class Request
 }
 
 public class Endpoint(
-    BookingRepository bookingRepository,
+    IBookingService bookingService,
     IUserRepository userRepository,
     BackgroundPublisher publisher
 ) : Endpoint<Request, Entities.Booking>
@@ -41,7 +42,7 @@ public class Endpoint(
             throw new Exception("You do not have permission to edit bookings.");
         }
 
-        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        var booking = await bookingService.FindAsync(req.Id, ct);
         if (booking is null)
         {
             throw new Exception("Booking does not exist.");
@@ -52,7 +53,7 @@ public class Endpoint(
         booking.PocName = req.PocName;
         booking.PocPhone = req.PocPhone;
 
-        await bookingRepository.UpdateAsync(booking, ct);
+        await bookingService.UpdateAsync(booking, checkForClash: false, ct);
 
         publisher.Publish(
             new BookingUpdatedEvent

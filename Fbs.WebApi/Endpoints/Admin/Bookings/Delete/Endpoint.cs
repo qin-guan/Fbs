@@ -1,6 +1,7 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using Fbs.WebApi.Events;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Admin.Bookings.Delete;
@@ -12,7 +13,7 @@ public class Request
 }
 
 public class Endpoint(
-    BookingRepository bookingRepository,
+    IBookingService bookingService,
     IUserRepository userRepository,
     BackgroundPublisher publisher
 ) : Endpoint<Request>
@@ -37,13 +38,13 @@ public class Endpoint(
             throw new Exception("You do not have permission to delete bookings.");
         }
 
-        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        var booking = await bookingService.FindAsync(req.Id, ct);
         if (booking is null)
         {
             throw new Exception("Booking does not exist.");
         }
 
-        await bookingRepository.DeleteAsync(b => b.Id == booking.Id, ct);
+        await bookingService.DeleteAsync(booking.Id, ct);
 
         publisher.Publish(
             new BookingDeletedEvent

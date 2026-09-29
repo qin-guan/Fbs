@@ -1,6 +1,7 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Admin.Bookings.ById.Get;
@@ -11,7 +12,7 @@ public class Request
     public Guid Id { get; set; }
 }
 
-public class Endpoint(BookingRepository bookingRepository, IUserRepository userRepository)
+public class Endpoint(IBookingService bookingService, IUserRepository userRepository)
     : Endpoint<Request, BookingWithUser>
 {
     public override void Configure()
@@ -34,7 +35,7 @@ public class Endpoint(BookingRepository bookingRepository, IUserRepository userR
             throw new Exception("You do not have permission to access this booking.");
         }
 
-        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        var booking = await bookingService.FindAsync(req.Id, ct);
         if (booking is null)
         {
             await Send.NotFoundAsync(ct);

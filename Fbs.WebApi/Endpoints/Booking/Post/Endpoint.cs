@@ -1,15 +1,15 @@
 using FastEndpoints;
 using FastEndpoints.Security;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Booking.Post;
 
 public class Endpoint(
-    BookingRepository bookingRepository,
+    IBookingService bookingService,
     IUserRepository userRepository,
     IFacilityRepository facilityRepository,
-    BookingWriteLock bookingWriteLock,
     BackgroundPublisher publisher
 ) : Endpoint<Request, Entities.Booking>
 {
@@ -55,23 +55,12 @@ public class Endpoint(
             UserPhone = phone,
         };
 
-        using (await bookingWriteLock.AcquireAsync(ct))
+        var result = await bookingService.CreateAsync([booking], ct);
+        if (!result.Succeeded)
         {
-            var bookings = await bookingRepository.GetLatestListAsync(ct);
-            var overlapping = bookings.FirstOrDefault(b =>
-                b.FacilityName == facility.Name
-                && b.StartDateTime < req.EndDateTime
-                && b.EndDateTime > req.StartDateTime
-            );
-
-            if (overlapping is not null)
-            {
-                AddError(r => r.EndDateTime, $"Overlaps with booking {overlapping.Id}");
-                await Send.ErrorsAsync(cancellation: ct);
-                return;
-            }
-
-            await bookingRepository.InsertAsync(booking, ct);
+            AddError(r => r.EndDateTime, $"Overlaps with booking {result.Conflicts[0].WithBookingId}");
+            await Send.ErrorsAsync(cancellation: ct);
+            return;
         }
 
         publisher.Publish(

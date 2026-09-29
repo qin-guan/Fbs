@@ -1,5 +1,6 @@
 using FastEndpoints;
 using FastEndpoints.Security;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Repository;
 using FluentValidation.Results;
@@ -11,20 +12,12 @@ namespace Fbs.WebApi.Endpoints.Booking.Batch.Post;
 /// if any slot clashes or can't be booked, none of them are created.
 /// </summary>
 public class Endpoint(
-    ILogger<Endpoint> logger,
-    BookingRepository bookingRepository,
+    IBookingService bookingService,
     IUserRepository userRepository,
     IFacilityRepository facilityRepository,
-    BookingWriteLock bookingWriteLock,
     BackgroundPublisher publisher
 ) : Endpoint<Request, List<Entities.Booking>>
 {
-    /// <summary>
-    /// How many bookings are saved to the calendar at once. A few at a time is much quicker than
-    /// one by one, without sending the Calendar API a burst of requests.
-    /// </summary>
-    private const int MaxConcurrentInserts = 4;
-
     public override void Configure()
     {
         Post("/Booking/Batch");
@@ -71,41 +64,29 @@ public class Endpoint(
             })
             .ToList();
 
-        if (!bookings.All(BookingRepository.FitsInEventData))
+        if (!bookings.All(bookingService.CanStore))
         {
             AddError(r => r.Description, "Event information is too long.", "EX14");
         }
 
         ThrowIfAnyErrors();
 
-        List<Entities.Booking> created;
-        using (await bookingWriteLock.AcquireAsync(ct))
+        var result = await bookingService.CreateAsync(bookings, ct);
+        foreach (var conflict in result.Conflicts)
         {
-            var existing = await bookingRepository.GetLatestListAsync(ct);
-            for (var i = 0; i < bookings.Count; i++)
+            if (conflict.WithBookingId is { } existingId)
             {
-                var booking = bookings[i];
-
-                var overlapping = existing.FirstOrDefault(b => Overlaps(b, booking));
-                if (overlapping is not null)
-                {
-                    AddSlotError(i, $"Overlaps with booking {overlapping.Id}", "EX10");
-                    continue;
-                }
-
-                var earlier = bookings.FindIndex(0, i, b => Overlaps(b, booking));
-                if (earlier >= 0)
-                {
-                    AddSlotError(i, $"Overlaps with slot {earlier + 1} in this batch", "EX11");
-                }
+                AddSlotError(conflict.Index, $"Overlaps with booking {existingId}", "EX10");
             }
-
-            ThrowIfAnyErrors();
-
-            created = await InsertAllOrNothingAsync(bookings, ct);
+            else
+            {
+                AddSlotError(conflict.Index, $"Overlaps with slot {conflict.WithEarlierIndex + 1} in this batch", "EX11");
+            }
         }
 
-        foreach (var booking in created)
+        ThrowIfAnyErrors();
+
+        foreach (var booking in bookings)
         {
             publisher.Publish(
                 new BookingCreatedEvent
@@ -123,72 +104,11 @@ public class Endpoint(
             );
         }
 
-        await Send.OkAsync(created, ct);
-    }
-
-    private static bool Overlaps(Entities.Booking a, Entities.Booking b)
-    {
-        return a.FacilityName == b.FacilityName
-            && a.StartDateTime < b.EndDateTime
-            && a.EndDateTime > b.StartDateTime;
+        await Send.OkAsync(bookings, ct);
     }
 
     private void AddSlotError(int index, string message, string code)
     {
         AddError(new ValidationFailure($"slots[{index}]", message) { ErrorCode = code });
-    }
-
-    private async Task<List<Entities.Booking>> InsertAllOrNothingAsync(
-        List<Entities.Booking> bookings,
-        CancellationToken ct
-    )
-    {
-        try
-        {
-            // Inserts use the request's token rather than the loop's, so when one fails the others
-            // finish instead of being cut off part way, leaving nothing half done to roll back
-            await Parallel.ForEachAsync(
-                bookings,
-                new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = MaxConcurrentInserts,
-                    CancellationToken = ct,
-                },
-                async (booking, _) => await bookingRepository.InsertAsync(booking, ct)
-            );
-
-            return bookings;
-        }
-        catch (Exception e)
-        {
-            // Inserting gives a booking its ID, so these are the ones that may have been saved.
-            // Every insert has finished by now, as ForEachAsync waits for them before throwing
-            var attempted = bookings.Where(b => b.Id != Guid.Empty).ToList();
-
-            logger.LogError(
-                e,
-                "Batch booking failed after attempting {Attempted} of {Total} bookings, rolling back",
-                attempted.Count,
-                bookings.Count
-            );
-
-            foreach (var booking in attempted)
-            {
-                try
-                {
-                    await bookingRepository.RemoveEventsAsync(booking.Id, CancellationToken.None);
-                }
-                catch (Exception rollbackException)
-                {
-                    logger.LogError(
-                        rollbackException,
-                        "Failed to roll back booking {Id}",
-                        booking.Id
-                    );
-                }
-            }
-
-            throw;
-        }
     }
 }
