@@ -50,3 +50,9 @@ Nothing is booked. The slots in your list are booked all at once, so remove the 
 
 - **Eiger** refers to the running route around the parade square
 - **Temasek Square** refers to the inner parade square area
+
+---
+
+## How can I see all upcoming bookings
+
+Open **Timeline** in the sidebar. Each facility has its own row, and the red line marks now. Use the facility filter (or click a facility's name) to see only the facilities you need

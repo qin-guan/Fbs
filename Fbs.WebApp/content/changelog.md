@@ -1,3 +1,9 @@
+### 29/09/2026
+
+#### What's new
+
+- **Timeline** shows every upcoming booking by facility, so you can see what's free at a glance. Filter it to just the facilities you care about
+
 ### 28/09/2026
 
 #### What's new

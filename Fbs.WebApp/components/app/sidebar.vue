@@ -16,7 +16,13 @@ const links = computed<NavigationMenuItem[][]>(() => [
       label: 'Bookings',
       icon: 'i-lucide-calendar-days',
       to: '/booking',
-      active: route.path === '/booking' || (route.path.startsWith('/booking/') && !route.path.startsWith('/booking/new')),
+      active: route.path === '/booking' || (route.path.startsWith('/booking/') && !route.path.startsWith('/booking/new') && !route.path.startsWith('/booking/timeline')),
+      onSelect: close,
+    },
+    {
+      label: 'Timeline',
+      icon: 'i-lucide-chart-gantt',
+      to: '/booking/timeline',
       onSelect: close,
     },
     {
