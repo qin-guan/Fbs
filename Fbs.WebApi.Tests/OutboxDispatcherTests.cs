@@ -220,6 +220,22 @@ public class OutboxDispatcherTests
     }
 
     [Test]
+    public async Task Messages_are_handled_in_the_order_they_were_written_even_within_a_second()
+    {
+        var setup = await SetUpAsync();
+        var ids = new List<Guid>();
+        for (var i = 0; i < 30; i++)
+        {
+            ids.Add(await setup.EnqueueAsync());
+        }
+
+        var dispatcher = await setup.DispatcherAsync();
+        await dispatcher.ProcessDueAsync();
+
+        await Assert.That(setup.Handler.Handled.ToList()).IsEquivalentTo(ids, TUnit.Assertions.Enums.CollectionOrdering.Matching);
+    }
+
+    [Test]
     public async Task A_message_whose_lease_ran_out_is_taken_over()
     {
         var setup = await SetUpAsync();

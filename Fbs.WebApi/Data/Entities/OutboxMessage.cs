@@ -34,19 +34,26 @@ public class OutboxMessage
     public int Attempts { get; set; }
 
     /// <summary>Not before this, which is later after every failure.</summary>
+    /// <remarks>
+    /// The times here keep microseconds. Whole seconds would round, so a message written just before the half
+    /// second would be dated a moment ahead and not be due when looked for, and messages written in the same
+    /// second would have no order.
+    /// </remarks>
+    [SugarColumn(ColumnDataType = "datetime(6)")]
     public DateTimeOffset NextAttemptAt { get; set; } = DateTimeOffset.UtcNow;
 
     /// <summary>Someone has it until then, and if they haven't finished by then anyone else may take it.</summary>
-    [SugarColumn(IsNullable = true)]
+    [SugarColumn(ColumnDataType = "datetime(6)", IsNullable = true)]
     public DateTimeOffset? LockedUntil { get; set; }
 
     /// <summary>Who has it. Only they can say it is done or failed, so a dispatcher that was too slow can't undo the one that took over.</summary>
     [SugarColumn(IsNullable = true)]
     public Guid? LockedBy { get; set; }
 
+    [SugarColumn(ColumnDataType = "datetime(6)")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-    [SugarColumn(IsNullable = true)]
+    [SugarColumn(ColumnDataType = "datetime(6)", IsNullable = true)]
     public DateTimeOffset? CompletedAt { get; set; }
 
     /// <summary>Why it last failed, or why it was given up on.</summary>

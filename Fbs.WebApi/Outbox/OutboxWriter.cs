@@ -21,9 +21,6 @@ public static class OutboxWriter
     )
     {
         var now = DateTimeOffset.UtcNow;
-        // The database keeps whole seconds, and rounds. Left as it is, a message written just before the
-        // half second would be dated a moment from now, and not be due when it is looked for
-        var due = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerSecond));
         var id = Guid.NewGuid();
         await sql.Insertable(
                 new OutboxMessage
@@ -32,7 +29,7 @@ public static class OutboxWriter
                     TenantId = tenantId,
                     Type = type,
                     Payload = JsonSerializer.Serialize(payload),
-                    NextAttemptAt = due,
+                    NextAttemptAt = now,
                     CreatedAt = now,
                 }
             )

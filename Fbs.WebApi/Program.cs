@@ -9,6 +9,7 @@ using Fbs.WebApi.Data;
 using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Middleware;
+using Fbs.WebApi.Notifications;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Repository;
@@ -168,11 +169,15 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
     builder.Services.AddScoped<IOtpRepository, DatabaseOtpRepository>();
     builder.Services.AddScoped<IBookingService, DatabaseBookingService>();
 
-    // What is to be done once a change is saved, such as telling people about it
+    // What is to be done once a change is saved, such as telling people about it. It is written in the same
+    // transaction as the change, so the events the endpoints publish are no longer wanted
+    builder.Services.Configure<EventOptions>(options => options.Enabled = false);
     builder.Services.Configure<OutboxOptions>(builder.Configuration.GetSection("Outbox"));
     builder.Services.AddSingleton<OutboxSignal>();
     builder.Services.AddSingleton<OutboxDispatcher>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<OutboxDispatcher>());
+    builder.Services.AddSingleton<TelegramThrottle>();
+    builder.Services.AddScoped<IOutboxHandler, TelegramBookingNotifier>();
 }
 else
 {

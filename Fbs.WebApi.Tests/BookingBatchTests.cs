@@ -22,6 +22,18 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
         _client = Factory.CreateClientFor(Users.Booker);
     }
 
+    /// <summary>Makes three bookings together, and what they came back as.</summary>
+    protected async Task<List<Booking>> CreateThreeAsync()
+    {
+        var response = await PostBatchAsync(
+            Slot("Eiger", Midnight(10), Midnight(11)),
+            Slot("Field", Midnight(11).AddHours(8), Midnight(11).AddHours(12)),
+            Slot("Field", Midnight(12).AddHours(8), Midnight(12).AddHours(12))
+        );
+        await Assert.That(response).HasStatus(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<List<Booking>>())!;
+    }
+
     /// <summary>Midnight (Singapore time) a number of days from now.</summary>
     private static DateTimeOffset Midnight(int daysFromNow)
     {
@@ -60,7 +72,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
     }
 
     [Test]
-    public async Task Creates_every_slot_and_sends_a_telegram_message_for_each_booking()
+    public async Task Creates_every_slot()
     {
         var response = await PostBatchAsync(
             Slot("Eiger", Midnight(10), Midnight(11)),
@@ -80,18 +92,6 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
         await Assert.That(created[0].EndDateTime).IsEqualTo(Midnight(11));
 
         await Factory.AssertStoredBookingsAsync(3);
-
-        // One message per booking to the booker, their unit and the "All" group; none to other units
-        var messages = await Factory.Telegram.WaitForMessagesAsync(9);
-        await Assert.That(messages).Count().IsEqualTo(9);
-        await Assert.That(messages.Count(m => m.ChatId == 1001)).IsEqualTo(3);
-        await Assert.That(messages.Count(m => m.ChatId == 1002)).IsEqualTo(3);
-        await Assert.That(messages.Count(m => m.ChatId == 1003)).IsEqualTo(3);
-        await Assert.That(messages).DoesNotContain(m => m.ChatId == 1004);
-        foreach (var booking in created)
-        {
-            await Assert.That(messages.Count(m => m.Text.Contains(booking.Id.ToString()))).IsEqualTo(3);
-        }
     }
 
     [Test]
@@ -327,9 +327,50 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
 /// <summary>BookingBatchTests with users, facilities, the roster and login codes in Google Sheets.</summary>
 [ClassDataSource<FbsApiFactory>]
 [InheritsTests]
-public class GoogleBookingBatchTests(FbsApiFactory factory) : BookingBatchTests(factory);
+public class GoogleBookingBatchTests(FbsApiFactory factory) : BookingBatchTests(factory)
+{
+    [Test]
+    public async Task Sends_a_telegram_message_for_each_booking()
+    {
+        var created = await CreateThreeAsync();
+
+        // One message per booking to the booker, their unit and the "All" group; none to other units
+        var messages = await Factory.Telegram.WaitForMessagesAsync(9);
+        await Assert.That(messages).Count().IsEqualTo(9);
+        await Assert.That(messages.Count(m => m.ChatId == 1001)).IsEqualTo(3);
+        await Assert.That(messages.Count(m => m.ChatId == 1002)).IsEqualTo(3);
+        await Assert.That(messages.Count(m => m.ChatId == 1003)).IsEqualTo(3);
+        await Assert.That(messages).DoesNotContain(m => m.ChatId == 1004);
+        foreach (var booking in created)
+        {
+            await Assert.That(messages.Count(m => m.Text.Contains(booking.Id.ToString()))).IsEqualTo(3);
+        }
+    }
+}
 
 /// <summary>BookingBatchTests with users, facilities, the roster and login codes in the database.</summary>
 [ClassDataSource<DatabaseFbsApiFactory>]
 [InheritsTests]
-public class DatabaseBookingBatchTests(DatabaseFbsApiFactory factory) : BookingBatchTests(factory);
+public class DatabaseBookingBatchTests(DatabaseFbsApiFactory factory) : BookingBatchTests(factory)
+{
+    [Test]
+    public async Task Sends_one_message_about_all_the_bookings_to_each_person()
+    {
+        var created = await CreateThreeAsync();
+
+        // One message to the booker, their unit and the "All" group, not one for each booking; none to other units
+        var messages = await Factory.Telegram.WaitForMessagesAsync(3);
+        await Task.Delay(300);
+        messages = Factory.Telegram.Messages.ToList();
+        await Assert.That(messages).Count().IsEqualTo(3);
+        await Assert.That(messages.Select(m => m.ChatId)).IsEquivalentTo([1001L, 1002L, 1003L]);
+        var texts = messages.Select(m => m.Text).ToList();
+        await Assert.That(texts.All(t => t.Contains("CREATED") && t.Contains("3 bookings"))).IsTrue();
+        // Each booking is listed, with a short reference
+        await Assert.That(texts.All(t => t.Contains("Eiger") && t.Contains("Field"))).IsTrue();
+        foreach (var booking in created)
+        {
+            await Assert.That(texts.All(t => t.Contains(booking.Id.ToString("N")[..8]))).IsTrue();
+        }
+    }
+}

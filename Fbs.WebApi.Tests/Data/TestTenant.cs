@@ -1,5 +1,6 @@
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Data.Entities;
+using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Repository.Database;
 using Microsoft.Extensions.Configuration;
 using SqlSugar;
@@ -45,7 +46,8 @@ public sealed class TestTenant
 
     public DefaultTenant Default => DefaultTenantFor(Db);
 
-    public DatabaseBookingService BookingServiceFor(ISqlSugarClient db) => new(db, DefaultTenantFor(db));
+    public DatabaseBookingService BookingServiceFor(ISqlSugarClient db, OutboxSignal? signal = null) =>
+        new(db, DefaultTenantFor(db), signal ?? new OutboxSignal());
 
     public Guid AddUnit(string name)
     {
@@ -59,7 +61,9 @@ public sealed class TestTenant
         string? phone,
         Guid? unitId = null,
         MemberRole role = MemberRole.Member,
-        MemberStatus status = MemberStatus.Active
+        MemberStatus status = MemberStatus.Active,
+        string? telegramChatId = null,
+        NotificationScope scope = NotificationScope.None
     )
     {
         var id = Guid.NewGuid();
@@ -73,6 +77,8 @@ public sealed class TestTenant
                     UnitId = unitId,
                     Role = role,
                     Status = status,
+                    LegacyChatId = telegramChatId,
+                    NotificationScope = scope,
                 }
             )
             .ExecuteCommand();

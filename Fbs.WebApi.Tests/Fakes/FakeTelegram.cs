@@ -29,6 +29,11 @@ public class FakeTelegram
     /// </summary>
     public HashSet<long> BlockedChatIds { get; } = [];
 
+    /// <summary>
+    /// Chats that fail as if Telegram had a problem, so the message is worth trying again.
+    /// </summary>
+    public HashSet<long> FailingChatIds { get; } = [];
+
     /// <summary>Holds every message until <see cref="Resume"/> is called.</summary>
     public void Pause() =>
         _resumed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -72,6 +77,18 @@ public class FakeTelegram
                 var chatId = chatNode.GetValueKind() == JsonValueKind.String
                     ? long.Parse(chatNode.GetValue<string>())
                     : chatNode.GetValue<long>();
+                if (FailingChatIds.Contains(chatId))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                    {
+                        Content = new StringContent(
+                            new JsonObject { ["ok"] = false, ["error_code"] = 500, ["description"] = "Internal Server Error" }.ToJsonString(),
+                            Encoding.UTF8,
+                            "application/json"
+                        ),
+                    };
+                }
+
                 if (BlockedChatIds.Contains(chatId))
                 {
                     return new HttpResponseMessage(HttpStatusCode.Forbidden)
