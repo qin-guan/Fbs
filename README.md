@@ -54,6 +54,28 @@ Or, with the [Aspire CLI](https://aspire.dev):
 aspire run;
 ```
 
+## Database
+
+Bookings and users still come from Google. The database is where they are moving to (see `docs/adr/`), on
+[TiDB](https://www.pingcap.com/tidb/) through SqlSugar. Its schema is applied with the migrator, which the API never
+does itself:
+
+```powershell
+$env:ConnectionStrings__db = "Server=<host>;Port=4000;User ID=<user>;Password=<password>;Database=fbs;SslMode=VerifyFull";
+dotnet run --project ./Fbs.DbMigrator -- diff;                        # what would change; exits 2 if anything would
+dotnet run --project ./Fbs.DbMigrator -- apply;                       # make the tables match the entities
+dotnet run --project ./Fbs.DbMigrator -- apply --create-database;     # the same, on a fresh server
+dotnet run --project ./Fbs.DbMigrator -- apply --allow-destructive;   # also drop columns that are no longer used
+```
+
+`apply` stops before dropping a column unless `--allow-destructive` is given, so read the `diff` first. Applying
+also puts back a declared index that has gone missing, which SqlSugar's own comparison doesn't notice.
+
+Once `ConnectionStrings:db` is set, the API checks at startup that the database has every table, column and index it
+needs, and refuses to start if not, so a version deployed before its schema was applied never takes traffic. Extra
+columns and indexes are fine, so the previous version keeps working after the next one has been applied. Turn the
+check off with `Startup:ValidateDatabaseSchema=false`.
+
 ## Testing
 
 The API tests use [TUnit](https://tunit.dev) and run the API in memory, with Google and Telegram faked, so they need

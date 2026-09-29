@@ -17,5 +17,6 @@
     <!-- Aliased, as its Program is not the one the API tests start -->
     <ProjectReference Include="..\Fbs.AppHost\Fbs.AppHost.csproj" Aliases="AppHost" />
     <ProjectReference Include="..\Fbs.WebApi\Fbs.WebApi.csproj" />
+    <ProjectReference Include="..\Fbs.DbMigrator\Fbs.DbMigrator.csproj" Aliases="Migrator" />
   </ItemGroup>
 </Project>
