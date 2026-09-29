@@ -33,8 +33,13 @@ builder
 builder
     .Services.AddOptions<TelegramOptions>()
     .Bind(builder.Configuration.GetSection("Telegram"))
-    .Validate(options =>
-        !string.IsNullOrWhiteSpace(options.Token) && !string.IsNullOrWhiteSpace(options.WebhookUrl)
+    .Validate(
+        options =>
+            !string.IsNullOrWhiteSpace(options.Token)
+            && !string.IsNullOrWhiteSpace(options.WebhookUrl)
+            && TelegramOptions.IsValidWebhookSecret(options.WebhookSecret),
+        "Telegram:Token, Telegram:WebhookUrl and Telegram:WebhookSecret are required. "
+            + "The secret must be 16-256 characters of A-Z, a-z, 0-9, '_' or '-'."
     );
 
 #endregion
@@ -194,7 +199,10 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
     var client = scope.ServiceProvider.GetRequiredService<TelegramBotClient>();
     var options = scope.ServiceProvider.GetRequiredService<IOptions<TelegramOptions>>();
-    await client.SetWebhook(options.Value.WebhookUrl);
+    await client.SetWebhook(
+        options.Value.WebhookUrl,
+        secretToken: options.Value.WebhookSecret
+    );
 }
 
 app.UseMiddleware<TraceIdMiddleware>();

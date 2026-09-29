@@ -269,7 +269,7 @@ Delivered as small stacked PRs. Sizes are rough, for one developer.
 ### Phase 0 stack
 
 - [x] ADR (this document)
-- [ ] Telegram webhook: secret token and contact-ownership check
+- [x] Telegram webhook: secret token and contact-ownership check
 - [ ] OTP: expiry and attempt limit
 - [ ] `/Cache/Purge`: admins only
 - [ ] Coolify readiness: production `/health`, image with `curl` and `tzdata`

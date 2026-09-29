@@ -32,7 +32,12 @@ Take note of the URL provided and set it as environment variables as show below.
 cd ./Fbs.WebApi;
 dotnet user-secrets set "Telegram:Token" "<YOUR_TOKEN_HERE>";
 dotnet user-secrets set "Telegram:WebhookUrl" "<YOUR_DEVTUNNEL_HERE>/Bot";
+dotnet user-secrets set "Telegram:WebhookSecret" "<A_RANDOM_STRING>";
 ```
+
+`Telegram:WebhookSecret` is registered with Telegram and checked on every update to `/Bot`, so that only
+Telegram can talk to the bot. Use 16 to 256 characters of `A-Z`, `a-z`, `0-9`, `_` or `-`, for example the
+output of `openssl rand -hex 32`. The API won't start without it.
 
 You need to provide the service account with access to the facility spreadsheet.
 
@@ -59,6 +64,9 @@ dotnet test;
 ```
 
 ## Deploying
+
+Set `Telegram__WebhookSecret` (see above) in the environment before deploying. The API registers it with
+Telegram on startup and rejects bot updates that don't carry it.
 
 Login cookies are encrypted with ASP.NET Core Data Protection keys. The Docker image keeps them in `/app/keys`, so
 mount a persistent volume at that path or every redeploy generates new keys and logs everyone out.
