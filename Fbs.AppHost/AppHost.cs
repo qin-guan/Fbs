@@ -16,10 +16,21 @@ var db = builder.AddConnectionString(
     ReferenceExpression.Create($"Server={mysql.Property(EndpointProperty.Host)};Port={mysql.Property(EndpointProperty.Port)};User ID=root;Database=fbs")
 );
 
-// Google and Telegram settings are read from the API's user secrets, see README.md
+// Applies the schema before the API starts, which refuses to start on a database that hasn't got it
+var migrator = builder
+    .AddProject<Fbs_DbMigrator>("migrator")
+    .WithArgs("apply", "--create-database")
+    .WithReference(db)
+    .WaitFor(tidb);
+
+// Google and Telegram settings are read from the API's user secrets, see README.md. It reads and writes Google
+// until Storage__Provider=Database, which moves it all to the database above
 var api = builder
     .AddProject<Fbs_WebApi>("api")
-    // Booking times in Telegram messages are shown in the server's local time
+    .WithReference(db)
+    .WaitForCompletion(migrator)
+    // Booking times in Telegram messages are shown in the server's local time, until Storage__Provider=Database,
+    // which shows them in the tenant's
     .WithEnvironment("TZ", "Asia/Singapore");
 
 builder

@@ -8,7 +8,7 @@ public class ImportLegacyCommand(ILogger<ImportLegacyCommand> logger, LegacyImpo
 {
     /// <summary>
     /// Copies the users, facilities, nominal roll and bookings from Google Sheets and Calendar into the database.
-    /// Needs the same <c>Google__*</c> settings as the API. Everything is done in one transaction, so it is all
+    /// Needs the same Google__* settings as the API. Everything is done in one transaction, so it is all
     /// imported or none of it.
     /// </summary>
     /// <param name="tenant">The slug of the tenant they go to, which is made if it isn't there.</param>

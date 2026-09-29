@@ -176,6 +176,14 @@ The API answers `GET /health` with `Healthy` in every environment. Point the hos
 8080). The image includes `curl` because hosts like Coolify run the health check inside the container, and Coolify
 only replaces the old container once it passes.
 
+When the database is configured, `/health` also checks that it answers, so a version that can't reach it is not put in place of
+the one that is running, and says nothing more than `Healthy` or `Unhealthy`. The image carries the migrator too, so a hook that
+runs in the container can apply the schema before the version starts: `dotnet Fbs.DbMigrator.dll apply`.
+
+`Maintenance__ReadOnly=true` makes the API read only: everything can be read and anything that changes something answers 503.
+It is for moving the data, see [the runbook](docs/runbooks/cutover-1-database.md), which has the steps for switching from Google
+to the database.
+
 Set `Telegram__WebhookSecret` (see above) in the environment before deploying. The API registers it with
 Telegram on startup and rejects bot updates that don't carry it.
 

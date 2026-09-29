@@ -21,6 +21,9 @@ RUN dotnet build "Fbs.WebApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "Fbs.WebApi.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+# The migrator goes in the same folder, so a hook that runs in the container can apply the schema:
+# dotnet Fbs.DbMigrator.dll apply. It shares the API's assemblies, so this adds little
+RUN dotnet publish "/src/Fbs.DbMigrator/Fbs.DbMigrator.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 # Created here so it can be copied below, owned by the app user
 RUN mkdir /app/keys
 

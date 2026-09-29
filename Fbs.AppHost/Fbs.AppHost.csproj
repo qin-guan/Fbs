@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Fbs.WebApi\Fbs.WebApi.csproj" />
+    <ProjectReference Include="..\Fbs.DbMigrator\Fbs.DbMigrator.csproj" />
   </ItemGroup>
 
   <ItemGroup>

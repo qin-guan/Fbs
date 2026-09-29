@@ -225,20 +225,28 @@ index.
 | Carbon-copy events | `BookingCalendarEvent` links |
 | OTPs sheet | dropped |
 
-- The importer (`import-legacy`) is idempotent through `LegacyImportMap`, supports `--dry-run`, and
-  delta runs reuse the calendar sync-token logic. `verify-legacy` reports counts per facility and
-  month, overlaps, orphan bookers and duplicate phones. The legacy MemoryPack contract is
-  positional, so the old `Booking` type is frozen and tested against a real blob.
+- The importer (`import-legacy`) is idempotent and supports `--dry-run` (the same code path in a
+  transaction that is not kept). **As built**: rather than a `LegacyImportMap`, bookings keep their
+  GUIDs and everything else is matched by its natural key (phone, name), and delta runs read the
+  whole calendar again, which at this size is quick. `--overwrite` replaces what an earlier import
+  saved, and is refused once the tenant has an outbox message, i.e. once anything has been done in
+  the database. The importer reports overlaps, orphan bookers, duplicate phones and truncated
+  fields as warnings, and `verify-legacy` compares the database with Google entity by entity.
+  The legacy MemoryPack contract is positional, so `Entities.Booking` keeps its shape until the
+  last import.
 - Legacy `UserPhone` was overwritten by whoever last edited a booking, so imported bookings take the
   last editor as creator. The true creator cannot be recovered.
 - **Cutover 1 (storage)** doubles as the infrastructure move. The new API goes up on Coolify and
   TiDB while the old deployment stays as the rollback target. Steps: rehearse against a prod copy,
-  full import the day before, maintenance mode (reads OK, writes 503) at T0, delta import and
-  verify, switch the API URL, then re-point the bot webhook (stop the old API first, it calls
-  `SetWebhook` at startup). Legacy OTP login keeps working against `TenantMember.Phone`, and Sheets
-  stay a temporary inbound source for Users, Facilities and Roster until admin screens ship.
-  Rollback within about 48 h: an `export-legacy` command writes post-T0 bookings back as legacy
-  blobs.
+  full import the day before, maintenance mode (reads OK, writes 503; `Maintenance:ReadOnly`) at
+  T0, delta import and verify, switch the API URL, then re-point the bot webhook (stop the old API
+  first, it calls `SetWebhook` at startup). Legacy OTP login keeps working against
+  `TenantMember.Phone`, and Sheets stay a temporary inbound source for Users, Facilities and Roster
+  until admin screens ship (`ReferenceData:Sheets:Enabled`: the sheet decides membership, names,
+  units, facilities and the roster, and the database keeps who is an admin, notification scope and
+  the Telegram chat, since the sheet is no longer written to). Rollback within about 48 h: an
+  `export-legacy` command writes post-T0 bookings back as legacy blobs. The steps are in
+  [the runbook](../runbooks/cutover-1-database.md).
 - **Cutover 2 (identity)** flips web and API to Clerk in one release with no dual auth. Existing
   members claim their account: a broadcast to all legacy chat IDs links to `/claim/3sib`; after
   Clerk sign-in the bot deep link matches the chat to the unclaimed member's `LegacyChatId` and the
@@ -284,6 +292,29 @@ Delivered as small stacked PRs. Sizes are rough, for one developer.
 - [x] Coolify readiness: production `/health`, image with `curl` and `tzdata`
 - [x] Spike S3 (TiDB concurrency)
 - [ ] Spikes S1, S2, S4
+
+### Phase 1 stack (Cutover 1)
+
+Each is a small PR stacked on the one before.
+
+- [x] Spike S3 recorded, with a reproducible script (#222)
+- [x] SqlSugar client and a TiDB test fixture, tests run on TiDB in CI (#223)
+- [x] Phase 1 entities and the schema inspector (#224)
+- [x] `Fbs.DbMigrator` (`diff`, `apply`) and a startup schema check (#225)
+- [x] Repository interfaces (#226) and `IBookingService` (#227) as the seams
+- [x] Users, facilities, roster and login codes in the database, behind `Storage:Provider` (#228)
+- [x] `DatabaseBookingService`: facility lock plus locking read, batches, immutable creator, soft cancel (#229)
+- [x] Outbox with a leasing dispatcher (#230)
+- [x] Telegram notifications through the outbox: batch summaries, tenant time zone, throttle (#231)
+- [x] Outbound Google Calendar sync, adopting existing event IDs (#232)
+- [x] `import-legacy` and `verify-legacy` (#233)
+- [x] Sheets as inbound reference data (#234)
+- [x] Cutover readiness: migrator in the image, `/health` pings the database, `Maintenance:ReadOnly`,
+  runbook, AppHost with TiDB
+- [ ] `export-legacy` for rollback
+- [ ] Delete the Google-as-store code, the legacy events and handlers, and the importer, after the
+  switch has been verified in production (a separate change, so the switch can be undone by
+  configuration alone until then)
 
 ## Open items
 

@@ -9,6 +9,7 @@ using Fbs.WebApi.CalendarSync;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Events;
+using Fbs.WebApi.Health;
 using Fbs.WebApi.Legacy;
 using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Notifications;
@@ -114,6 +115,9 @@ if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseC
     builder.Services.AddSingleton<ISqlSugarClient>(_ =>
         SqlSugarClientFactory.Create(databaseConnectionString)
     );
+
+    // A version that can't reach the database isn't ready to take over from the one that is running
+    builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
 }
 
 builder.Services.AddSingleton<InstrumentationSource>();
@@ -121,6 +125,7 @@ builder.Services.AddSingleton<BackgroundPublisher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<BackgroundPublisher>());
 
 builder.Services.AddScoped<TraceIdMiddleware>();
+builder.Services.AddScoped<ReadOnlyMiddleware>();
 builder.Services.AddSingleton<OtpAttemptTracker>();
 // Bookings, users, facilities, the roster and login codes are kept in Google (bookings in Google Calendar,
 // the rest in Google Sheets), until Storage:Provider says Database
@@ -252,6 +257,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 app.UseMiddleware<TraceIdMiddleware>();
+app.UseMiddleware<ReadOnlyMiddleware>();
 
 app.UseResponseCompression();
 
