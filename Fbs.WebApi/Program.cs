@@ -9,6 +9,7 @@ using Fbs.WebApi.CalendarSync;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Events;
+using Fbs.WebApi.Legacy;
 using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Notifications;
 using Fbs.WebApi.Options;
@@ -90,40 +91,7 @@ builder
             )
     );
 
-builder.Services.AddSingleton(sp =>
-{
-    var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
-    var serviceAccountJsonCredential = Encoding.UTF8.GetString(
-        Convert.FromBase64String(options.Value.ServiceAccountJsonCredential)
-    );
-
-    var credential = GoogleCredential
-        .FromJson(serviceAccountJsonCredential)
-        .CreateScoped(
-            "https://www.googleapis.com/auth/calendar",
-            "https://www.googleapis.com/auth/calendar.events"
-        );
-    var service = new CalendarService(
-        new BaseClientService.Initializer { HttpClientInitializer = credential }
-    );
-
-    return service;
-});
-
-builder.Services.AddSingleton(sp =>
-{
-    var options = sp.GetRequiredService<IOptions<GoogleOptions>>();
-    var serviceAccountJsonCredential = Encoding.UTF8.GetString(
-        Convert.FromBase64String(options.Value.ServiceAccountJsonCredential)
-    );
-
-    var credential = GoogleCredential.FromJson(serviceAccountJsonCredential);
-    var service = new SheetsService(
-        new BaseClientService.Initializer { HttpClientInitializer = credential }
-    );
-
-    return service;
-});
+builder.Services.AddGoogleClients();
 
 builder
     .Services.AddFusionCache()
@@ -185,15 +153,8 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
 }
 else
 {
-    builder.Services.AddSingleton<BookingCache>();
+    builder.Services.AddGoogleStorage();
     builder.Services.AddHostedService<CacheRefreshService>();
-    builder.Services.AddSingleton<BookingWriteLock>();
-    builder.Services.AddScoped<IUserRepository, UserRepository>();
-    builder.Services.AddScoped<IFacilityRepository, FacilityRepository>();
-    builder.Services.AddScoped<INominalRollRepository, NominalRollRepository>();
-    builder.Services.AddScoped<IOtpRepository, OtpRepository>();
-    builder.Services.AddScoped<BookingRepository>();
-    builder.Services.AddScoped<IBookingService, CalendarBookingService>();
 }
 
 builder.Services.AddFastEndpoints();

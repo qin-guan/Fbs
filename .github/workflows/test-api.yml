@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - "Fbs.AppHost/**"
+      - "Fbs.DbMigrator/**"
       - "Fbs.ServiceDefaults/**"
       - "Fbs.WebApi/**"
       - "Fbs.WebApi.Tests/**"
@@ -18,6 +19,7 @@ on:
       - main
     paths:
       - "Fbs.AppHost/**"
+      - "Fbs.DbMigrator/**"
       - "Fbs.ServiceDefaults/**"
       - "Fbs.WebApi/**"
       - "Fbs.WebApi.Tests/**"

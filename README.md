@@ -86,6 +86,29 @@ facility, first locks the facility's row, then looks for a clash with a locking 
 marked as cancelled. Whoever made a booking never changes; changing one records who did, and the point of contact is
 stored with the booking.
 
+### Moving from Google
+
+`import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and
+`verify-legacy` checks that the database has all of it, as it is. Both need the `Google__*` settings the API has, and
+`ConnectionStrings__db`.
+
+```powershell
+dotnet run --project ./Fbs.DbMigrator -- import-legacy --tenant 3sib --name "3 SIB" --dry-run;   # what would happen, keeping none of it
+dotnet run --project ./Fbs.DbMigrator -- import-legacy --tenant 3sib --name "3 SIB";             # import it, and make the tenant if it isn't there
+dotnet run --project ./Fbs.DbMigrator -- verify-legacy --tenant 3sib;                            # exits 2 if anything is different
+dotnet run --project ./Fbs.DbMigrator -- import-legacy --tenant 3sib --overwrite;                # replace what an earlier import saved, for the last one
+```
+
+It keeps the IDs bookings have, so the events that go with them stay the same, and people who have never signed in with an account
+are kept as members waiting to claim their place. Rows that can't be imported, such as a phone number that is on the Users
+sheet twice (the first counts, as it always has), are left out and listed as warnings, and so are bookings by people no longer
+on the sheet (kept as by a member who has left), of facilities no longer on the sheet (kept, and nobody can book them), and
+bookings that overlap another. Everything is done in one transaction, so it is all imported or none of it.
+
+Running it again only adds what is new, so it can be run days ahead, and again just before switching. `--overwrite` replaces
+what was imported with what Google has now, and is refused once anything has been done in the database, as Google is by then
+out of date.
+
 ### Outbox
 
 Work that follows a change, such as telling people about it, is written to the `OutboxMessage` table in the same

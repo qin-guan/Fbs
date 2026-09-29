@@ -133,6 +133,42 @@ public class MigratorTests
         await Assert.That(result.Output).Contains("ConnectionStrings:db is required");
     }
 
+    [Test]
+    public async Task The_commands_that_read_google_say_what_is_missing_when_it_is_not_set()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await RunAsync(database.ConnectionString, "apply");
+
+        foreach (var command in new[] { "import-legacy", "verify-legacy" })
+        {
+            var result = await RunAsync(database.ConnectionString, command);
+
+            await Assert.That(result.ExitCode).IsNotEqualTo(0);
+            await Assert.That(result.Output).Contains("Google:ServiceAccountJsonCredential");
+        }
+    }
+
+    [Test]
+    public async Task The_commands_that_do_not_read_google_do_not_need_it()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        // Nothing about Google is set, and the schema is still applied
+        await Assert.That((await RunAsync(database.ConnectionString, "apply")).ExitCode).IsEqualTo(0);
+        await Assert.That((await RunAsync(database.ConnectionString, "diff")).ExitCode).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task The_import_commands_are_listed()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        var result = await RunAsync(database.ConnectionString, "--help");
+
+        await Assert.That(result.Output).Contains("import-legacy");
+        await Assert.That(result.Output).Contains("verify-legacy");
+    }
+
     private static bool HasColumn(SqlSugar.ISqlSugarClient db, string table, string column) =>
         db.DbMaintenance.GetColumnInfosByTableName(table, false).Any(c => c.DbColumnName == column);
 
