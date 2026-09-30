@@ -1,3 +1,5 @@
+using Fbs.WebApi.Telemetry;
+
 namespace Fbs.WebApi.Data;
 
 /// <summary>
@@ -22,18 +24,26 @@ public static class TransactionRetry
         "Write conflict",
     ];
 
-    public static bool IsTransient(Exception exception)
+    public static bool IsTransient(Exception exception) => ReasonOf(exception) is not null;
+
+    /// <summary>Why the database turned it away, as something to tag by, or null if it isn't one of those.</summary>
+    private static string? ReasonOf(Exception exception)
     {
         for (var e = exception; e is not null; e = e.InnerException)
         {
-            if (Transient.Any(text => e.Message.Contains(text, StringComparison.OrdinalIgnoreCase)))
+            for (var i = 0; i < Transient.Length; i++)
             {
-                return true;
+                if (e.Message.Contains(Transient[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    return Reasons[i];
+                }
             }
         }
 
-        return false;
+        return null;
     }
+
+    private static readonly string[] Reasons = ["lock_retry_limit", "deadlock", "lock_wait_timeout", "write_conflict"];
 
     /// <summary>Runs <paramref name="attempt"/>, and again after a short random wait if it fails for one of those reasons, up to <see cref="Attempts"/> times.</summary>
     public static async Task<T> RunAsync<T>(Func<Task<T>> attempt, CancellationToken cancellationToken = default)
@@ -44,8 +54,15 @@ public static class TransactionRetry
             {
                 return await attempt();
             }
+            catch (Exception e) when (n >= Attempts && IsTransient(e))
+            {
+                // It has been tried as often as it is, and this is somebody who gets an error
+                FbsMetrics.TransactionsGivenUp.Add(1, new KeyValuePair<string, object?>("reason", ReasonOf(e)));
+                throw;
+            }
             catch (Exception e) when (n < Attempts && IsTransient(e) && !cancellationToken.IsCancellationRequested)
             {
+                FbsMetrics.TransactionRetries.Add(1, new KeyValuePair<string, object?>("reason", ReasonOf(e)));
                 // Longer each time, and different for each caller, so those that collided don't do so again together
                 await Task.Delay(Random.Shared.Next(5, 25 * n), cancellationToken);
             }

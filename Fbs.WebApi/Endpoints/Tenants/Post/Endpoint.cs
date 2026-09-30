@@ -1,5 +1,6 @@
 using FastEndpoints;
 using Fbs.WebApi.RateLimiting;
+using Fbs.WebApi.Telemetry;
 using Microsoft.AspNetCore.RateLimiting;
 using Fbs.WebApi.Auth.Clerk;
 using Fbs.WebApi.Data.Entities;
@@ -77,6 +78,7 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, IOpti
             await sql.Insertable(admin).ExecuteCommandAsync(ct);
             await audit.WriteAsync(tenant.Id, admin.Id, "tenant.created", "Made the organisation.", "tenant", tenant.Id, ct);
             tran.CommitTran();
+            FbsMetrics.TenantsCreated.Add(1);
         }
         catch (Exception e) when (e.Message.Contains("Duplicate", StringComparison.OrdinalIgnoreCase))
         {
