@@ -35,6 +35,7 @@ Everything under `/t/:slug`, in the organization's time zone (not the browser's:
 | `/t/:slug/admin/units`, `.../facilities` | admins | what people belong to, and what they can book |
 | `/t/:slug/admin/members` | admins | letting in, turning away, changing, removing and adding by phone number |
 | `/t/:slug/admin/invites` | admins | links to join with, shown once when they are made |
+| `/t/:slug/admin/audit` | admins | the history: what has been done to the organization, the latest first, a page at a time |
 
 An admin who opens an organization with nothing in it is shown a checklist (`components/tenant/setup-checklist.vue`). A member who reaches an admin page by its address
 is told it is for admins (`components/tenant/admin-gate.vue`), and nothing is asked of the API for them.
