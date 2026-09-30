@@ -2,6 +2,7 @@ using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.TelegramLinks;
+using Fbs.WebApi.Telemetry;
 using Fbs.WebApi.Tenancy;
 using Microsoft.Extensions.Options;
 using SqlSugar;
@@ -154,6 +155,7 @@ public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOp
             await sql.Updateable<MemberClaimToken>().SetColumns(t => new MemberClaimToken { UsedAt = now }).Where(t => t.Id == claimId).ExecuteCommandAsync(ct);
             await new AuditLog(sql).WriteAsync(tenantId, place.Id, "member.claimed", "Took over their place from before accounts.", "member", place.Id, ct);
             tran.CommitTran();
+            FbsMetrics.PlacesClaimed.Add(1);
 
             return new Completed(ClaimOutcome.Claimed, userId, place.DisplayName, tenant.Name);
         }

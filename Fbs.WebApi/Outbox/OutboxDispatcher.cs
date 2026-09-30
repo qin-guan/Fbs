@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Fbs.WebApi.Data.Entities;
+using Fbs.WebApi.Telemetry;
 using Microsoft.Extensions.Options;
 using SqlSugar;
 
@@ -166,7 +168,16 @@ public sealed class OutboxDispatcher(
                 throw new OutboxPermanentFailureException($"Nothing handles messages of type '{message.Type}'.");
             }
 
-            await handler.HandleAsync(message, cancellationToken);
+            var started = Stopwatch.GetTimestamp();
+            try
+            {
+                await handler.HandleAsync(message, cancellationToken);
+            }
+            finally
+            {
+                FbsMetrics.OutboxHandleDuration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, new KeyValuePair<string, object?>("type", message.Type));
+            }
+
             await CompleteAsync(message, token, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -204,7 +215,15 @@ public sealed class OutboxDispatcher(
                 message.Type
             );
         }
+        else
+        {
+            Count(message.Type, "done", 1);
+        }
     }
+
+    /// <summary>What came of a message, by its type. Handled twice, because its lease ran out, is not counted the second time.</summary>
+    private static void Count(string type, string outcome, long messages) =>
+        FbsMetrics.OutboxMessages.Add(messages, new KeyValuePair<string, object?>("type", type), new KeyValuePair<string, object?>("outcome", outcome));
 
     private async Task FailAsync(OutboxMessage message, Guid token, Exception exception, CancellationToken cancellationToken)
     {
@@ -247,6 +266,7 @@ public sealed class OutboxDispatcher(
         }
         else if (giveUp)
         {
+            Count(message.Type, "dead", 1);
             logger.LogError(
                 exception,
                 "Gave up on outbox message {Id} ({Type}) after {Attempts} attempts",
@@ -257,6 +277,7 @@ public sealed class OutboxDispatcher(
         }
         else
         {
+            Count(message.Type, "retry", 1);
             logger.LogWarning(
                 exception,
                 "Outbox message {Id} ({Type}) failed on attempt {Attempts}, trying again later",
@@ -276,7 +297,7 @@ public sealed class OutboxDispatcher(
         var now = DateTimeOffset.UtcNow;
         var maxAttempts = options.Value.MaxAttempts;
         var tenantId = options.Value.TenantId;
-        await sql.Updateable<OutboxMessage>()
+        var gaveUp = await sql.Updateable<OutboxMessage>()
             .SetColumns(m => new OutboxMessage
             {
                 Status = OutboxStatus.Dead,
@@ -287,6 +308,11 @@ public sealed class OutboxDispatcher(
             .Where(m => m.Status == OutboxStatus.Pending && m.Attempts >= maxAttempts && (m.LockedUntil == null || m.LockedUntil < now))
             .WhereIF(tenantId is not null, m => m.TenantId == tenantId)
             .ExecuteCommandAsync(cancellationToken);
+        if (gaveUp > 0)
+        {
+            // Not known by type, as it is one statement
+            Count("unknown", "dead", gaveUp);
+        }
     }
 
     /// <summary>
@@ -304,32 +330,39 @@ public sealed class OutboxDispatcher(
 
         var now = DateTimeOffset.UtcNow;
         var tenantId = options.Value.TenantId;
-        var parameters = new List<SugarParameter>
+        foreach (var type in types)
         {
-            new("@skipped", (int)OutboxStatus.Skipped),
-            new("@pending", (int)OutboxStatus.Pending),
-            new("@active", (int)TenantStatus.Active),
-            new("@now", now),
-            new("@reason", "Skipped: the organisation could not be used, so nobody was told."),
-        };
-        parameters.AddRange(types.Select((type, i) => new SugarParameter($"@type{i}", type)));
-        if (tenantId is { } onlyTenant)
-        {
-            parameters.Add(new SugarParameter("@tenantId", onlyTenant));
-        }
+            var parameters = new List<SugarParameter>
+            {
+                new("@skipped", (int)OutboxStatus.Skipped),
+                new("@pending", (int)OutboxStatus.Pending),
+                new("@active", (int)TenantStatus.Active),
+                new("@now", now),
+                new("@reason", "Skipped: the organisation could not be used, so nobody was told."),
+                new("@type", type),
+            };
+            if (tenantId is { } onlyTenant)
+            {
+                parameters.Add(new SugarParameter("@tenantId", onlyTenant));
+            }
 
-        await sql.Ado.ExecuteCommandAsync(
-            $"""
-            UPDATE OutboxMessage
-            SET Status = @skipped, CompletedAt = @now, LockedBy = NULL, LockedUntil = NULL, LastError = @reason
-            WHERE Status = @pending
-              AND (LockedUntil IS NULL OR LockedUntil < @now)
-              AND Type IN ({string.Join(", ", types.Select((_, i) => $"@type{i}"))})
-              AND EXISTS (SELECT 1 FROM Tenant WHERE Tenant.Id = OutboxMessage.TenantId AND Tenant.Status <> @active)
-              {(tenantId is null ? "" : "AND TenantId = @tenantId")}
-            """,
-            parameters
-        );
+            var skipped = await sql.Ado.ExecuteCommandAsync(
+                $"""
+                UPDATE OutboxMessage
+                SET Status = @skipped, CompletedAt = @now, LockedBy = NULL, LockedUntil = NULL, LastError = @reason
+                WHERE Status = @pending
+                  AND (LockedUntil IS NULL OR LockedUntil < @now)
+                  AND Type = @type
+                  AND EXISTS (SELECT 1 FROM Tenant WHERE Tenant.Id = OutboxMessage.TenantId AND Tenant.Status <> @active)
+                  {(tenantId is null ? "" : "AND TenantId = @tenantId")}
+                """,
+                parameters
+            );
+            if (skipped > 0)
+            {
+                Count(type, "skipped", skipped);
+            }
+        }
     }
 
     private async Task PurgeAsync(CancellationToken cancellationToken)

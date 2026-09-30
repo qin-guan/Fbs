@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Claims;
 using Fbs.WebApi.TelegramLinks;
+using Fbs.WebApi.Telemetry;
 using Fbs.WebApi.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
@@ -96,14 +97,21 @@ public static class ClerkAuthentication
                             var azp = context.Principal?.FindFirstValue("azp");
                             if (azp is null || !options.AuthorizedParties.Contains(azp, StringComparer.OrdinalIgnoreCase))
                             {
+                                FbsMetrics.AuthFailures.Add(1, new KeyValuePair<string, object?>("reason", "azp"));
                                 context.Fail("The token was not issued to this app.");
                             }
-
-                            if (context.Principal?.FindFirstValue("sub") is not { Length: > 0 })
+                            else if (context.Principal?.FindFirstValue("sub") is not { Length: > 0 })
                             {
+                                FbsMetrics.AuthFailures.Add(1, new KeyValuePair<string, object?>("reason", "subject"));
                                 context.Fail("The token is not for anyone.");
                             }
 
+                            return Task.CompletedTask;
+                        },
+                        // A request with no token isn't a failure, so it isn't counted: this is for tokens that were sent and refused
+                        OnAuthenticationFailed = context =>
+                        {
+                            FbsMetrics.AuthFailures.Add(1, new KeyValuePair<string, object?>("reason", ReasonOf(context.Exception)));
                             return Task.CompletedTask;
                         },
                     };
@@ -112,6 +120,19 @@ public static class ClerkAuthentication
 
         return services;
     }
+
+    /// <summary>Why a token was refused, in a few words that are ours: what a token says is never what is counted.</summary>
+    internal static string ReasonOf(Exception exception) =>
+        exception switch
+        {
+            SecurityTokenExpiredException => "expired",
+            SecurityTokenNotYetValidException => "not_yet_valid",
+            // Before the signature, which it is a kind of
+            SecurityTokenSignatureKeyNotFoundException => "unknown_key",
+            SecurityTokenInvalidSignatureException => "signature",
+            SecurityTokenInvalidIssuerException => "issuer",
+            _ => "invalid",
+        };
 
     /// <summary>Clerk's keys, fetched from its Frontend API and kept for an hour, or read from the settings.</summary>
     private sealed class ClerkConfigurationManager : IConfigurationManager<OpenIdConnectConfiguration>

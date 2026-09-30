@@ -5,6 +5,7 @@ using Fbs.WebApi.Notifications;
 using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Tests.Data;
 using Fbs.WebApi.Tests.Fakes;
+using Fbs.WebApi.Tests.Helpers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -330,5 +331,43 @@ public class TelegramBookingNotifierTests
         await setup.HandleAsync(setup.Messages().Single());
 
         await Assert.That(setup.Telegram.Messages).IsEmpty();
+    }
+
+    [Test]
+    public async Task Each_person_told_is_counted_by_whether_it_got_to_them_and_how_long_telegram_took_is_timed()
+    {
+        var setup = await SetUpAsync();
+        setup.Telegram.BlockedChatIds.Add(1002);
+        setup.Telegram.FailingChatIds.Add(1003);
+        await setup.CreateAsync(NewBooking("Field", 8, 10));
+        using var metrics = new MetricsRecorder();
+
+        await Assert.That(async () => await setup.HandleAsync(setup.Messages().Single())).Throws<Exception>();
+
+        await Assert.That(metrics.Sum("fbs.telegram.messages", ("result", "sent"))).IsEqualTo(1);
+        await Assert.That(metrics.Sum("fbs.telegram.messages", ("result", "blocked"))).IsEqualTo(1);
+        await Assert.That(metrics.Sum("fbs.telegram.messages", ("result", "failed"))).IsEqualTo(1);
+        // Each time Telegram was asked, however it went
+        await Assert.That(metrics.Recorded("fbs.telegram.send.duration")).IsEqualTo(3);
+
+        // Tried again, those who were told are not told, or counted, again
+        setup.Telegram.FailingChatIds.Clear();
+        await setup.HandleAsync(setup.Messages().Single());
+        await Assert.That(metrics.Sum("fbs.telegram.messages", ("result", "sent"))).IsEqualTo(2);
+        await Assert.That(metrics.Sum("fbs.telegram.messages")).IsEqualTo(4);
+    }
+
+    [Test]
+    public async Task Nobody_told_is_nothing_counted_for_an_organisation_that_cannot_be_used()
+    {
+        var setup = await SetUpAsync();
+        await setup.CreateAsync(NewBooking("Field", 8, 10));
+        SetStatus(setup, TenantStatus.Suspended);
+        using var metrics = new MetricsRecorder();
+
+        await setup.HandleAsync(setup.Messages().Single());
+
+        await Assert.That(metrics.Sum("fbs.telegram.messages")).IsEqualTo(0);
+        await Assert.That(metrics.Recorded("fbs.telegram.send.duration")).IsEqualTo(0);
     }
 }

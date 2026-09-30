@@ -3,6 +3,7 @@ using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Notifications;
 using Fbs.WebApi.Outbox;
+using Fbs.WebApi.Telemetry;
 using SqlSugar;
 using DataBooking = Fbs.WebApi.Data.Entities.Booking;
 
@@ -108,6 +109,7 @@ public sealed class TenantBookings(ISqlSugarClient sql, OutboxSignal signal)
         var conflicts = FindConflicts(rows, existing);
         if (conflicts.Count > 0)
         {
+            FbsMetrics.BookingClashes.Add(1);
             return new TenantCreateResult([], conflicts);
         }
 
@@ -122,6 +124,7 @@ public sealed class TenantBookings(ISqlSugarClient sql, OutboxSignal signal)
         await CalendarOutbox.EnqueueAsync(sql, tenantId, rows.Select(r => r.Id), ct);
         tran.CommitTran();
         signal.Notify();
+        FbsMetrics.BookingsMade.Add(rows.Count);
 
         return new TenantCreateResult(rows, []);
     }
@@ -176,6 +179,7 @@ public sealed class TenantBookings(ISqlSugarClient sql, OutboxSignal signal)
             var clash = (await BookingLocks.FindBookingsBetweenAsync(sql, tenantId, [row.FacilityId], newStart, newEnd, excluding: bookingId, ct)).FirstOrDefault();
             if (clash is not null)
             {
+                FbsMetrics.BookingClashes.Add(1);
                 return new TenantUpdateResult(null, clash.Id);
             }
         }
@@ -224,6 +228,7 @@ public sealed class TenantBookings(ISqlSugarClient sql, OutboxSignal signal)
         await CalendarOutbox.EnqueueAsync(sql, tenantId, [row.Id], ct);
         tran.CommitTran();
         signal.Notify();
+        FbsMetrics.BookingsChanged.Add(1);
 
         return new TenantUpdateResult(row, null);
     }
@@ -265,6 +270,7 @@ public sealed class TenantBookings(ISqlSugarClient sql, OutboxSignal signal)
         await CalendarOutbox.EnqueueAsync(sql, tenantId, [bookingId], ct);
         tran.CommitTran();
         signal.Notify();
+        FbsMetrics.BookingsCancelled.Add(1);
         return true;
     }
 

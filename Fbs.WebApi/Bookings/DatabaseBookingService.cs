@@ -4,6 +4,7 @@ using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Notifications;
 using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Repository.Database;
+using Fbs.WebApi.Telemetry;
 using SqlSugar;
 using Booking = Fbs.WebApi.Entities.Booking;
 using DataBooking = Fbs.WebApi.Data.Entities.Booking;
@@ -95,6 +96,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         var conflicts = BookingOverlaps.Find(bookings, existing.Select(snapshot.ToBooking).ToList());
         if (conflicts.Count > 0)
         {
+            FbsMetrics.BookingClashes.Add(1);
             return new CreateResult(conflicts);
         }
 
@@ -114,6 +116,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         await CalendarOutbox.EnqueueAsync(sql, tenantId, rows.Select(r => r.Id), cancellationToken);
         tran.CommitTran();
         signal.Notify();
+        FbsMetrics.BookingsMade.Add(rows.Count);
 
         for (var i = 0; i < bookings.Count; i++)
         {
@@ -181,6 +184,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
             ).FirstOrDefault();
             if (clash is not null)
             {
+                FbsMetrics.BookingClashes.Add(1);
                 return new UpdateResult(null, clash.Id);
             }
         }
@@ -233,6 +237,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         await CalendarOutbox.EnqueueAsync(sql, tenantId, [row.Id], cancellationToken);
         tran.CommitTran();
         signal.Notify();
+        FbsMetrics.BookingsChanged.Add(1);
 
         return new UpdateResult(snapshot.ToBooking(row), null);
     }
@@ -272,6 +277,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         await CalendarOutbox.EnqueueAsync(sql, tenantId, [id], cancellationToken);
         tran.CommitTran();
         signal.Notify();
+        FbsMetrics.BookingsCancelled.Add(1);
     }
 
     /// <summary>Bookings are read from the database every time, so there is nothing to reload.</summary>

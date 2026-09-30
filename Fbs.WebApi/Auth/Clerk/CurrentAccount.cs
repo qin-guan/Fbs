@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Fbs.WebApi.Data.Entities;
+using Fbs.WebApi.Telemetry;
 using SqlSugar;
 
 namespace Fbs.WebApi.Auth.Clerk;
@@ -44,6 +45,7 @@ public sealed class CurrentAccount(IHttpContextAccessor httpContextAccessor, ISq
             try
             {
                 await sql.Insertable(account).ExecuteCommandAsync(cancellationToken);
+                FbsMetrics.AccountsCreated.Add(1);
             }
             catch (Exception e) when (e.Message.Contains("Duplicate", StringComparison.OrdinalIgnoreCase))
             {

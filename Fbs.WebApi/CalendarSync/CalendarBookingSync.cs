@@ -3,6 +3,7 @@ using System.Text.Json;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Outbox;
+using Fbs.WebApi.Telemetry;
 using Google;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
@@ -219,10 +220,15 @@ public sealed class CalendarBookingSync(ISqlSugarClient sql, CalendarService cal
         var active = CalendarConnectionStatus.Active;
         var error = $"{(int)e.HttpStatusCode} {e.Message}";
         error = error.Length <= 1000 ? error : error[..1000];
-        await sql.Updateable<CalendarConnection>()
+        var stopped = await sql.Updateable<CalendarConnection>()
             .SetColumns(c => new CalendarConnection { Status = CalendarConnectionStatus.Failed, LastError = error })
             .Where(c => c.Id == id && c.Status == active)
             .ExecuteCommandAsync(cancellationToken);
+        if (stopped > 0)
+        {
+            FbsMetrics.CalendarsFailed.Add(1);
+        }
+
         logger.LogError(e, "Google Calendar refused tenant {TenantId}'s calendar, so it is no longer sent to", connection.TenantId);
     }
 
