@@ -12,7 +12,7 @@ namespace Fbs.WebApi.Endpoints.Org.Members.Post;
 /// organisation from the moment they sign in and claim it, which is what an account still to be matched is for.
 /// </summary>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request, MemberResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas) : Endpoint<Request, MemberResponse>
 {
     public override void Configure()
     {
@@ -37,6 +37,13 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
         {
             AddError(r => r.UnitId!, "That isn't one of this organisation's units.", "unit-unknown");
             await Send.ErrorsAsync(StatusCodes.Status400BadRequest, ct);
+            return;
+        }
+
+        if (await quotas.CheckMemberAsync(tenant.Id, ct) is { } refusal)
+        {
+            AddError(refusal.Reason, refusal.Code);
+            await Send.ErrorsAsync(StatusCodes.Status403Forbidden, ct);
             return;
         }
 

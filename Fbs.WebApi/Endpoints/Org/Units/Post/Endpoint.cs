@@ -8,7 +8,7 @@ using DataUnit = Fbs.WebApi.Data.Entities.Unit;
 namespace Fbs.WebApi.Endpoints.Org.Units.Post;
 
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request, UnitResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas) : Endpoint<Request, UnitResponse>
 {
     public override void Configure()
     {
@@ -20,6 +20,13 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
+        if (await quotas.CheckUnitAsync(tenantContext.Tenant.Id, ct) is { } refusal)
+        {
+            AddError(refusal.Reason, refusal.Code);
+            await Send.ErrorsAsync(StatusCodes.Status403Forbidden, ct);
+            return;
+        }
+
         var unit = new DataUnit { Id = Guid.NewGuid(), TenantId = tenantContext.Tenant.Id, Name = req.Name.Trim() };
         try
         {

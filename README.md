@@ -309,6 +309,12 @@ Change one with `RateLimits__Limits__join__PermitLimit` and `RateLimits__Limits_
 `create-organization`, `join`, `link-telegram` and `webhook`), or turn them all off with `RateLimits__Enabled=false`. People at one address, such as a whole unit
 on one network, are not one person: what is for a person is counted for their account.
 
+What an organisation can have, and make in a day, is limited too, so that one can't use up what all of them share: `Limits__MaxUnits` (50),
+`Limits__MaxFacilities` (100), `Limits__MaxMembers` (500, counting those waiting to be let in and those added by phone number, and not those removed) and
+`Limits__MaxBookingsPerDay` (1000 made in the last 24 hours, counting those cancelled, and counting each slot of a batch). Going over is a 403 whose error code says
+which (`unit-limit`, `facility-limit`, `member-limit` or `booking-limit`), and a batch is made whole or not at all. Somebody who is refused joining with a link,
+or letting somebody back in, doesn't use up the link. They are looked at just before something is made, so a number made at the same moment can go a little over.
+
 `Maintenance__ReadOnly=true` makes the API read only: everything can be read and anything that changes something answers 503.
 It is for moving the data, see [the runbook](docs/runbooks/cutover-1-database.md), which has the steps for switching from Google
 to the database.

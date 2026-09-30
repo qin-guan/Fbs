@@ -50,6 +50,7 @@ public static class ClerkAuthentication
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
         services.AddScoped<TenantBookings>();
+        services.AddScoped<TenantQuotas>();
         services.AddSingleton<TelegramBotIdentity>();
         services.AddScoped<TelegramLinker>();
         services.AddScoped<MemberClaims>();
