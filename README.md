@@ -146,6 +146,19 @@ A facility is never booked twice at once, whichever way it is booked: booking, a
 and then look for a clash with a locking read (see Database). When a lot of requests are after the same facility, TiDB can turn
 one away ("pessimistic lock retry limit reached", or a deadlock), so a booking that was turned away is run again, up to five times.
 
+People join with a link an admin shares in a chat, as there is no email:
+
+- `POST /t/{slug}/Invites` makes one (`role`, `unitId`, `expiresInDays` from 1 to 30, `maxUses` from 1 to 100), and returns its
+  `token` **once**: only a SHA-256 of it is kept, so it can't be shown again. `GET /t/{slug}/Invites` lists the latest 100 and
+  whether each is still `Active`, `Expired`, `Revoked` or `UsedUp`, and `DELETE /t/{slug}/Invites/{id}` stops one. An
+  organisation can have `Limits:MaxActiveInvites` (20) going at once.
+- Whoever has the token signs in and `GET /Invites/{token}` says where it leads. A link that doesn't work, for any reason, is a
+  404, so the reasons can't be told apart. `POST /Invites/{token}/Accept` joins (`displayName` if they want another than
+  their name with Clerk). With `requireApproval` (the default) they are `Pending` and get a 403 from `/t/{slug}` until an admin lets
+  them in (`PUT /t/{slug}/Members/{id}` with `membership: In`); otherwise they are `Active` at once. A use is taken in the
+  statement that checks there is one left, so a link lets in no more than `maxUses` however many join together. Joining again
+  changes nothing, and somebody an admin removed can't come back with a link, only be let back in by an admin.
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and

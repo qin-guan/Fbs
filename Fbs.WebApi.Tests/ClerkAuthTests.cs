@@ -161,7 +161,9 @@ public class ClerkAuthTests
         using var client = ClientWith(Factory.Clerk.Token("user_member", name: "A Member"));
         var accountId = (await client.GetFromJsonAsync<JsonElement>("/Me")).GetProperty("id").GetGuid();
         Factory.Db.Updateable<TenantMember>().SetColumns(m => new TenantMember { UserId = accountId, Status = MemberStatus.Active, Role = MemberRole.Admin }).Where(m => m.Id == Factory.MemberIdOf(Users.Admin)).ExecuteCommand();
-        Factory.Db.Updateable<TenantMember>().SetColumns(m => new TenantMember { UserId = accountId, Status = MemberStatus.Removed }).Where(m => m.Id == Factory.MemberIdOf(Users.Booker)).ExecuteCommand();
+        // And an organisation they have left
+        var other = await Factory.CreateOrgAsync();
+        Factory.Db.Insertable(new TenantMember { Id = Guid.NewGuid(), TenantId = other.TenantId, UserId = accountId, DisplayName = "Left", Status = MemberStatus.Removed }).ExecuteCommand();
 
         var me = await client.GetFromJsonAsync<JsonElement>("/Me");
 
