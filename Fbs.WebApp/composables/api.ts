@@ -1,3 +1,4 @@
+import type { FormError } from '@nuxt/ui'
 import { ResponseError, type FastEndpointsProblemDetails } from '~/api'
 
 /**
@@ -25,4 +26,12 @@ export function getErrorCodes(error: unknown) {
 /** What the errors in problem details say, to show. */
 export function getErrorReasons(error: unknown) {
   return getProblemDetails(error)?.errors?.flatMap(e => (e.reason ? [e.reason] : [])) ?? []
+}
+
+/**
+ * The errors of problem details that are about a field, for a form to show under it. The API names them as the request has
+ * them, and `slots[0]`, or a name with a dot in it, is left as it is for the page to place.
+ */
+export function getFieldErrors(error: unknown): FormError[] {
+  return (getProblemDetails(error)?.errors ?? []).flatMap(e => (e.name && e.reason ? [{ name: e.name.charAt(0).toLowerCase() + e.name.slice(1), message: e.reason }] : []))
 }
