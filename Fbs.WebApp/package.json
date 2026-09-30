@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "test": "vitest run",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -51,6 +52,7 @@
     "@kubb/plugin-vue-query": "^5.1.3",
     "@playwright/test": "1.56.1",
     "kubb": "^5.3.19",
+    "vitest": "^5.0.2",
     "vue-tsc": "^3.3.11"
   }
 }
