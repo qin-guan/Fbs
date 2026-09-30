@@ -8,7 +8,7 @@ namespace Fbs.WebApi.Endpoints.Org.Invites.ById.Delete;
 
 /// <summary>Stops a link working. Those who joined with it stay.</summary>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request>
 {
     public override void Configure()
     {
@@ -30,7 +30,12 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
         }
 
         // One that is already revoked keeps the time it was
-        await sql.Updateable<TenantInvite>().SetColumns(i => new TenantInvite { RevokedAt = now }).Where(i => i.Id == id && i.TenantId == tenantId && i.RevokedAt == null).ExecuteCommandAsync(ct);
+        var stopped = await sql.Updateable<TenantInvite>().SetColumns(i => new TenantInvite { RevokedAt = now }).Where(i => i.Id == id && i.TenantId == tenantId && i.RevokedAt == null).ExecuteCommandAsync(ct);
+        if (stopped > 0)
+        {
+            await audit.WriteAsync(tenantId, tenantContext.Member.Id, "invite.stopped", "Stopped an invite link.", "invite", id, ct);
+        }
+
         await Send.NoContentAsync(ct);
     }
 }

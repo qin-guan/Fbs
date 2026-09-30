@@ -7,7 +7,7 @@ using SqlSugar;
 namespace Fbs.WebApi.Endpoints.Org.Settings.Put;
 
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request, Get.Response>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request, Get.Response>
 {
     public override void Configure()
     {
@@ -43,6 +43,24 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
             })
             .Where(t => t.Id == id)
             .ExecuteCommandAsync(ct);
+
+        var before = tenantContext.Tenant;
+        var changes = new (bool Changed, string What)[]
+        {
+            (name != before.Name, "name"),
+            (timeZone != before.TimeZone, "time zone"),
+            (countryCode != before.DefaultCountryCode, "calling code"),
+            (req.SlotMinutes != before.SlotMinutes, "shortest booking"),
+            (req.RequireApproval != before.RequireApproval, "whether people who join wait to be let in"),
+            (claimEnabled != before.LegacyClaimEnabled, "claiming places from before accounts"),
+        }
+            .Where(c => c.Changed)
+            .Select(c => c.What)
+            .ToList();
+        if (changes.Count > 0)
+        {
+            await audit.WriteAsync(id, tenantContext.Member.Id, "settings.changed", $"Changed the settings: {string.Join(", ", changes)}.", "tenant", id, ct);
+        }
 
         await Send.OkAsync(
             new Get.Response

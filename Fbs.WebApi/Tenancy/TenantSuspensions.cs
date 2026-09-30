@@ -39,6 +39,15 @@ public sealed class TenantSuspensions(ISqlSugarClient sql)
 
         var id = tenant.Id;
         await sql.Updateable<Tenant>().SetColumns(t => new Tenant { Status = wanted }).Where(t => t.Id == id).ExecuteCommandAsync(ct);
+        await new AuditLog(sql).WriteAsync(
+            id,
+            null,
+            suspended ? "tenant.suspended" : "tenant.unsuspended",
+            suspended ? "Suspended by whoever runs the system." : "Made available again by whoever runs the system.",
+            "tenant",
+            id,
+            ct
+        );
         return SuspensionOutcome.Changed;
     }
 

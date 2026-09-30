@@ -13,7 +13,7 @@ namespace Fbs.WebApi.Endpoints.Org.Invites.Post;
 /// off, so a link that is shared further than it should be exposes nothing.
 /// </summary>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, IOptions<TenantLimits> limits) : Endpoint<Request, Response>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, IOptions<TenantLimits> limits, AuditLog audit) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
@@ -57,6 +57,15 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, IOption
             CreatedAt = now,
         };
         await sql.Insertable(invite).ExecuteCommandAsync(ct);
+        await audit.WriteAsync(
+            tenantId,
+            tenantContext.Member.Id,
+            "invite.created",
+            $"Made an invite link to join as {(req.Role == MemberRole.Admin ? "an admin" : "a member")}, for {req.ExpiresInDays} {(req.ExpiresInDays == 1 ? "day" : "days")} and up to {req.MaxUses} {(req.MaxUses == 1 ? "person" : "people")}.",
+            "invite",
+            invite.Id,
+            ct
+        );
 
         await Send.ResponseAsync(
             new Response

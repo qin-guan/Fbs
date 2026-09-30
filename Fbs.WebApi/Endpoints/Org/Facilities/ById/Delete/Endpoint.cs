@@ -10,7 +10,7 @@ namespace Fbs.WebApi.Endpoints.Org.Facilities.ById.Delete;
 
 /// <summary>Takes a facility away, unless anything was ever booked on it, as its bookings would have nothing to be for.</summary>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request>
 {
     public override void Configure()
     {
@@ -44,6 +44,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
 
         await sql.Deleteable<FacilityUnitAccess>().Where(a => a.FacilityId == id && a.TenantId == tenantId).ExecuteCommandAsync(ct);
         await sql.Deleteable<DataFacility>().Where(f => f.Id == id && f.TenantId == tenantId).ExecuteCommandAsync(ct);
+        await audit.WriteAsync(tenantId, tenantContext.Member.Id, "facility.deleted", $"Deleted the facility {facility.Name}.", "facility", id, ct);
         tran.CommitTran();
 
         await Send.NoContentAsync(ct);
