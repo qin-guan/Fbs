@@ -22,7 +22,7 @@ try {
     await sleep(500)
   }
 
-  for (const file of ['smoke', 'tenant', 'booking']) {
+  for (const file of ['smoke', 'tenant', 'booking', 'timeline']) {
     console.log(`\n== ${file}`)
     const test = spawnSync('node', [`e2e/${file}.mjs`], { env: { ...env, BASE_URL: `http://localhost:${port}` }, stdio: 'inherit' })
     if (test.status !== 0) {
