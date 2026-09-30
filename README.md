@@ -331,6 +331,62 @@ version of each booking was sent. `CalendarReconciler` finds bookings that aren'
 sends them, every `CalendarSync:Interval` (24 hours), which is also how a calendar connected after bookings were made gets
 them. Bookings that ended over a week ago are left alone.
 
+### Metrics
+
+The API sends metrics with OpenTelemetry to wherever `OTEL_EXPORTER_OTLP_ENDPOINT` points (with `OTEL_EXPORTER_OTLP_HEADERS` and
+`OTEL_SERVICE_NAME` as usual, for a hosted collector); locally, the Aspire dashboard has them. There are those for requests (rate, duration, how many failed), the
+HTTP clients and the runtime (garbage collection, the thread pool), and the ones of this system, in the meter `Fbs.WebApi`, which are the ones below. In Prometheus
+a name has its dots as underscores, a unit on the end and `_total` on counters: `fbs.outbox.messages` is `fbs_outbox_messages_total`, and `fbs.db.query.duration`
+is `fbs_db_query_duration_seconds`.
+
+None is for one organisation, so the number of lines doesn't grow as they do, and the tags are ours (a type of message, an outcome), never what somebody typed. To find out
+which organisation it is, look in the audit log, at the `OutboxMessage` table, or at `list-tenants`.
+
+| Metric | Tags | What it says |
+| --- | --- | --- |
+| `fbs.outbox.pending` (gauge) | `type` | Messages due and not handled yet |
+| `fbs.outbox.oldest_due.age` (gauge, seconds) | `type` | How long ago the oldest of them should have been handled. Growing means what is sent isn't getting there |
+| `fbs.outbox.dead` (gauge) | `type` | Messages given up on and kept to see what failed (`LastError`). Anything but 0 needs looking at |
+| `fbs.outbox.held` (gauge) | | Messages waiting because their organisation is suspended, or is to be deleted |
+| `fbs.outbox.messages` | `type`, `outcome` | What became of each message: `done`, `retry`, `dead` (`type` is `unknown` for one given up on because its dispatcher kept stopping) or `skipped` |
+| `fbs.outbox.handle.duration` (seconds) | `type` | How long a message took to handle, whether or not it worked |
+| `fbs.telegram.messages` | `result` | One for each person: `sent`, `blocked` (they stopped the bot, which is normal) or `failed` (tried again later) |
+| `fbs.telegram.send.duration` (seconds) | | How long Telegram took to take a message, not counting waiting to keep to its limit |
+| `fbs.calendar.connections.failed` | | Calendars Google refused, which stopped being sent to |
+| `fbs.calendar.connections` (gauge) | `status` | Calendars by status: `Active`, `Failed`, `Disabled` |
+| `fbs.db.query.duration` (seconds) | `operation` | How long a statement took: `select`, `insert`, `update`, `delete`, `begin`, `commit`, `rollback` or `other` |
+| `fbs.db.query.errors` | `operation` | Statements that failed |
+| `fbs.db.transaction.retries` | `reason` | A transaction run again because the database turned it away: `lock_retry_limit`, `deadlock`, `lock_wait_timeout` or `write_conflict` |
+| `fbs.db.transaction.given_up` | `reason` | The same, still turned away after the last go, which is somebody who got an error |
+| `fbs.bookings.made`, `.changed`, `.cancelled` | | Bookings, one for each slot |
+| `fbs.bookings.clashes` | | Requests to book or move refused because somebody else has the time |
+| `fbs.quota.refusals` | `limit` | An organisation at a limit: `unit-limit`, `facility-limit`, `member-limit` or `booking-limit` |
+| `fbs.auth.failures` | `reason` | Session tokens that were sent and refused: `expired`, `not_yet_valid`, `signature`, `unknown_key`, `issuer`, `azp`, `subject` or `invalid`. Having none isn't a failure |
+| `fbs.webhooks.received` | `type`, `result` | Clerk's webhooks: `accepted`, `invalid_signature` or `not_configured`. A type that isn't one of Clerk's is `other`, and one that wasn't signed is `unknown` |
+| `fbs.rate_limit.rejections` | `policy` | Requests refused for being too many, by which limit |
+| `fbs.tenants` (gauge) | `status` | Organisations: `Active`, `Suspended`, `PendingDeletion` |
+| `fbs.members` (gauge) | `status` | People in organisations, by status |
+| `fbs.tenants.created`, `fbs.accounts.created`, `fbs.accounts.erased` | | Organisations made, people who signed in for the first time, and accounts erased after Clerk said they were deleted |
+| `fbs.invites.used` | `outcome` | Joining with a link: `joined`, `waiting` (for an admin), `already_in`, `full`, `unusable` (ended, revoked or used up) or `not_found` |
+| `fbs.claims.completed`, `fbs.telegram.linked` | | People who took over their place from before accounts, and Telegram chats connected to an account |
+
+What is worth being told about:
+
+- **`fbs.outbox.dead` above 0**, or **`fbs.outbox.oldest_due.age` over five minutes**, which is Telegram or Google being down, or the API not running its dispatcher. Sending is
+  the part nobody sees fail.
+- **`fbs.db.transaction.given_up` going up at all** is somebody who got an error, and **`fbs.db.transaction.retries` going up a lot** is the database being fought over.
+  Along with **`fbs.db.query.errors`** and the 99th percentile of **`fbs.db.query.duration`** (over a second), this is TiDB not coping.
+- **`fbs.calendar.connections{status="Failed"}` going up**: an organisation's calendar was refused, and stays that way until somebody puts it right.
+- **`fbs.telegram.messages{result="failed"}` as a share of what is sent**. `blocked` is people who left, and isn't a problem.
+- **`fbs.auth.failures{reason="unknown_key"}` or `{reason="azp"}`**: Clerk's keys aren't being fetched, or the web app is at an address `Clerk:AuthorizedParties` doesn't have. `expired` is
+  normal, as people leave tabs open. **`fbs.webhooks.received{result="invalid_signature"}`** is the wrong `Clerk:WebhookSecret`, or someone trying.
+- **`fbs.rate_limit.rejections` and `fbs.quota.refusals`** suddenly high: somebody is trying to fill the system, or a limit is too low for what people do.
+- For whether it is being used: the rate of **`fbs.bookings.made`**, **`fbs.tenants.created`** and **`fbs.accounts.created`**, and **`fbs.tenants{status="Suspended"}`**.
+
+The gauges are read from the database every `Metrics__DatabaseGauges__Interval` (30 seconds, and `00:00:00` turns it off), not when they are scraped, so a scrape isn't a
+query, and they are the same for every instance, so with more than one, take the largest of them and not the sum. The counters are for one instance each, so add them up.
+A gauge says nothing until the first look, and keeps the last one when the database can't be reached, which is what the health check is for.
+
 ## Testing
 
 The API tests use [TUnit](https://tunit.dev) and run the API in memory, with Google and Telegram faked, so they need
@@ -351,6 +407,9 @@ only replaces the old container once it passes.
 When the database is configured, `/health` also checks that it answers, so a version that can't reach it is not put in place of
 the one that is running, and says nothing more than `Healthy` or `Unhealthy`. The image carries the migrator too, so a hook that
 runs in the container can apply the schema before the version starts: `dotnet Fbs.DbMigrator.dll apply`.
+
+Nothing is sent anywhere until `OTEL_EXPORTER_OTLP_ENDPOINT` is set to a collector, such as Grafana Cloud's or one of your own, with `OTEL_EXPORTER_OTLP_HEADERS` for
+whatever it needs to let it in. Then the metrics in [Metrics](#metrics) are sent, and are worth putting alerts on before the first organisation other than 3SIB is let in.
 
 Behind a proxy such as Coolify's, the client's address and scheme come in `X-Forwarded-For` and `X-Forwarded-Proto`, which are only
 believed from a proxy in a private range (`10/8`, `172.16/12`, `192.168/16`, loopback and `fc00::/7`), and only the last hop of them

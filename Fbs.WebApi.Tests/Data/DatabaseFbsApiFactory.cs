@@ -192,5 +192,7 @@ public class DatabaseFbsApiFactory : FbsApiFactory
         builder.UseSetting("Outbox:TenantId", _tenantId.ToString());
         // Looks often, as messages written by another instance are only found that way
         builder.UseSetting("Outbox:PollInterval", "00:00:01");
+        // Not looked at in the background, as what the gauges say is the same for every app, and the tests that read them look when they want to
+        builder.UseSetting("Metrics:DatabaseGauges:Interval", "00:00:00");
     }
 }

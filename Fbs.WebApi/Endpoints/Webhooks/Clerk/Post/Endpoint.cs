@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using FastEndpoints;
 using Fbs.WebApi.RateLimiting;
+using Fbs.WebApi.Telemetry;
 using Microsoft.AspNetCore.RateLimiting;
 using Fbs.WebApi.Auth.Clerk;
 using Microsoft.Extensions.Options;
@@ -37,6 +38,7 @@ public class Endpoint(IOptions<ClerkOptions> options, AccountErasure erasure, IL
         if (string.IsNullOrWhiteSpace(secret))
         {
             logger.LogWarning("A Clerk webhook arrived but Clerk:WebhookSecret is not set, so it was not accepted.");
+            CountWebhook("unknown", "not_configured");
             await Send.ResponseAsync(null, StatusCodes.Status503ServiceUnavailable, ct);
             return;
         }
@@ -58,6 +60,7 @@ public class Endpoint(IOptions<ClerkOptions> options, AccountErasure erasure, IL
         if (!SvixSignature.IsValid(secret, headers["svix-id"], headers["svix-timestamp"], headers["svix-signature"], body, DateTimeOffset.UtcNow))
         {
             logger.LogWarning("Rejected a Clerk webhook without a valid signature.");
+            CountWebhook("unknown", "invalid_signature");
             await Send.UnauthorizedAsync(ct);
             return;
         }
@@ -66,6 +69,7 @@ public class Endpoint(IOptions<ClerkOptions> options, AccountErasure erasure, IL
         {
             using var document = JsonDocument.Parse(body);
             var root = document.RootElement;
+            CountWebhook(root.TryGetProperty("type", out var kind) ? kind.GetString() : null, "accepted");
             if (root.TryGetProperty("type", out var type) && type.GetString() == "user.deleted" && root.TryGetProperty("data", out var data) && data.TryGetProperty("id", out var id) && id.GetString() is { Length: > 0 } clerkUserId)
             {
                 var erased = await erasure.EraseAsync(clerkUserId, ct);
@@ -80,6 +84,10 @@ public class Endpoint(IOptions<ClerkOptions> options, AccountErasure erasure, IL
 
         await Send.OkAsync(ct);
     }
+
+    /// <summary>The type is only one of those Clerk has, and anything else is "other", so what is sent can't make up lines to count.</summary>
+    private static void CountWebhook(string? type, string result) =>
+        FbsMetrics.Webhooks.Add(1, new KeyValuePair<string, object?>("type", type is "user.created" or "user.updated" or "user.deleted" or "session.created" or "session.ended" or "session.removed" or "session.revoked" or "unknown" ? type : "other"), new KeyValuePair<string, object?>("result", result));
 
     private async Task<string?> ReadBodyAsync(CancellationToken ct)
     {
