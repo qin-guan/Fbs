@@ -221,6 +221,18 @@ Nothing is deleted for good until `purge-tenants` is run, which deletes the orga
 their ID, in a transaction for each; run it on a schedule. `--dry-run` says what it would delete, `--tenant <slug>` is for one, and `--early` with it deletes one
 that an admin has asked to be deleted before the time is up, for when somebody has to be erased sooner. See [the runbook](docs/runbooks/offboarding.md).
 
+### Getting a copy of the data
+
+Anybody signed in can download what is kept about them, `GET /Me/Export`, as a JSON file: their account (name, email), the Telegram chat they connected, every
+organisation they are, or were, or asked to be in (with the name, phone number and unit they have there), and every booking they made, cancelled ones and
+the point of contact written on each included. What they changed or cancelled of somebody else's booking is only said to have been, and when: what it was for
+is not theirs. Nothing about anybody else is in it.
+
+An admin can download everything of their organisation, `GET /t/{slug}/Export`: its settings, units, facilities, everybody in it (removed ones and phone numbers
+included), every booking (cancelled ones, and who to contact, included), the invite links that were made (never the links, only a hash of each is kept),
+and its history. As it has everybody's phone number, taking a copy is written in its history. Both are limited (`export`, above), and neither deletes anything:
+deleting is [offboarding](docs/runbooks/offboarding.md).
+
 ### Running the system: looking at and suspending organisations
 
 Anybody can make an organisation, so whoever runs the system can stop one being used. From the migrator, which is in the image:
@@ -342,9 +354,9 @@ two proxies in front, such as Cloudflare and then Coolify's.
 
 Some things are limited, so that being reachable by anyone doesn't make them a way to fill the database or to guess: making an
 organisation (10 an hour, for each person), looking at and using links to join or to claim a place (30 in 10 minutes, for each person), making links for
-connecting Telegram (20 in 10 minutes, for each person) and Clerk's webhooks (120 a minute, for each address). More than that is a 429 with `Retry-After`.
+connecting Telegram (20 in 10 minutes, for each person), downloading a copy of data (5 in 10 minutes, for each person) and Clerk's webhooks (120 a minute, for each address). More than that is a 429 with `Retry-After`.
 Change one with `RateLimits__Limits__join__PermitLimit` and `RateLimits__Limits__join__WindowSeconds` (the names are
-`create-organization`, `join`, `link-telegram` and `webhook`), or turn them all off with `RateLimits__Enabled=false`. People at one address, such as a whole unit
+`create-organization`, `join`, `link-telegram`, `export` and `webhook`), or turn them all off with `RateLimits__Enabled=false`. People at one address, such as a whole unit
 on one network, are not one person: what is for a person is counted for their account.
 
 What an organisation can have, and make in a day, is limited too, so that one can't use up what all of them share: `Limits__MaxUnits` (50),
