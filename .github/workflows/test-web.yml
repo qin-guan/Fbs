@@ -27,6 +27,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter nuxt-app lint
+      # Slots, and time zones, worked out without a browser
+      - run: pnpm --filter nuxt-app test
       # The build that is deployed until the switch to accounts: it has to keep working
       - run: pnpm --filter nuxt-app build
       - run: pnpm --filter nuxt-app exec playwright install --with-deps chromium
