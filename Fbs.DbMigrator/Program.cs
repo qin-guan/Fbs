@@ -44,6 +44,7 @@ var app = ConsoleApp
             services.AddScoped<LegacyExporter>();
             services.AddScoped<MemberPromotions>();
             services.AddScoped<TenantSuspensions>();
+            services.AddScoped<TenantPurges>();
         }
     )
     .ConfigureLogging(logging =>
@@ -60,5 +61,6 @@ app.Add<ExportLegacyCommand>();
 app.Add<PromoteAdminCommand>();
 app.Add<SuspendCommand>();
 app.Add<ListTenantsCommand>();
+app.Add<PurgeTenantsCommand>();
 
 await app.RunAsync(args);
