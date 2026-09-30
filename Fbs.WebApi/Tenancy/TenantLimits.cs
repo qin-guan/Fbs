@@ -25,4 +25,7 @@ public sealed class TenantLimits
     /// several slots is that many. It is a limit on how fast the database can be filled, not on how many an organisation can have.
     /// </summary>
     public int MaxBookingsPerDay { get; set; } = 1000;
+
+    /// <summary>How many days an organisation that an admin has deleted can be restored for, before it is deleted for good.</summary>
+    public int DeletionGraceDays { get; set; } = 30;
 }

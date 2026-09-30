@@ -208,6 +208,15 @@ a change that was refused or that changed nothing.
 An entry has no name of a person in it: who did it, and who it was done to, are kept as who they are in the organisation, and turned into names when it is
 read, so that when somebody's account is erased they are a former member here too, and what they did stays.
 
+### Deleting an organisation
+
+An admin of an organisation can delete it, in two steps so that a mistake can be undone. `POST /Tenants/{slug}/Deletion` with `{ "confirm": "<the slug>" }`
+(typing its address, to say they mean it) makes it **pending deletion**: nobody in it can use it (a 403 with the code `pending-deletion`, and its invite
+links look as if they were never there), nothing is deleted, and `GET /Me` tells the people in it, in `tenantStatus` and `deleteAfter`, that it is to be deleted and
+when. Any admin of it can take it back with `DELETE /Tenants/{slug}/Deletion` until it has been deleted for good, even after the time is up, and it is as it was.
+`Limits__DeletionGraceDays` (30) is how long from asking until it can be deleted for good. Only an organisation that is active can be asked to be deleted (not one that
+is suspended, or that is to be already), and one that is to be deleted can't be suspended: `suspend` says so and exits with 1. Both are written in its history.
+
 ### Running the system: looking at and suspending organisations
 
 Anybody can make an organisation, so whoever runs the system can stop one being used. From the migrator, which is in the image:

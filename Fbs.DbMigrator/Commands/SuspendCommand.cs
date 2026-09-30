@@ -32,6 +32,9 @@ public class SuspendCommand(ILogger<SuspendCommand> logger, TenantSuspensions su
             case SuspensionOutcome.AlreadyThatWay:
                 logger.LogInformation("{Tenant} was {State} already.", tenant, suspended ? "suspended" : "active");
                 return 0;
+            case SuspensionOutcome.PendingDeletion:
+                logger.LogError("{Tenant} is scheduled for deletion, so it can't be suspended or made active: its admins can restore it, and purge-tenants deletes it.", tenant);
+                return 1;
             default:
                 logger.LogError("There is no organisation {Tenant}.", tenant);
                 return 1;
