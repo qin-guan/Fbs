@@ -12,7 +12,7 @@ namespace Fbs.WebApi.Endpoints.Org.Bookings.Post;
 
 /// <summary>Books one or several slots as the caller.</summary>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantBookings bookings) : Endpoint<Request, List<BookingResponse>>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantBookings bookings, TenantQuotas quotas) : Endpoint<Request, List<BookingResponse>>
 {
     public override void Configure()
     {
@@ -60,6 +60,13 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantB
         }
 
         ThrowIfAnyErrors();
+
+        if (await quotas.CheckBookingsAsync(tenant.Id, req.Slots.Count, ct) is { } refusal)
+        {
+            AddError(refusal.Reason, refusal.Code);
+            await Send.ErrorsAsync(StatusCodes.Status403Forbidden, ct);
+            return;
+        }
 
         var details = new BookingDetails(req.Conduct!.Trim(), Clean(req.Description), Clean(req.PocName), Clean(req.PocPhone));
         var slots = req.Slots.Select(s => new NewSlot(s.FacilityId, s.StartDateTime, s.EndDateTime)).ToList();

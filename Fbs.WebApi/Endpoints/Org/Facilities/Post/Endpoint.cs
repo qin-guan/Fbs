@@ -9,7 +9,7 @@ using DataFacility = Fbs.WebApi.Data.Entities.Facility;
 namespace Fbs.WebApi.Endpoints.Org.Facilities.Post;
 
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request, FacilityResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas) : Endpoint<Request, FacilityResponse>
 {
     public override void Configure()
     {
@@ -22,6 +22,13 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
         var tenantId = tenantContext.Tenant.Id;
+        if (await quotas.CheckFacilityAsync(tenantId, ct) is { } refusal)
+        {
+            AddError(refusal.Reason, refusal.Code);
+            await Send.ErrorsAsync(StatusCodes.Status403Forbidden, ct);
+            return;
+        }
+
         var unitIds = req.UnitIds.Distinct().ToList();
         if (!await FacilityResponse.AllUnitsAreInAsync(sql, tenantId, unitIds, ct))
         {
