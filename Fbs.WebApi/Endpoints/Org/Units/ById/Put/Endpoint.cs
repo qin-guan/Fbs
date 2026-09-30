@@ -8,7 +8,7 @@ using DataUnit = Fbs.WebApi.Data.Entities.Unit;
 namespace Fbs.WebApi.Endpoints.Org.Units.ById.Put;
 
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request, UnitResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request, UnitResponse>
 {
     public override void Configure()
     {
@@ -39,6 +39,11 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
             AddError(r => r.Name, "There is a unit with that name already.", "unit-exists");
             await Send.ErrorsAsync(StatusCodes.Status409Conflict, ct);
             return;
+        }
+
+        if (unit.Name != name)
+        {
+            await audit.WriteAsync(tenantId, tenantContext.Member.Id, "unit.renamed", $"Renamed the unit {unit.Name} to {name}.", "unit", id, ct);
         }
 
         unit.Name = name;

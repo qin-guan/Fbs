@@ -13,7 +13,7 @@ namespace Fbs.WebApi.Endpoints.Org.Units.ById.Delete;
 /// have left don't count: they lose it, and the facilities it could book are no longer available to it.
 /// </summary>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request>
 {
     public override void Configure()
     {
@@ -49,6 +49,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
         await sql.Updateable<TenantMember>().SetColumns(m => new TenantMember { UnitId = null }).Where(m => m.TenantId == tenantId && m.UnitId == id).ExecuteCommandAsync(ct);
         await sql.Deleteable<FacilityUnitAccess>().Where(a => a.TenantId == tenantId && a.UnitId == id).ExecuteCommandAsync(ct);
         await sql.Deleteable<DataUnit>().Where(u => u.Id == id && u.TenantId == tenantId).ExecuteCommandAsync(ct);
+        await audit.WriteAsync(tenantId, tenantContext.Member.Id, "unit.deleted", $"Deleted the unit {unit.Name}.", "unit", id, ct);
         tran.CommitTran();
 
         await Send.NoContentAsync(ct);

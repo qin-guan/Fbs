@@ -9,7 +9,7 @@ using DataFacility = Fbs.WebApi.Data.Entities.Facility;
 namespace Fbs.WebApi.Endpoints.Org.Facilities.Post;
 
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas) : Endpoint<Request, FacilityResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas, AuditLog audit) : Endpoint<Request, FacilityResponse>
 {
     public override void Configure()
     {
@@ -55,6 +55,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQ
                 await sql.Insertable(unitIds.Select(unitId => new FacilityUnitAccess { Id = Guid.NewGuid(), TenantId = tenantId, FacilityId = facility.Id, UnitId = unitId }).ToList()).ExecuteCommandAsync(ct);
             }
 
+            await audit.WriteAsync(tenantId, tenantContext.Member.Id, "facility.created", $"Added the facility {facility.Name}.", "facility", facility.Id, ct);
             tran.CommitTran();
         }
         catch (Exception e) when (e.IsDuplicate())
