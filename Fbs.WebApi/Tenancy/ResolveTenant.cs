@@ -52,6 +52,12 @@ public sealed class ResolveTenant : IPreProcessor<object>
             return;
         }
 
+        if (member.Status == MemberStatus.Active && tenant.Status == TenantStatus.PendingDeletion)
+        {
+            await Problem.SendAsync(response, StatusCodes.Status403Forbidden, "Scheduled for deletion", "An admin asked for this organisation to be deleted, and it can be restored until then.", "pending-deletion", ct);
+            return;
+        }
+
         if (member.Status != MemberStatus.Active || tenant.Status != TenantStatus.Active)
         {
             await Problem.SendAsync(response, StatusCodes.Status403Forbidden, "Not available", "This organisation is not available.", "unavailable", ct);
