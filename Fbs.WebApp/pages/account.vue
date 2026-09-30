@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useQueryClient } from '@tanstack/vue-query'
-import { getMeTelegramQueryKey, useDeleteMeTelegram, useGetMe, useGetMeTelegram, usePostMeTelegramLink } from '~/api'
+import { getMeExport, getMeTelegramQueryKey, useDeleteMeTelegram, useGetMe, useGetMeTelegram, usePostMeTelegramLink } from '~/api'
 
 definePageMeta({
   layout: 'account',
@@ -40,6 +40,25 @@ async function disconnect() {
   await queryClient.invalidateQueries({ queryKey: getMeTelegramQueryKey() })
 }
 
+// A copy of what is kept about them, which is theirs to have
+const downloading = ref(false)
+async function downloadMyData() {
+  downloading.value = true
+  try {
+    downloadJson('my-data.json', await getMeExport().unwrap())
+  }
+  catch (error) {
+    toast.add({
+      title: getErrorStatus(error) === 429 ? 'Too many tries' : 'Couldn\'t get your data',
+      description: getErrorStatus(error) === 429 ? 'Wait a little, then try again.' : 'Try again in a moment.',
+      color: 'error',
+    })
+  }
+  finally {
+    downloading.value = false
+  }
+}
+
 const fields = computed(() => [
   { label: 'Name', description: 'What your account is called', value: me.value?.name },
   { label: 'Email', description: 'The email you sign in with', value: me.value?.email },
@@ -74,6 +93,22 @@ const fields = computed(() => [
           />
         </UFormField>
       </template>
+    </UPageCard>
+
+    <UPageCard
+      title="Your data"
+      description="A copy of what is kept about you, as a file: your account, the organizations you are in, and what you booked."
+      variant="subtle"
+      icon="i-lucide-download"
+    >
+      <UButton
+        label="Download my data"
+        icon="i-lucide-download"
+        color="neutral"
+        variant="subtle"
+        :loading="downloading"
+        @click="downloadMyData"
+      />
     </UPageCard>
 
     <UPageCard

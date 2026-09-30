@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormError } from '@nuxt/ui'
 import { useQueryClient } from '@tanstack/vue-query'
-import { getOrgQueryKey, getOrgSettingsQueryKey, useGetOrgSettings, usePutOrgSettings } from '~/api'
+import { getMeQueryKey, getOrgExport, getOrgQueryKey, getOrgSettingsQueryKey, useGetOrgSettings, usePostTenantsDeletion, usePutOrgSettings } from '~/api'
 
 definePageMeta({
   layout: 'tenant',
@@ -11,7 +11,9 @@ useHead({ title: 'Settings' })
 
 const queryClient = useQueryClient()
 const toast = useToast()
+const router = useRouter()
 const { slug, path, isAdmin } = useTenant()
+const { df } = useTenantFormatter()
 
 const { data: settings, isPending, error } = useGetOrgSettings({ path: computed(() => ({ slug: slug.value })) }, { query: { enabled: isAdmin } })
 const timeZones = knownTimeZones()
@@ -62,6 +64,59 @@ function validate(values: typeof state): FormError[] {
 }
 
 const { mutateAsync: save, isPending: saving } = usePutOrgSettings()
+
+// A copy of everything of the organization, which is its own to have
+const downloading = ref(false)
+async function downloadCopy() {
+  downloading.value = true
+  try {
+    downloadJson(`${slug.value}-data.json`, await getOrgExport({ path: { slug: slug.value } }).unwrap())
+  }
+  catch (e) {
+    toast.add({
+      title: getErrorStatus(e) === 429 ? 'Too many tries' : 'Couldn\'t get the copy',
+      description: getErrorStatus(e) === 429 ? 'Wait a little, then try again.' : 'Try again in a moment.',
+      color: 'error',
+    })
+  }
+  finally {
+    downloading.value = false
+  }
+}
+
+// Deleting it, which is asked for by typing its address, and is not for good until some days later
+const deleting = ref(false)
+const confirmation = ref('')
+const deleteProblem = ref<string>()
+const { mutateAsync: requestDeletion, isPending: requestingDeletion } = usePostTenantsDeletion()
+function askToDelete() {
+  confirmation.value = ''
+  deleteProblem.value = undefined
+  deleting.value = true
+}
+function keepIt() {
+  deleting.value = false
+}
+
+async function confirmDeletion() {
+  deleteProblem.value = undefined
+  try {
+    const { deleteAfter } = await requestDeletion({ path: { slug: slug.value }, body: { confirm: confirmation.value } })
+    // It can't be used from now, and what was known of it is not right any more
+    await queryClient.invalidateQueries({ queryKey: getMeQueryKey() })
+    await queryClient.invalidateQueries({ queryKey: getOrgQueryKey({ path: { slug: slug.value } }) })
+    deleting.value = false
+    toast.add({
+      title: 'The organization is to be deleted',
+      description: deleteAfter ? `On ${df.value.format(deleteAfter)} at the earliest. Until then any admin can restore it.` : 'Until then any admin can restore it.',
+      color: 'success',
+    })
+    await router.push('/orgs')
+  }
+  catch (e) {
+    deleteProblem.value = getFieldErrors(e)[0]?.message ?? getErrorReasons(e)[0] ?? 'Couldn\'t do that. Try again.'
+  }
+}
 
 async function submit() {
   try {
@@ -253,6 +308,90 @@ async function submit() {
             />
           </div>
         </UForm>
+
+        <div
+          v-if="settings"
+          class="max-w-2xl space-y-6"
+        >
+          <UPageCard
+            title="A copy of the data"
+            description="Everything of this organization as a file: who is in it, with their phone numbers, every booking, and its history. Taking a copy is written in the history."
+            variant="subtle"
+            icon="i-lucide-download"
+          >
+            <UButton
+              label="Download a copy"
+              icon="i-lucide-download"
+              color="neutral"
+              variant="subtle"
+              :loading="downloading"
+              @click="downloadCopy"
+            />
+          </UPageCard>
+
+          <UPageCard
+            title="Delete this organization"
+            description="Nobody can use it from then, and its invite links stop working. It is deleted for good some days later, with everything of it, and until then any admin can restore it."
+            variant="subtle"
+            icon="i-lucide-trash-2"
+          >
+            <UButton
+              label="Delete this organization"
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="subtle"
+              @click="askToDelete"
+            />
+          </UPageCard>
+        </div>
+
+        <UModal
+          v-model:open="deleting"
+          title="Delete this organization?"
+          description="Nobody in it can use it from now. It is deleted for good after a while, and any admin can restore it until then."
+        >
+          <template #body>
+            <form
+              class="space-y-4"
+              @submit.prevent="confirmDeletion"
+            >
+              <UAlert
+                v-if="deleteProblem"
+                :description="deleteProblem"
+                color="error"
+                variant="subtle"
+                icon="i-lucide-circle-alert"
+              />
+              <UFormField
+                :label="`Type ${slug} to say that you mean it`"
+                name="confirm"
+              >
+                <UInput
+                  v-model="confirmation"
+                  class="w-full"
+                  autocomplete="off"
+                  aria-label="The address of the organization"
+                />
+              </UFormField>
+              <div class="flex gap-2">
+                <UButton
+                  type="submit"
+                  label="Delete the organization"
+                  color="error"
+                  :disabled="confirmation !== slug"
+                  :loading="requestingDeletion"
+                />
+                <UButton
+                  type="button"
+                  label="Keep it"
+                  color="neutral"
+                  variant="ghost"
+                  @click="keepIt"
+                />
+              </div>
+            </form>
+          </template>
+        </UModal>
       </template>
     </UDashboardPanel>
   </TenantAdminGate>

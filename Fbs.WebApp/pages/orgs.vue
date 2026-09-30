@@ -12,8 +12,13 @@ const lastOrganization = useLocalStorage<string | null>('fbs:last-organization',
 
 const places = computed(() => me.value?.memberships ?? [])
 
-function remember(place: { tenantSlug: string, status: string }) {
-  if (place.status === 'Active') {
+// Where somebody can go: to what they can use, and to where they are told why they can't, for an organization that is to be deleted or paused
+const leadsSomewhere = (place: { status: string }) => place.status === 'Active'
+
+const deletedOn = (date?: Date | null) => (date ? new Intl.DateTimeFormat('en-SG', { dateStyle: 'medium' }).format(date) : undefined)
+
+function remember(place: { tenantSlug: string, status: string, tenantStatus: string }) {
+  if (place.status === 'Active' && place.tenantStatus === 'Active') {
     lastOrganization.value = place.tenantSlug
   }
 }
@@ -47,8 +52,8 @@ function remember(place: { tenantSlug: string, status: string }) {
           v-for="place in places"
           :key="place.tenantSlug"
           :title="place.tenantName"
-          :description="place.status === 'Active' ? `You are ${place.role === 'Admin' ? 'an admin' : 'a member'}, as ${place.displayName}` : 'Waiting for an admin to let you in'"
-          :to="place.status === 'Active' ? `/t/${place.tenantSlug}` : undefined"
+          :description="place.status !== 'Active' ? 'Waiting for an admin to let you in' : place.tenantStatus === 'PendingDeletion' ? `To be deleted${deletedOn(place.deleteAfter) ? `, on ${deletedOn(place.deleteAfter)} at the earliest` : ''}` : place.tenantStatus === 'Suspended' ? 'Paused' : `You are ${place.role === 'Admin' ? 'an admin' : 'a member'}, as ${place.displayName}`"
+          :to="leadsSomewhere(place) ? `/t/${place.tenantSlug}` : undefined"
           variant="subtle"
           icon="i-lucide-building-2"
           @click="remember(place)"
@@ -58,6 +63,18 @@ function remember(place: { tenantSlug: string, status: string }) {
               v-if="place.status !== 'Active'"
               label="Waiting for approval"
               color="warning"
+              variant="subtle"
+            />
+            <UBadge
+              v-else-if="place.tenantStatus === 'PendingDeletion'"
+              label="To be deleted"
+              color="error"
+              variant="subtle"
+            />
+            <UBadge
+              v-else-if="place.tenantStatus === 'Suspended'"
+              label="Paused"
+              color="neutral"
               variant="subtle"
             />
             <UBadge
