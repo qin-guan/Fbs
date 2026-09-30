@@ -12,4 +12,7 @@ public class Response
 
     /// <summary>Whether someone who joins with an invite waits for an admin to let them in.</summary>
     public required bool RequireApproval { get; init; }
+
+    /// <summary>Whether people carried over from before can still take over their places. It can be turned off, and not on.</summary>
+    public required bool LegacyClaimEnabled { get; init; }
 }

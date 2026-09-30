@@ -16,31 +16,9 @@ public class TelegramLinkingTests
     [ClassDataSource<ClerkFbsApiFactory>]
     public required ClerkFbsApiFactory Factory { get; init; }
 
-    private static JsonObject Update(string text, long chat = 5551, string chatType = "private") =>
-        new()
-        {
-            ["update_id"] = 1,
-            ["message"] = new JsonObject
-            {
-                ["message_id"] = 1,
-                ["date"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                ["chat"] = new JsonObject { ["id"] = chat, ["type"] = chatType },
-                ["from"] = new JsonObject { ["id"] = chat, ["is_bot"] = false, ["first_name"] = "Sender" },
-                ["text"] = text,
-            },
-        };
+    private static JsonObject Update(string text, long chat = 5551, string chatType = "private") => BotUpdates.Text(text, chat, chatType);
 
-    private async Task<HttpResponseMessage> BotAsync(JsonObject update, string? secret = FbsApiFactory.TelegramWebhookSecret)
-    {
-        using var client = Factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/Bot") { Content = JsonContent.Create(update) };
-        if (secret is not null)
-        {
-            request.Headers.Add("X-Telegram-Bot-Api-Secret-Token", secret);
-        }
-
-        return await client.SendAsync(request);
-    }
+    private Task<HttpResponseMessage> BotAsync(JsonObject update, string? secret = FbsApiFactory.TelegramWebhookSecret) => Factory.PostToBotAsync(update, secret);
 
     private static async Task<string> StartAsync(HttpClient client)
     {

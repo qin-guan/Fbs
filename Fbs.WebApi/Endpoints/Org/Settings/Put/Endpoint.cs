@@ -20,6 +20,14 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
         var id = tenantContext.Tenant.Id;
+        var claimEnabled = req.LegacyClaimEnabled ?? tenantContext.Tenant.LegacyClaimEnabled;
+        if (claimEnabled && !tenantContext.Tenant.LegacyClaimEnabled)
+        {
+            AddError(r => r.LegacyClaimEnabled!, "Claiming places can be turned off, and not on again.", "claim-cannot-enable");
+            await Send.ErrorsAsync(StatusCodes.Status400BadRequest, ct);
+            return;
+        }
+
         var name = req.Name.Trim();
         var timeZone = req.TimeZone.Trim();
         var countryCode = req.DefaultCountryCode.Trim();
@@ -31,6 +39,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
                 DefaultCountryCode = countryCode,
                 SlotMinutes = req.SlotMinutes,
                 RequireApproval = req.RequireApproval,
+                LegacyClaimEnabled = claimEnabled,
             })
             .Where(t => t.Id == id)
             .ExecuteCommandAsync(ct);
@@ -43,6 +52,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
                 DefaultCountryCode = countryCode,
                 SlotMinutes = req.SlotMinutes,
                 RequireApproval = req.RequireApproval,
+                LegacyClaimEnabled = claimEnabled,
             },
             ct
         );

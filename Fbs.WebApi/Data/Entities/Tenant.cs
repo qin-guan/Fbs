@@ -38,6 +38,13 @@ public class Tenant
     /// </summary>
     public bool RequireApproval { get; set; } = true;
 
+    /// <summary>
+    /// Whether people carried over from before can take over their places by showing they control the Telegram chat that was
+    /// linked to them. Only ever on for a tenant that came from the old version, for a while after the switch to accounts, and
+    /// an organisation can turn it off but not on.
+    /// </summary>
+    public bool LegacyClaimEnabled { get; set; }
+
     /// <summary>Who made it, if it was made by someone signing up rather than carried over from before.</summary>
     [SugarColumn(IsNullable = true)]
     public Guid? CreatedByUserId { get; set; }

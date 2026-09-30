@@ -12,4 +12,7 @@ public class Request
     public int SlotMinutes { get; set; }
 
     public bool RequireApproval { get; set; }
+
+    /// <summary>Leave it out to keep it as it is. It can only be turned off: an organisation that has it off can't turn it on.</summary>
+    public bool? LegacyClaimEnabled { get; set; }
 }

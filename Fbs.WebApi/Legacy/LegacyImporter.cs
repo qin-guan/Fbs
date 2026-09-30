@@ -166,7 +166,8 @@ public sealed partial class LegacyImporter(
             return tenant;
         }
 
-        tenant = new Tenant { Id = Guid.NewGuid(), Slug = slug, Name = options.Name ?? slug };
+        // Those it carries over can claim their places when they start signing in with accounts
+        tenant = new Tenant { Id = Guid.NewGuid(), Slug = slug, Name = options.Name ?? slug, LegacyClaimEnabled = true };
         await sql.Insertable(tenant).ExecuteCommandAsync(cancellationToken);
         report.TenantCreated = true;
         return tenant;

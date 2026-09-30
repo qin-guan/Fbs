@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Fbs.WebApi.Bookings;
+using Fbs.WebApi.Claims;
 using Fbs.WebApi.TelegramLinks;
 using Fbs.WebApi.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -51,6 +52,8 @@ public static class ClerkAuthentication
         services.AddScoped<TenantBookings>();
         services.AddSingleton<TelegramBotIdentity>();
         services.AddScoped<TelegramLinker>();
+        services.AddScoped<MemberClaims>();
+        services.AddScoped<MemberPromotions>();
         services.Configure<TenantLimits>(configuration.GetSection("Limits"));
 
         services.AddAuthentication().AddJwtBearer(Scheme, _ => { });

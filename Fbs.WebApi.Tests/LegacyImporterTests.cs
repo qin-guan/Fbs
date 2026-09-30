@@ -135,6 +135,8 @@ public class LegacyImporterTests
         var report = await setup.ImportAsync();
 
         await Assert.That(report.TenantCreated).IsTrue();
+        // Those it carries over can claim their places once they have accounts
+        await Assert.That(setup.Db.Queryable<Tenant>().Single(t => t.Slug == setup.Slug).LegacyClaimEnabled).IsTrue();
         await Assert.That(report.Units.Added).IsEqualTo(3);
         await Assert.That(report.Members.Added).IsEqualTo(5);
         await Assert.That(report.Facilities.Added).IsEqualTo(3);
