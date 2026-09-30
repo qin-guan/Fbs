@@ -16,6 +16,7 @@ const basket = useBookingBasket()
 const { data: me } = useGetAuthMe()
 const { data: bookings } = useGetBooking()
 const { mutate: createMutate, isPending: createIsPending } = useCreateBookingBatchMutation()
+const { remember: rememberCustomPoc } = useCustomPocs()
 
 const route = useRoute()
 const toast = useToast()
@@ -178,6 +179,8 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
       }).id
     },
     async onSuccess(result) {
+      rememberCustomPoc({ name: data.pocName, phone: '65' + data.pocPhone })
+
       if (fromList.value) {
         basket.remove(submitted.map(s => s.id))
       }
