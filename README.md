@@ -128,6 +128,24 @@ Admins manage what the organisation is made of, all under `/t/{slug}`:
   whose bookings they hear about (`None`, `Unit`, `All`), and `membership`: `In` lets them in (or lets someone waiting in),
   `Removed` takes them out. The organisation always keeps an admin: the change that would take the last one is a 409.
 
+Members book under `/t/{slug}` too:
+
+- `GET /Facilities/Bookable` is what the caller can book: what is available to everyone, and what their unit has been given
+  (admins can book anything).
+- `POST /Bookings` books one or more `slots` (`facilityId`, `startDateTime`, `endDateTime`; up to 50) with the same
+  `conduct`, `description` and point of contact (`pocName`, `pocPhone`, written on the booking as they are). All of them, or
+  none if any clashes (a 409 that says which slot, and with what). Times have to be in the future and on the organisation's
+  slot length (15, 30 or 60 minutes) in its time zone, whichever offset they are sent in.
+- `GET /Bookings` lists those that share any time with a window, earliest first: `from` and `to` (from the start of today
+  for 31 days if left out; at most 93 days), `facilityId`, `bookedBy`, and `mine=true`. `GET /Bookings/{id}` reads one.
+- `PUT /Bookings/{id}` changes what it says and, if both are given, its time; `DELETE /Bookings/{id}` cancels it, and the
+  booking is kept. Their booker, anyone in the booker's unit, and admins can. A booking that is over can't be moved, and one
+  that has started can only have its end changed. Whoever made a booking never changes.
+
+A facility is never booked twice at once, whichever way it is booked: booking, and moving a booking, lock the facility's row
+and then look for a clash with a locking read (see Database). When a lot of requests are after the same facility, TiDB can turn
+one away ("pessimistic lock retry limit reached", or a deadlock), so a booking that was turned away is run again, up to five times.
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and

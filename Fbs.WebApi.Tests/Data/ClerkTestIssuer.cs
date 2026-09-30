@@ -175,6 +175,18 @@ public sealed class TestOrg(ClerkFbsApiFactory factory, string slug, Guid tenant
         return (client, id);
     }
 
+    public Guid AddFacility(string name, bool availableToAll = true, params Guid[] unitIds)
+    {
+        var id = Guid.NewGuid();
+        factory.Db.Insertable(new Fbs.WebApi.Data.Entities.Facility { Id = id, TenantId = TenantId, Name = name, AvailableToAll = availableToAll }).ExecuteCommand();
+        foreach (var unitId in unitIds)
+        {
+            factory.Db.Insertable(new FacilityUnitAccess { Id = Guid.NewGuid(), TenantId = TenantId, FacilityId = id, UnitId = unitId }).ExecuteCommand();
+        }
+
+        return id;
+    }
+
     public Guid AddUnit(string name)
     {
         var id = Guid.NewGuid();
