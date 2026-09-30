@@ -57,7 +57,7 @@ public class AuditTests
         var entries = await AuditOf(org.Admin, slug);
 
         await Assert.That(Actions(entries)).IsEquivalentTo(
-            ["unit.deleted", "facility.deleted", "invite.stopped", "invite.created", "facility.changed", "facility.created", "unit.renamed", "unit.created", "settings.changed"],
+            ["unit.deleted", "facility.deleted", "invite.stopped", "invite.created", "facility.changed", "facility.created", "unit.renamed", "unit.created", "settings.changed", "tenant.created"],
             CollectionOrdering.Matching
         );
         await Assert.That(Summaries(entries)).IsEquivalentTo(
@@ -71,6 +71,7 @@ public class AuditTests
                 "Renamed the unit Alpha to Bravo.",
                 "Added the unit Alpha.",
                 "Changed the settings: name, shortest booking.",
+                "Made the organisation.",
             ],
             CollectionOrdering.Matching
         );
@@ -122,8 +123,8 @@ public class AuditTests
         using var nobody = Factory.CreateClient();
         await Assert.That((await nobody.GetAsync($"/t/{org.Slug}/Audit")).StatusCode).IsNotEqualTo(HttpStatusCode.OK);
 
-        await Assert.That(Summaries(await AuditOf(org.Admin, org.Slug))).IsEquivalentTo(["Added the unit Mine."]);
-        await Assert.That(Summaries(await AuditOf(other.Admin, other.Slug))).IsEquivalentTo(["Added the unit Theirs."]);
+        await Assert.That(Summaries(await AuditOf(org.Admin, org.Slug))).IsEquivalentTo(["Added the unit Mine.", "Made the organisation."]);
+        await Assert.That(Summaries(await AuditOf(other.Admin, other.Slug))).IsEquivalentTo(["Added the unit Theirs.", "Made the organisation."]);
     }
 
     [Test]
@@ -141,7 +142,7 @@ public class AuditTests
 
         await Assert.That(Summaries(first)).IsEquivalentTo(["Added the unit Unit 5.", "Added the unit Unit 4."], CollectionOrdering.Matching);
         await Assert.That(Summaries(second)).IsEquivalentTo(["Added the unit Unit 3.", "Added the unit Unit 2."], CollectionOrdering.Matching);
-        await Assert.That(Summaries(third)).IsEquivalentTo(["Added the unit Unit 1."], CollectionOrdering.Matching);
+        await Assert.That(Summaries(third)).IsEquivalentTo(["Added the unit Unit 1.", "Made the organisation."], CollectionOrdering.Matching);
         await Assert.That((await AuditOf(org.Admin, org.Slug, "?limit=0")).Count).IsEqualTo(1);
     }
 
@@ -180,8 +181,9 @@ public class AuditTests
         await command.Unsuspend(org.Slug);
 
         var entries = await AuditOf(org.Admin, org.Slug);
-        await Assert.That(Actions(entries)).IsEquivalentTo(["tenant.unsuspended", "tenant.suspended"], CollectionOrdering.Matching);
-        await Assert.That(entries.All(e => e.GetProperty("actor").ValueKind == JsonValueKind.Null)).IsTrue();
+        await Assert.That(Actions(entries)).IsEquivalentTo(["tenant.unsuspended", "tenant.suspended", "tenant.created"], CollectionOrdering.Matching);
+        // The organisation was made by its founder, and suspended by nobody in it
+        await Assert.That(entries.Take(2).All(e => e.GetProperty("actor").ValueKind == JsonValueKind.Null)).IsTrue();
     }
 
     [Test]
@@ -198,7 +200,8 @@ public class AuditTests
         await new AccountErasure(Factory.Db, NullLogger<AccountErasure>.Instance).EraseAsync(clerkUserId, CancellationToken.None);
 
         var entries = await AuditOf(other, org.Slug);
-        await Assert.That(entries.Single().GetProperty("actor").GetProperty("displayName").GetString()).IsEqualTo("Former member");
-        await Assert.That(entries.Single().GetProperty("summary").GetString()).IsEqualTo("Added the unit Alpha.");
+        await Assert.That(entries.Count).IsEqualTo(2);
+        await Assert.That(entries.All(e => e.GetProperty("actor").GetProperty("displayName").GetString() == "Former member")).IsTrue();
+        await Assert.That(entries[0].GetProperty("summary").GetString()).IsEqualTo("Added the unit Alpha.");
     }
 }
