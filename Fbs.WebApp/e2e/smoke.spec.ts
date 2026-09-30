@@ -94,6 +94,20 @@ test.describe('joining with a link', () => {
     expect(calls.find(c => c.key === `POST /Invites/${token}/Accept`)?.body).toMatchObject({ displayName: 'Sam Lee' })
   })
 
+  test('an organization that has as many people as it can says why they are not in, and the link is still there to use', async ({ page, goto, api }) => {
+    await api({
+      'GET /Me': () => json(me()),
+      [`GET /Invites/${token}`]: () => json({ organizationName: 'Alpha Company', requiresApproval: true }),
+      [`POST /Invites/${token}/Accept`]: () => problem(403, [{ name: 'generalErrors', reason: 'An organisation can have 500 people. Remove somebody who isn\'t needed.', code: 'member-limit' }]),
+    })
+    await goto(`/join/${token}`, { waitUntil: 'hydration' })
+
+    await page.getByRole('button', { name: 'Ask to join' }).click()
+
+    await expect(page.getByText('This organization is full')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Ask to join' })).toHaveCount(1)
+  })
+
   test('a link that doesn\'t work says so', async ({ page, goto, api }) => {
     await api({ 'GET /Me': () => json(me()) })
 

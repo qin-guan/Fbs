@@ -17,7 +17,7 @@ interface Unit { id: string, name: string }
 interface Facility { id: string, name: string, group: string | null, availableToAll: boolean, unitIds: string[] }
 
 /** An organization with what is in it kept, and answered from. */
-function organization({ units = [], facilities = [] }: { units?: Unit[], facilities?: Facility[] } = {}) {
+function organization({ units = [], facilities = [], unitLimit = 50, facilityLimit = 100 }: { units?: Unit[], facilities?: Facility[], unitLimit?: number, facilityLimit?: number } = {}) {
   const state = { units: [...units], facilities: [...facilities], deleted: [] as string[] }
   let made = 0
   const routes: Routes = [
@@ -26,6 +26,10 @@ function organization({ units = [], facilities = [] }: { units?: Unit[], facilit
     [/^GET \/t\/alpha\/Units$/, () => json(state.units)],
     [/^POST \/t\/alpha\/Units$/, (request) => {
       const { name } = request.postDataJSON()
+      if (state.units.length >= unitLimit) {
+        return problem(403, [{ name: 'generalErrors', reason: `An organisation can have ${unitLimit} units. Delete one that isn't needed.`, code: 'unit-limit' }])
+      }
+
       if (state.units.some(u => u.name === name)) {
         return problem(409, [{ name: 'name', reason: 'There is a unit with that name already.', code: 'unit-exists' }])
       }
@@ -56,6 +60,10 @@ function organization({ units = [], facilities = [] }: { units?: Unit[], facilit
     [/^GET \/t\/alpha\/Facilities$/, () => json(state.facilities)],
     [/^POST \/t\/alpha\/Facilities$/, (request) => {
       const body = request.postDataJSON()
+      if (state.facilities.length >= facilityLimit) {
+        return problem(403, [{ name: 'generalErrors', reason: `An organisation can have ${facilityLimit} facilities. Delete one that isn't needed.`, code: 'facility-limit' }])
+      }
+
       if (state.facilities.some(f => f.name === body.name)) {
         return problem(409, [{ name: 'name', reason: 'There is a facility with that name already.', code: 'facility-exists' }])
       }
@@ -292,5 +300,43 @@ test.describe('facilities', () => {
     await page.getByRole('dialog').getByRole('switch', { name: 'Everyone can book it' }).click()
 
     await expect(page.getByText('There are no units yet, so only admins can book it.')).toBeVisible()
+  })
+})
+
+test.describe('as many as there can be', () => {
+  const full = () => organization({
+    units: [{ id: 'u1', name: 'Alpha' }],
+    facilities: [{ id: 'f1', name: 'Hall', group: null, availableToAll: true, unitIds: [] }],
+    unitLimit: 1,
+    facilityLimit: 1,
+  })
+
+  test('a limit on facilities is said in the form, which stays for what was typed, and not the next time', async ({ page, goto, api }) => {
+    await api(full().routes)
+    await goto('/t/alpha/admin/facilities', { waitUntil: 'hydration' })
+
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Name', { exact: true }).fill('Gym')
+    await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+    await expect(dialog.getByText('An organisation can have 1 facilities.')).toBeVisible()
+    await expect(dialog.getByLabel('Name', { exact: true })).toHaveValue('Gym')
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog).toHaveCount(0)
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
+
+    await expect(dialog.getByLabel('Name', { exact: true })).toBeVisible()
+    await expect(dialog.getByText('An organisation can have 1 facilities.')).toHaveCount(0)
+  })
+
+  test('a limit on units is said by the box', async ({ page, goto, api }) => {
+    await api(full().routes)
+    await goto('/t/alpha/admin/units', { waitUntil: 'hydration' })
+
+    await page.getByLabel('Name of the new unit').fill('Bravo')
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
+
+    await expect(page.getByText('An organisation can have 1 units.')).toBeVisible()
   })
 })
