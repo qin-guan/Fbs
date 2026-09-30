@@ -57,7 +57,9 @@ aspire run;
 ## Testing
 
 The API tests use [TUnit](https://tunit.dev) and run the API in memory, with Google and Telegram faked, so they need
-no secrets:
+no secrets. The tests that use the database run against [TiDB](https://www.pingcap.com/tidb/), as production does,
+because it reads inside transactions differently to MySQL. The AppHost starts it in a container, so all they need is Docker,
+and every run creates, and drops, a database of its own on it.
 
 ```powershell
 dotnet test;

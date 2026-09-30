@@ -4,6 +4,7 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi;
+using Fbs.WebApi.Data;
 using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Middleware;
@@ -17,6 +18,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using SqlSugar;
 using Telegram.Bot;
 using ZiggyCreatures.Caching.Fusion;
 
@@ -132,6 +134,15 @@ builder
         }
     )
     .AsHybridCache();
+// The database is only there once a connection string is configured, while bookings and users are
+// still read from Google
+if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseConnectionString)
+{
+    builder.Services.AddSingleton<ISqlSugarClient>(_ =>
+        SqlSugarClientFactory.Create(databaseConnectionString)
+    );
+}
+
 builder.Services.AddSingleton<InstrumentationSource>();
 builder.Services.AddSingleton<BookingCache>();
 builder.Services.AddHostedService<CacheRefreshService>();
