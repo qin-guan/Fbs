@@ -200,8 +200,9 @@ was the only admin of an organisation, the API logs a warning, and `promote-admi
 ### What admins have done
 
 `GET /t/{slug}/Audit` (admins only) says what has been done to an organisation, the latest first: its settings changed, units and facilities added, changed
-and deleted, invite links made and stopped, and it being suspended or made available again by whoever runs the system. Each says who did it, what
-was done in words, and what it was done to. `limit` (50, at most 200) and `before` (the `at` of the last one seen) page back through it. Nothing is written for
+and deleted, invite links made and stopped, people added by phone number, joining with a link, being let in or turned away, changed (name, phone number, unit,
+role, whose bookings they are told about), removed and let back in, or taking over their places from before accounts, and it being made, and suspended or made
+available again by whoever runs the system. Each says who did it, what was done in words, and what it was done to. `limit` (50, at most 200) and `before` (the `at` of the last one seen) page back through it. Nothing is written for
 a change that was refused or that changed nothing.
 
 An entry has no name of a person in it: who did it, and who it was done to, are kept as who they are in the organisation, and turned into names when it is

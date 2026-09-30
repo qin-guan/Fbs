@@ -12,7 +12,7 @@ namespace Fbs.WebApi.Endpoints.Org.Members.Post;
 /// organisation from the moment they sign in and claim it, which is what an account still to be matched is for.
 /// </summary>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas) : Endpoint<Request, MemberResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas, AuditLog audit) : Endpoint<Request, MemberResponse>
 {
     public override void Configure()
     {
@@ -62,6 +62,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQ
         try
         {
             await sql.Insertable(member).ExecuteCommandAsync(ct);
+            await audit.WriteAsync(tenant.Id, tenantContext.Member.Id, "member.added", "Added a person by their phone number.", "member", member.Id, ct);
         }
         catch (Exception e) when (e.IsDuplicate())
         {
