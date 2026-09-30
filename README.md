@@ -197,6 +197,20 @@ anything), and its Telegram link is removed. Bookings stay, with who made them s
 typed on a booking is part of the booking and stays. Being told twice, or about someone who never signed in, changes nothing. If it
 was the only admin of an organisation, the API logs a warning, and `promote-admin` makes another.
 
+### Running the system: looking at and suspending organisations
+
+Anybody can make an organisation, so whoever runs the system can stop one being used. From the migrator, which is in the image:
+
+```bash
+dotnet Fbs.DbMigrator.dll list-tenants            # slug, name, status, how many people, how many bookings in the last day
+dotnet Fbs.DbMigrator.dll suspend --tenant some-org
+dotnet Fbs.DbMigrator.dll unsuspend --tenant some-org
+```
+
+Nobody in a suspended organisation can use it, its admins included: everything under `/t/{slug}` is a 403 with the code `unavailable` (the web app says it
+has been paused, and to ask its admins), and it looks as if its invite links were never there, so nobody can join. Nothing is deleted, and `unsuspend`
+puts it back as it was. Doing either twice changes nothing. Both exit with 1 if there is no such organisation.
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and
