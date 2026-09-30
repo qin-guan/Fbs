@@ -1,4 +1,6 @@
 using FastEndpoints;
+using Fbs.WebApi.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Fbs.WebApi.Auth.Clerk;
 using Fbs.WebApi.Claims;
 
@@ -15,6 +17,7 @@ public class Endpoint(ICurrentAccount currentAccount, MemberClaims claims) : End
     {
         Post("/Claims/{slug}/Start");
         AuthSchemes(ClerkAuthentication.Scheme);
+        Options(x => x.RequireRateLimiting(RateLimitPolicies.Join));
     }
 
     public override async Task HandleAsync(Request req, CancellationToken ct)

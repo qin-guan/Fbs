@@ -1,4 +1,6 @@
 using FastEndpoints;
+using Fbs.WebApi.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Fbs.WebApi.Auth.Clerk;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
@@ -15,6 +17,7 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, IOpti
     {
         Post("/Tenants");
         AuthSchemes(ClerkAuthentication.Scheme);
+        Options(x => x.RequireRateLimiting(RateLimitPolicies.CreateOrganization));
     }
 
     public override async Task HandleAsync(Request req, CancellationToken ct)

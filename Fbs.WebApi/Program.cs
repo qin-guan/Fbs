@@ -17,6 +17,7 @@ using Fbs.WebApi.Notifications;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Repository;
+using Fbs.WebApi.RateLimiting;
 using Fbs.WebApi.Repository.Database;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
@@ -238,6 +239,11 @@ builder.Services.AddCors(options =>
 
 #endregion
 
+// Behind a proxy such as Coolify's, the address and scheme a request came with are the proxy's, and the client's are in
+// headers that are only believed from a proxy that is in a private range
+builder.Services.AddTrustedForwardedHeaders(builder.Configuration);
+builder.Services.AddFbsRateLimiting(builder.Configuration);
+
 var app = builder.Build();
 
 // A version whose schema hasn't been applied yet should fail here, before it takes any traffic. The
@@ -273,6 +279,9 @@ await using (var scope = app.Services.CreateAsyncScope())
     );
 }
 
+// First, so everything after it sees the address of the client rather than of the proxy
+app.UseForwardedHeaders();
+
 app.UseMiddleware<TraceIdMiddleware>();
 app.UseMiddleware<ReadOnlyMiddleware>();
 
@@ -282,6 +291,9 @@ app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// After authorization, which is what says who somebody is, as some limits are for a person rather than an address
+app.UseRateLimiter();
 
 app.UseFastEndpoints(config =>
 {

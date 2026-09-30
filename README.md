@@ -292,6 +292,19 @@ When the database is configured, `/health` also checks that it answers, so a ver
 the one that is running, and says nothing more than `Healthy` or `Unhealthy`. The image carries the migrator too, so a hook that
 runs in the container can apply the schema before the version starts: `dotnet Fbs.DbMigrator.dll apply`.
 
+Behind a proxy such as Coolify's, the client's address and scheme come in `X-Forwarded-For` and `X-Forwarded-Proto`, which are only
+believed from a proxy in a private range (`10/8`, `172.16/12`, `192.168/16`, loopback and `fc00::/7`), and only the last hop of them
+(`ForwardedHeaders__ForwardLimit`, 1). Somebody who reaches the API directly can't say they are somebody else with a header. Change the
+ranges with `ForwardedHeaders__TrustedNetworks__0`, `__1`, and so on, for example when a proxy is somewhere else, and raise the limit to 2 if there are
+two proxies in front, such as Cloudflare and then Coolify's.
+
+Some things are limited, so that being reachable by anyone doesn't make them a way to fill the database or to guess: making an
+organisation (10 an hour, for each person), looking at and using links to join or to claim a place (30 in 10 minutes, for each person), making links for
+connecting Telegram (20 in 10 minutes, for each person) and Clerk's webhooks (120 a minute, for each address). More than that is a 429 with `Retry-After`.
+Change one with `RateLimits__Limits__join__PermitLimit` and `RateLimits__Limits__join__WindowSeconds` (the names are
+`create-organization`, `join`, `link-telegram` and `webhook`), or turn them all off with `RateLimits__Enabled=false`. People at one address, such as a whole unit
+on one network, are not one person: what is for a person is counted for their account.
+
 `Maintenance__ReadOnly=true` makes the API read only: everything can be read and anything that changes something answers 503.
 It is for moving the data, see [the runbook](docs/runbooks/cutover-1-database.md), which has the steps for switching from Google
 to the database.
