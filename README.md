@@ -247,6 +247,12 @@ Nobody in a suspended organisation can use it, its admins included: everything u
 has been paused, and to ask its admins), and it looks as if its invite links were never there, so nobody can join. Nothing is deleted, and `unsuspend`
 puts it back as it was. Doing either twice changes nothing. Both exit with 1 if there is no such organisation.
 
+**Nothing is sent for it either**, and the same goes for an organisation that is to be deleted. The outbox doesn't take messages of an organisation that isn't
+active: Telegram notifications about it are skipped (marked `Skipped`, and not sent later if it is made active again, as they are about what happened then), and
+calendar messages wait, untried, and go when it is active again, so its calendar catches up. Nothing is added to its calendar by the daily check either. A message
+that the dispatcher had taken at the moment it was suspended is still stopped before Telegram is asked. (Replies to somebody who asks the bot something, such as
+connecting Telegram, are not about an organisation, and are still answered.)
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and

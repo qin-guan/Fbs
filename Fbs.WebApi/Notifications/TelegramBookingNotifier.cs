@@ -38,6 +38,9 @@ public sealed class TelegramBookingNotifier(
 
     public string Type => MessageType;
 
+    /// <summary>Telling people is for the time it happens, and nobody is told about an organisation that can't be used.</summary>
+    public OutboxInactiveTenantPolicy WhenTenantInactive => OutboxInactiveTenantPolicy.Skip;
+
     public async Task HandleAsync(OutboxMessage message, CancellationToken cancellationToken)
     {
         var payload = Parse(message);
@@ -45,6 +48,13 @@ public sealed class TelegramBookingNotifier(
         var tenant =
             await sql.Queryable<Tenant>().FirstAsync(t => t.Id == tenantId, cancellationToken)
             ?? throw new OutboxPermanentFailureException($"Tenant {tenantId} does not exist.");
+        if (tenant.Status != TenantStatus.Active)
+        {
+            // Suspended after the dispatcher took it, and before it got here
+            logger.LogInformation("Not telling anybody about {TenantId}, which is {Status}", tenantId, tenant.Status);
+            return;
+        }
+
         var bookingIds = payload.BookingIds;
         var rows = await sql.Queryable<DataBooking>()
             .Where(b => b.TenantId == tenantId && bookingIds.Contains(b.Id))

@@ -76,6 +76,7 @@ public sealed class OutboxDispatcher(
     public async Task<int> ProcessDueAsync(CancellationToken cancellationToken = default)
     {
         await GiveUpOnExhaustedAsync(cancellationToken);
+        await SkipForInactiveTenantsAsync(cancellationToken);
         await PurgeAsync(cancellationToken);
 
         var handled = 0;
@@ -116,6 +117,7 @@ public sealed class OutboxDispatcher(
             new("@now", now),
             new("@maxAttempts", options.Value.MaxAttempts),
             new("@limit", options.Value.BatchSize),
+            new("@active", (int)TenantStatus.Active),
         };
         if (tenantId is { } onlyTenant)
         {
@@ -130,6 +132,7 @@ public sealed class OutboxDispatcher(
               AND NextAttemptAt <= @now
               AND (LockedUntil IS NULL OR LockedUntil < @now)
               AND Attempts < @maxAttempts
+              AND NOT EXISTS (SELECT 1 FROM Tenant WHERE Tenant.Id = OutboxMessage.TenantId AND Tenant.Status <> @active)
               {(tenantId is null ? "" : "AND TenantId = @tenantId")}
             ORDER BY NextAttemptAt, CreatedAt
             LIMIT @limit
@@ -286,6 +289,49 @@ public sealed class OutboxDispatcher(
             .ExecuteCommandAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Messages of an organisation that can't be used, of a type that is only worth handling at the time, are given up on. The
+    /// rest are not claimed while it can't be (see <see cref="ClaimAsync"/>), and wait for it.
+    /// </summary>
+    private async Task SkipForInactiveTenantsAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var types = scope.ServiceProvider.GetServices<IOutboxHandler>().Where(h => h.WhenTenantInactive == OutboxInactiveTenantPolicy.Skip).Select(h => h.Type).Distinct().ToList();
+        if (types.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var tenantId = options.Value.TenantId;
+        var parameters = new List<SugarParameter>
+        {
+            new("@skipped", (int)OutboxStatus.Skipped),
+            new("@pending", (int)OutboxStatus.Pending),
+            new("@active", (int)TenantStatus.Active),
+            new("@now", now),
+            new("@reason", "Skipped: the organisation could not be used, so nobody was told."),
+        };
+        parameters.AddRange(types.Select((type, i) => new SugarParameter($"@type{i}", type)));
+        if (tenantId is { } onlyTenant)
+        {
+            parameters.Add(new SugarParameter("@tenantId", onlyTenant));
+        }
+
+        await sql.Ado.ExecuteCommandAsync(
+            $"""
+            UPDATE OutboxMessage
+            SET Status = @skipped, CompletedAt = @now, LockedBy = NULL, LockedUntil = NULL, LastError = @reason
+            WHERE Status = @pending
+              AND (LockedUntil IS NULL OR LockedUntil < @now)
+              AND Type IN ({string.Join(", ", types.Select((_, i) => $"@type{i}"))})
+              AND EXISTS (SELECT 1 FROM Tenant WHERE Tenant.Id = OutboxMessage.TenantId AND Tenant.Status <> @active)
+              {(tenantId is null ? "" : "AND TenantId = @tenantId")}
+            """,
+            parameters
+        );
+    }
+
     private async Task PurgeAsync(CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
@@ -298,7 +344,7 @@ public sealed class OutboxDispatcher(
         var before = now - options.Value.Retention;
         var tenantId = options.Value.TenantId;
         await sql.Deleteable<OutboxMessage>()
-            .Where(m => m.Status == OutboxStatus.Done && m.CompletedAt < before)
+            .Where(m => (m.Status == OutboxStatus.Done || m.Status == OutboxStatus.Skipped) && m.CompletedAt < before)
             .WhereIF(tenantId is not null, m => m.TenantId == tenantId)
             .ExecuteCommandAsync(cancellationToken);
     }
