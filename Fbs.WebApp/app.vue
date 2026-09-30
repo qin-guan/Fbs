@@ -1,6 +1,6 @@
 <script setup lang="ts">
 useHead({
-  title: '3SIB Facility Booking',
+  title: usesAccounts() ? 'Facility Booking' : '3SIB Facility Booking',
 })
 </script>
 

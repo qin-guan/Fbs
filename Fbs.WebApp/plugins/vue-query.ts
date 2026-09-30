@@ -44,15 +44,19 @@ export default defineNuxtPlugin((nuxt) => {
   })
   const options: VueQueryPluginOptions = { queryClient }
 
-  // Pages on the app layout need a session, so leave as soon as any request is rejected
+  // Pages that need a session are on these layouts, so leave as soon as any request is rejected
+  const layoutsWithSession = new Set(['app', 'tenant', 'account'])
+  const mode = useAuthMode()
+
   async function redirectToLogin(error: unknown) {
-    if (!isAuthError(error) || router.currentRoute.value.meta.layout !== 'app') {
+    const route = router.currentRoute.value
+    if (!isAuthError(error) || !layoutsWithSession.has(String(route.meta.layout))) {
       return
     }
 
     // Drop data cached for the old session so the login page doesn't show the user as still logged in
     queryClient.clear()
-    await router.push('/auth/login')
+    await router.push(mode === 'legacy' ? '/auth/login' : { path: '/sign-in', query: { redirect_url: route.fullPath } })
   }
 
   nuxt.vueApp.use(VueQueryPlugin, options)

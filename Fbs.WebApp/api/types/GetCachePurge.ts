@@ -5,6 +5,10 @@
 
 export type GetCachePurgeStatus204 = unknown;
 
+export type GetCachePurgeStatus401 = unknown;
+
+export type GetCachePurgeStatus403 = unknown;
+
 export type GetCachePurgeOptions = {
     body?: never;
     path?: never;
@@ -14,9 +18,11 @@ export type GetCachePurgeOptions = {
 
 export type GetCachePurgeResponses = {
     "204": GetCachePurgeStatus204;
+    "401": GetCachePurgeStatus401;
+    "403": GetCachePurgeStatus403;
 };
 
 /**
  * @description Union of all possible responses
 */
-export type GetCachePurgeResponse = GetCachePurgeStatus204;
+export type GetCachePurgeResponse = (GetCachePurgeStatus204 | GetCachePurgeStatus401 | GetCachePurgeStatus403);
