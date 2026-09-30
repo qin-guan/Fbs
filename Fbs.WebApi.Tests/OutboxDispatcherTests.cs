@@ -416,4 +416,143 @@ public class OutboxDispatcherTests
             await dispatcher.StopAsync(CancellationToken.None);
         }
     }
+
+    private const string OnlyNowType = "test.only-now";
+
+    /// <summary>Only worth doing at the time, so it is skipped for an organisation that can't be used.</summary>
+    private sealed class OnlyNowHandler : IOutboxHandler
+    {
+        public string Type => OnlyNowType;
+
+        public ConcurrentQueue<Guid> Handled { get; } = new();
+
+        public OutboxInactiveTenantPolicy WhenTenantInactive => OutboxInactiveTenantPolicy.Skip;
+
+        public Task HandleAsync(OutboxMessage message, CancellationToken cancellationToken)
+        {
+            Handled.Enqueue(message.Id);
+            return Task.CompletedTask;
+        }
+    }
+
+    private static void SetStatus(Setup setup, TenantStatus status) =>
+        setup.Db.Updateable<Tenant>().SetColumns(t => new Tenant { Status = status }).Where(t => t.Id == setup.Tenant.TenantId).ExecuteCommand();
+
+    [Test]
+    [Arguments(TenantStatus.Suspended)]
+    [Arguments(TenantStatus.PendingDeletion)]
+    public async Task Messages_of_an_organisation_that_cannot_be_used_wait_untried_and_are_handled_when_it_can_be(TenantStatus status)
+    {
+        var setup = await SetUpAsync();
+        var id = await setup.EnqueueAsync();
+        var dispatcher = await setup.DispatcherAsync();
+        SetStatus(setup, status);
+
+        var handled = await dispatcher.ProcessDueAsync();
+
+        await Assert.That(handled).IsEqualTo(0);
+        await Assert.That(setup.Handler.Handled).IsEmpty();
+        await Assert.That(setup.Row(id).Status).IsEqualTo(OutboxStatus.Pending);
+        // Not tried, so waiting doesn't use up its attempts
+        await Assert.That(setup.Row(id).Attempts).IsEqualTo(0);
+
+        SetStatus(setup, TenantStatus.Active);
+        await Assert.That(await dispatcher.ProcessDueAsync()).IsEqualTo(1);
+        await Assert.That(setup.Handler.Handled).IsEquivalentTo([id]);
+        await Assert.That(setup.Row(id).Status).IsEqualTo(OutboxStatus.Done);
+    }
+
+    [Test]
+    public async Task Messages_only_worth_handling_at_the_time_are_skipped_for_an_organisation_that_cannot_be_used_and_stay_skipped()
+    {
+        var setup = await SetUpAsync();
+        var onlyNow = new OnlyNowHandler();
+        var services = new ServiceCollection();
+        services.AddSingleton<IOutboxHandler>(setup.Handler);
+        services.AddSingleton<IOutboxHandler>(onlyNow);
+        var dispatcher = new OutboxDispatcher(
+            NullLogger<OutboxDispatcher>.Instance,
+            await setup.Tenant.NewClientAsync(),
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            new OutboxSignal(),
+            Microsoft.Extensions.Options.Options.Create(new OutboxOptions { TenantId = setup.Tenant.TenantId })
+        );
+        var told = await setup.EnqueueAsync(OnlyNowType);
+        var kept = await setup.EnqueueAsync();
+        SetStatus(setup, TenantStatus.Suspended);
+
+        await dispatcher.ProcessDueAsync();
+
+        var row = setup.Row(told);
+        await Assert.That(row.Status).IsEqualTo(OutboxStatus.Skipped);
+        await Assert.That(row.CompletedAt).IsNotNull();
+        await Assert.That(row.LastError).Contains("Skipped");
+        await Assert.That(row.Attempts).IsEqualTo(0);
+        await Assert.That(onlyNow.Handled).IsEmpty();
+        // What can wait, waits
+        await Assert.That(setup.Row(kept).Status).IsEqualTo(OutboxStatus.Pending);
+
+        // Made active again, it is not done after all, and what waited is
+        SetStatus(setup, TenantStatus.Active);
+        await dispatcher.ProcessDueAsync();
+        await Assert.That(onlyNow.Handled).IsEmpty();
+        await Assert.That(setup.Row(told).Status).IsEqualTo(OutboxStatus.Skipped);
+        await Assert.That(setup.Handler.Handled).IsEquivalentTo([kept]);
+
+        // And what is only worth doing at the time is done at the time, for an organisation that can be used
+        var next = await setup.EnqueueAsync(OnlyNowType);
+        await dispatcher.ProcessDueAsync();
+        await Assert.That(onlyNow.Handled).IsEquivalentTo([next]);
+    }
+
+    [Test]
+    public async Task Another_organisations_messages_are_not_held_because_this_one_is_suspended()
+    {
+        var suspended = await SetUpAsync();
+        var busy = await SetUpAsync();
+        var held = await suspended.EnqueueAsync();
+        var sent = await busy.EnqueueAsync();
+        SetStatus(suspended, TenantStatus.Suspended);
+
+        await (await suspended.DispatcherAsync()).ProcessDueAsync();
+        await (await busy.DispatcherAsync()).ProcessDueAsync();
+
+        await Assert.That(suspended.Row(held).Status).IsEqualTo(OutboxStatus.Pending);
+        await Assert.That(busy.Row(sent).Status).IsEqualTo(OutboxStatus.Done);
+        await Assert.That(busy.Handler.Handled).IsEquivalentTo([sent]);
+    }
+
+    [Test]
+    public async Task Skipped_messages_are_kept_for_as_long_as_done_ones_and_then_deleted()
+    {
+        var setup = await SetUpAsync();
+        var onlyNow = new OnlyNowHandler();
+        var services = new ServiceCollection();
+        services.AddSingleton<IOutboxHandler>(onlyNow);
+        var dispatcher = new OutboxDispatcher(
+            NullLogger<OutboxDispatcher>.Instance,
+            await setup.Tenant.NewClientAsync(),
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            new OutboxSignal(),
+            Microsoft.Extensions.Options.Options.Create(new OutboxOptions { TenantId = setup.Tenant.TenantId, Retention = TimeSpan.FromDays(7) })
+        );
+        var recent = await setup.EnqueueAsync(OnlyNowType);
+        var old = await setup.EnqueueAsync(OnlyNowType);
+        SetStatus(setup, TenantStatus.Suspended);
+        await dispatcher.ProcessDueAsync();
+        setup.Db.Updateable<OutboxMessage>().SetColumns(m => new OutboxMessage { CompletedAt = DateTimeOffset.UtcNow.AddDays(-8) }).Where(m => m.Id == old).ExecuteCommand();
+
+        // A dispatcher looks to purge only once an hour, so this is a fresh one
+        var fresh = new OutboxDispatcher(
+            NullLogger<OutboxDispatcher>.Instance,
+            await setup.Tenant.NewClientAsync(),
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            new OutboxSignal(),
+            Microsoft.Extensions.Options.Options.Create(new OutboxOptions { TenantId = setup.Tenant.TenantId, Retention = TimeSpan.FromDays(7) })
+        );
+        await fresh.ProcessDueAsync();
+
+        await Assert.That(setup.Db.Queryable<OutboxMessage>().Any(m => m.Id == recent)).IsTrue();
+        await Assert.That(setup.Db.Queryable<OutboxMessage>().Any(m => m.Id == old)).IsFalse();
+    }
 }

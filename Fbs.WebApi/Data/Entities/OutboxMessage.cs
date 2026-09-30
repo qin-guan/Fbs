@@ -68,4 +68,7 @@ public enum OutboxStatus
 
     /// <summary>Given up on. It stays so someone can see what failed, and won't be tried again.</summary>
     Dead = 3,
+
+    /// <summary>Not done, on purpose: the organisation it was for could not be used, so nobody was told. It is kept for a while like one that is done.</summary>
+    Skipped = 4,
 }

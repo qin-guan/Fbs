@@ -27,6 +27,13 @@ public static class CalendarSyncPlanner
         CancellationToken cancellationToken = default
     )
     {
+        // An organisation that can't be used has nothing sent to its calendar, and catches up when it can be again
+        var usable = TenantStatus.Active;
+        if (!await sql.Queryable<Tenant>().AnyAsync(t => t.Id == tenantId && t.Status == usable, cancellationToken))
+        {
+            return 0;
+        }
+
         var active = CalendarConnectionStatus.Active;
         var connection = await sql.Queryable<CalendarConnection>().FirstAsync(c => c.TenantId == tenantId && c.Status == active, cancellationToken);
         if (connection is null)
