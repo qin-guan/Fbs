@@ -17,11 +17,7 @@ public sealed class RequireAdmin : IPreProcessor<object>
 
         if (!context.HttpContext.RequestServices.GetRequiredService<ITenantContext>().IsAdmin)
         {
-            await context.HttpContext.Response.SendAsync(
-                new { title = "Admins only", status = 403, detail = "Only an admin can do this.", code = "admin-only" },
-                StatusCodes.Status403Forbidden,
-                cancellation: ct
-            );
+            await Problem.SendAsync(context.HttpContext.Response, StatusCodes.Status403Forbidden, "Admins only", "Only an admin can do this.", "admin-only", ct);
         }
     }
 }

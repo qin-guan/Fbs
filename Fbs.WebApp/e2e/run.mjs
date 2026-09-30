@@ -1,4 +1,4 @@
-// Builds the app for the browser test (NUXT_PUBLIC_AUTH_MODE=test), serves it, runs e2e/smoke.mjs against it, and stops it.
+// Builds the app for the browser tests (NUXT_PUBLIC_AUTH_MODE=test), serves it, runs the tests in e2e/ against it, and stops it.
 // Pass --no-build to use what is in .output already, which must have been built that way.
 import { spawn, spawnSync } from 'node:child_process'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -22,8 +22,13 @@ try {
     await sleep(500)
   }
 
-  const test = spawnSync('node', ['e2e/smoke.mjs'], { env: { ...env, BASE_URL: `http://localhost:${port}` }, stdio: 'inherit' })
-  process.exitCode = test.status ?? 1
+  for (const file of ['smoke', 'tenant']) {
+    console.log(`\n== ${file}`)
+    const test = spawnSync('node', [`e2e/${file}.mjs`], { env: { ...env, BASE_URL: `http://localhost:${port}` }, stdio: 'inherit' })
+    if (test.status !== 0) {
+      process.exitCode = test.status ?? 1
+    }
+  }
 }
 finally {
   server.kill()
