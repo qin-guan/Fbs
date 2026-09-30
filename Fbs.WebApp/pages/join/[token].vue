@@ -27,6 +27,7 @@ watch(me, (value) => {
 
 const outcome = ref<{ slug: string, status: string, name: string } | undefined>()
 const removed = ref(false)
+const full = ref(false)
 const { mutateAsync: accept, isPending: joining } = usePostInvitesByTokenAccept()
 
 async function join() {
@@ -45,6 +46,9 @@ async function join() {
     if (getErrorCodes(e).includes('removed')) {
       removed.value = true
     }
+    else if (getErrorCodes(e).includes('member-limit')) {
+      full.value = true
+    }
     else if (getErrorStatus(e) === 404) {
       await queryClient.invalidateQueries({ queryKey: [{ url: '/Invites/:token' }] })
     }
@@ -57,6 +61,15 @@ async function join() {
 
 <template>
   <div class="space-y-6">
+    <UAlert
+      v-if="full"
+      title="This organization is full"
+      description="It has as many people as it can have. Ask an admin to make room, then try the link again."
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-users-round"
+    />
+
     <UPageCard
       v-if="outcome"
       :title="`You asked to join ${outcome.name}`"

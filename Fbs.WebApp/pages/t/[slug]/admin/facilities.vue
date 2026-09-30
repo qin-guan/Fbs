@@ -50,21 +50,26 @@ const { mutateAsync: update, isPending: updating } = usePutOrgFacilitiesById()
 const saving = computed(() => creating.value || updating.value)
 
 const form = useTemplateRef('form')
+const formProblem = ref<string>()
 const editing = ref(false)
 const editingId = ref<string>()
 const state = reactive({ name: '', group: '', availableToAll: true, unitIds: [] as string[] })
 
 function startAdd() {
   editingId.value = undefined
+  formProblem.value = undefined
   Object.assign(state, { name: '', group: '', availableToAll: true, unitIds: [] })
   editing.value = true
 }
 
 function startEdit(facility: Facility) {
   editingId.value = facility.id
+  formProblem.value = undefined
   Object.assign(state, { name: facility.name, group: facility.group ?? '', availableToAll: facility.availableToAll, unitIds: [...facility.unitIds] })
   editing.value = true
 }
+
+const fields = new Set(['name', 'group', 'availableToAll', 'unitIds'])
 
 function closeForm() {
   editing.value = false
@@ -84,6 +89,7 @@ function validate(values: typeof state): FormError[] {
 }
 
 async function submit() {
+  formProblem.value = undefined
   const body = {
     name: state.name.trim(),
     group: state.group.trim() || null,
@@ -103,12 +109,15 @@ async function submit() {
     await refresh()
   }
   catch (e) {
-    const fields = getFieldErrors(e)
-    if (fields.length) {
-      form.value?.setErrors(fields)
+    // What is about a field is shown by it, and what is not, such as there being as many facilities as there can be, in the form
+    const problems = getFieldErrors(e)
+    const onFields = problems.filter(p => fields.has(String(p.name)))
+    if (onFields.length) {
+      form.value?.setErrors(onFields)
     }
-    else {
-      toast.add({ title: 'Couldn\'t save', description: getErrorReasons(e)[0] ?? 'Something went wrong. Try again.', color: 'error' })
+
+    if (onFields.length < problems.length || !problems.length) {
+      formProblem.value = problems.find(p => !fields.has(String(p.name)))?.message ?? getErrorReasons(e)[0] ?? 'Something went wrong. Try again.'
     }
   }
 }
@@ -265,6 +274,14 @@ async function confirmDelete() {
               class="space-y-4"
               @submit="submit"
             >
+              <UAlert
+                v-if="formProblem"
+                :description="formProblem"
+                color="error"
+                variant="subtle"
+                icon="i-lucide-circle-alert"
+              />
+
               <UFormField
                 label="Name"
                 name="name"
