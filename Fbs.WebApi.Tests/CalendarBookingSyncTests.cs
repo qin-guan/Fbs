@@ -525,4 +525,53 @@ public class CalendarBookingSyncTests
         await Assert.That(setup.Messages().Count).IsEqualTo(1);
         await Assert.That(other.Messages()).IsEmpty();
     }
+
+    private static void SetStatus(Setup setup, TenantStatus status) =>
+        setup.Tenant.Db.Updateable<Tenant>().SetColumns(t => new Tenant { Status = status }).Where(t => t.Id == setup.Tenant.TenantId).ExecuteCommand();
+
+    [Test]
+    [Arguments(TenantStatus.Suspended)]
+    [Arguments(TenantStatus.PendingDeletion)]
+    public async Task Nothing_is_sent_to_the_calendar_of_an_organisation_that_cannot_be_used_and_it_catches_up_when_it_can_be(TenantStatus status)
+    {
+        var setup = await SetUpAsync();
+        await setup.Service.CreateAsync([NewBooking("Field", 8, 10)]);
+        SetStatus(setup, status);
+
+        await setup.DispatchAsync();
+
+        await Assert.That(setup.Google.Requests).IsEmpty();
+        var waiting = setup.Messages().Single();
+        await Assert.That(waiting.Status).IsEqualTo(OutboxStatus.Pending);
+        await Assert.That(waiting.Attempts).IsEqualTo(0);
+
+        SetStatus(setup, TenantStatus.Active);
+        await setup.DispatchAsync();
+
+        await Assert.That(setup.Events()).HasCount().EqualTo(1);
+        await Assert.That(setup.Messages().Single().Status).IsEqualTo(OutboxStatus.Done);
+    }
+
+    [Test]
+    public async Task What_puts_a_calendar_right_leaves_that_of_an_organisation_that_cannot_be_used_alone_until_it_can_be()
+    {
+        var setup = await SetUpAsync(connected: false);
+        await setup.Service.CreateAsync([NewBooking("Field", 8, 10)]);
+        setup.Connect();
+        SetStatus(setup, TenantStatus.Suspended);
+        var reconciler = new CalendarReconciler(
+            NullLogger<CalendarReconciler>.Instance,
+            await setup.Tenant.NewClientAsync(),
+            setup.Signal,
+            Microsoft.Extensions.Options.Options.Create(new OutboxOptions { TenantId = setup.Tenant.TenantId }),
+            Microsoft.Extensions.Options.Options.Create(new CalendarSyncOptions())
+        );
+
+        await Assert.That(await PlanAsync(setup)).IsEqualTo(0);
+        await Assert.That(await reconciler.RunOnceAsync()).IsEqualTo(0);
+        await Assert.That(setup.Messages()).IsEmpty();
+
+        SetStatus(setup, TenantStatus.Active);
+        await Assert.That(await reconciler.RunOnceAsync()).IsEqualTo(1);
+    }
 }
