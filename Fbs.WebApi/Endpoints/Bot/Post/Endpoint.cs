@@ -3,6 +3,7 @@ using System.Text;
 using FastEndpoints;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
+using Fbs.WebApi.TelegramLinks;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -121,6 +122,24 @@ public class Endpoint(
                     """,
                     ParseMode.Html,
                     replyMarkup: new[] { KeyboardButton.WithRequestContact("Link account") },
+                    cancellationToken: ct
+                );
+
+                break;
+            }
+            // Opened from the link the app makes for connecting an account: the bot is told which account by the token
+            case { Text: { } text }
+                when text.StartsWith("/start ", StringComparison.Ordinal)
+                    && req.Message.Chat.Type == ChatType.Private
+                    && HttpContext.RequestServices.GetService<TelegramLinker>() is not null:
+            {
+                var linker = HttpContext.RequestServices.GetRequiredService<TelegramLinker>();
+                var name = await linker.CompleteAsync(text["/start ".Length..].Trim(), req.Message.Chat.Id.ToString(), ct);
+                await client.SendMessage(
+                    req.Message.Chat,
+                    name is null
+                        ? "That link has expired or has been used already. Make a new one in the app."
+                        : $"Connected to {name}. You will be told about bookings here.",
                     cancellationToken: ct
                 );
 

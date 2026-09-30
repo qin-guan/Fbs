@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net;
 using System.Text.Json;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
@@ -91,26 +92,71 @@ public sealed class TelegramBookingNotifier(
         );
 
         var unit = first.UnitId ?? booker.UnitId;
+        var chats = await ChatsOfAsync(members.Values, cancellationToken);
+        var inSeveral = await InSeveralOrganizationsAsync(members.Values, cancellationToken);
+        var heading = $"<b>{WebUtility.HtmlEncode(tenant.Name)}</b>\n";
+
         var recipients = members
-            .Values.Where(m => m.Status != MemberStatus.Removed)
+            .Values.Where(m => m.Status is MemberStatus.Active or MemberStatus.Unclaimed)
             .Where(m =>
                 m.Id == booker.Id
                 || m.NotificationScope == NotificationScope.All
                 || (m.NotificationScope == NotificationScope.Unit && unit is not null && m.UnitId == unit)
             )
             .Where(m => !payload.Delivered.Contains(m.Id))
-            .Where(m => !string.IsNullOrWhiteSpace(m.LegacyChatId))
             .OrderBy(m => m.CreatedAt)
+            .Select(m => new Recipient(m, chats.GetValueOrDefault(m.Id), m.UserId is { } userId && inSeveral.Contains(userId) ? heading + text : text))
+            .Where(r => !string.IsNullOrWhiteSpace(r.Chat))
             .ToList();
 
-        await SendAsync(message, payload, recipients, text, cancellationToken);
+        await SendAsync(message, payload, recipients, cancellationToken);
     }
+
+    /// <summary>The chat each member is told in: the one their account has linked, or else the one their phone number was linked to.</summary>
+    private async Task<Dictionary<Guid, string>> ChatsOfAsync(IEnumerable<TenantMember> members, CancellationToken cancellationToken)
+    {
+        var people = members.ToList();
+        var userIds = people.Where(m => m.UserId is not null).Select(m => m.UserId).Distinct().ToList();
+        var links = userIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : (await sql.Queryable<TelegramLink>().Where(l => userIds.Contains(l.UserId) && l.ChatId != null).ToListAsync(cancellationToken)).ToDictionary(l => l.UserId, l => l.ChatId!);
+
+        var chats = new Dictionary<Guid, string>();
+        foreach (var member in people)
+        {
+            if (member.UserId is { } userId && links.TryGetValue(userId, out var linked))
+            {
+                chats[member.Id] = linked;
+            }
+            else if (!string.IsNullOrWhiteSpace(member.LegacyChatId))
+            {
+                chats[member.Id] = member.LegacyChatId;
+            }
+        }
+
+        return chats;
+    }
+
+    /// <summary>The accounts that belong to more than one organisation, who are told which one a booking is in.</summary>
+    private async Task<HashSet<Guid>> InSeveralOrganizationsAsync(IEnumerable<TenantMember> members, CancellationToken cancellationToken)
+    {
+        var userIds = members.Where(m => m.UserId is not null).Select(m => m.UserId).Distinct().ToList();
+        if (userIds.Count == 0)
+        {
+            return [];
+        }
+
+        var active = MemberStatus.Active;
+        var memberships = await sql.Queryable<TenantMember>().Where(m => userIds.Contains(m.UserId) && m.Status == active).Select(m => new { m.UserId, m.TenantId }).ToListAsync(cancellationToken);
+        return memberships.GroupBy(m => m.UserId!.Value).Where(g => g.Select(m => m.TenantId).Distinct().Count() > 1).Select(g => g.Key).ToHashSet();
+    }
+
+    private sealed record Recipient(TenantMember Member, string? Chat, string Text);
 
     private async Task SendAsync(
         OutboxMessage message,
         TelegramBookingPayload payload,
-        List<TenantMember> recipients,
-        string text,
+        List<Recipient> recipients,
         CancellationToken cancellationToken
     )
     {
@@ -120,12 +166,13 @@ public sealed class TelegramBookingNotifier(
         await Parallel.ForEachAsync(
             recipients,
             new ParallelOptions { MaxDegreeOfParallelism = MaxParallelSends, CancellationToken = cancellationToken },
-            async (member, token) =>
+            async (recipient, token) =>
             {
+                var member = recipient.Member;
                 try
                 {
                     await throttle.WaitAsync(token);
-                    await bot.SendMessage(ChatIdOf(member.LegacyChatId!), text, ParseMode.Html, cancellationToken: token);
+                    await bot.SendMessage(ChatIdOf(recipient.Chat!), recipient.Text, ParseMode.Html, cancellationToken: token);
                     told.Enqueue(member.Id);
                 }
                 catch (ApiRequestException e) when (e.ErrorCode is 400 or 403)
