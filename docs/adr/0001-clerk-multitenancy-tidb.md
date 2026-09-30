@@ -128,6 +128,10 @@ TiDB differs from MySQL for check-then-write, per its documentation:
   run on MySQL, so that pattern is unproven on TiDB.
 - TiDB is snapshot isolation (write skew allowed), has no gap locks, and has no `SKIP LOCKED`.
 
+**Verified (spike S3, [details](spikes/s3-tidb-concurrency/README.md)):** with a plain re-read after
+the row lock, two overlapping bookings were double-booked in 5 of 5 runs on TiDB v8.5.8 and 0 of 5 on
+MySQL 8.4. A locking re-read and READ COMMITTED both gave 0 of 5 on TiDB.
+
 Rule: `BookingService` is the only booking writer. One transaction locks the involved `Facility`
 rows in id order, runs the overlap check as a **locking read** (`FOR UPDATE`, a current read),
 then inserts bookings and outbox rows. The concurrency suite runs against TiDB, not only MySQL.
@@ -266,7 +270,7 @@ Delivered as small stacked PRs. Sizes are rough, for one developer.
 
 | Phase | Scope | Size |
 |---|---|---|
-| 0 | Hotfixes above, Coolify prerequisites (image, `/health`). Spikes: S1 `@clerk/nuxt` on `ssr:false` plus Bearer token to .NET; S2 SqlSugar tenant filter under singleton scope; S3 TiDB concurrency semantics (lock + plain read vs lock + `FOR UPDATE` read vs READ COMMITTED); S4 TiDB reachability from Coolify, health check, rolling update, migrator step | 3-4 days |
+| 0 | Hotfixes above, Coolify prerequisites (image, `/health`). Spikes: S1 `@clerk/nuxt` on `ssr:false` plus Bearer token to .NET; S2 SqlSugar tenant filter under singleton scope; S3 TiDB concurrency semantics (done, see above); S4 TiDB reachability from Coolify, health check, rolling update, migrator step | 3-4 days |
 | 1 | Cutover 1: TiDB entities and migrator, `BookingService`, outbox, Telegram handlers, optional calendar sync, importer, Sheets as inbound reference data, test rewrite (real DB, one tenant per test, TiDB concurrency suite) | 3-4 weeks |
 | 2 | Cutover 2: Clerk auth, `/t/{slug}` routing, self-serve creation, invites and approval, quotas, tenant admin screens, Telegram linking, claim flow, windowed lists, batch notifications, forwarded headers with IP rate limiting | 4-5 weeks |
 | 3 | Offboarding and deletion, PDPA export, per-tenant limits, audit log, legacy sunset | 1-2 weeks |
@@ -278,7 +282,8 @@ Delivered as small stacked PRs. Sizes are rough, for one developer.
 - [x] OTP: expiry and attempt limit
 - [x] `/Cache/Purge`: admins only
 - [x] Coolify readiness: production `/health`, image with `curl` and `tzdata`
-- [ ] Spikes S1 to S4
+- [x] Spike S3 (TiDB concurrency)
+- [ ] Spikes S1, S2, S4
 
 ## Open items
 
