@@ -314,7 +314,8 @@ Each is a small PR stacked on the one before.
 - [x] `export-legacy` for rollback (writes bookings made, changed and cancelled in the database back as legacy events)
 - [ ] Delete the Google-as-store code, the legacy events and handlers, and the importer, after the
   switch has been verified in production (a separate change, so the switch can be undone by
-  configuration alone until then)
+  configuration alone until then). The gates, the order it is done in, and what can be undone after
+  each step are in [the sunset runbook](../runbooks/sunset-legacy.md)
 
 ### Phase 2 stack (Cutover 2)
 
@@ -333,6 +334,19 @@ until the web app moves over.
 - [x] The web app has Clerk sign in behind a build flag (`legacy` until the switch), a client that sends the session token, the API client regenerated, and the pages for choosing, making, joining and claiming an organization, and for connecting Telegram
 - [x] Bookings under `/t/:slug`: the list and one booking (#247), making them in the organization's time zone, with a calendar and a builder for several at once (#249), and the timeline (#250)
 - [x] The admin screens: settings (#251), units and facilities (#252), people (#253), invite links (#254), and a checklist for a new organization (#255)
+
+### Phase 3 stack (hardening and sunset)
+
+- [x] Per-organisation quotas: units, facilities, people and bookings in a day, each a 403 with a code (#257), and the web app saying so (#262)
+- [x] Suspending an organisation, and listing them, from the migrator (#258)
+- [x] The audit log: settings, units, facilities, invites (#259), people and the organisation (#260), and the history page (#261). No entry has the name of a
+  person, so an erased account is a former member in it too
+- [x] Offboarding: an admin deletes their organisation in two steps, with 30 days to restore it (#263), and `purge-tenants` deletes what is due, by `TenantId`, with a
+  test that no table with a `TenantId` is left off the list (#264, [runbook](../runbooks/offboarding.md))
+- [x] The PDPA export: a person's own data, and an organisation's for its admins (#265)
+- [x] The legacy sunset, as a runbook with its gates and steps ([runbook](../runbooks/sunset-legacy.md)); the deletion itself is the unticked item under Phase 1, on purpose
+- [ ] The web app for offboarding and the exports: delete in the settings, restore where it says the organisation is to be deleted, and the downloads
+- [ ] Spikes S1, S2 and S4, and everything under Open items: they need somebody with the accounts, the domain and the production database
 
 ## Open items
 
