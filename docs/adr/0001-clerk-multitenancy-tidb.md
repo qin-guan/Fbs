@@ -345,7 +345,7 @@ until the web app moves over.
   test that no table with a `TenantId` is left off the list (#264, [runbook](../runbooks/offboarding.md))
 - [x] The PDPA export: a person's own data, and an organisation's for its admins (#265)
 - [x] The legacy sunset, as a runbook with its gates and steps ([runbook](../runbooks/sunset-legacy.md)); the deletion itself is the unticked item under Phase 1, on purpose
-- [ ] The web app for offboarding and the exports: delete in the settings, restore where it says the organisation is to be deleted, and the downloads
+- [x] The web app for offboarding and the exports: delete in the settings, restore where it says the organisation is to be deleted, and the downloads (#267)
 - [ ] Spikes S1, S2 and S4, and everything under Open items: they need somebody with the accounts, the domain and the production database
 
 ## Open items
