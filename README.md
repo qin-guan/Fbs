@@ -185,6 +185,14 @@ let anyone link their chat to another person's number, so the chat is not truste
 `Tenant.LegacyClaimEnabled` is on for organisations the importer made, and can be turned off but not back on. See
 [Cutover 2](docs/runbooks/cutover-2-accounts.md).
 
+When somebody deletes their Clerk account, Clerk tells `POST /webhooks/clerk` (subscribe it to `user.deleted`, and set the
+endpoint's signing secret as `Clerk:WebhookSecret`, the `whsec_...` value). Webhooks are signed with Svix: one without a valid signature
+over its ID, time and body, or older than five minutes, is a 401, and none are accepted without the secret (503). The account is
+erased: its name and email are cleared, its places are made former members (no name, phone or chat, not an admin, not told
+anything), and its Telegram link is removed. Bookings stay, with who made them shown as "Former member". The point of contact
+typed on a booking is part of the booking and stays. Being told twice, or about someone who never signed in, changes nothing. If it
+was the only admin of an organisation, the API logs a warning, and `promote-admin` makes another.
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and
