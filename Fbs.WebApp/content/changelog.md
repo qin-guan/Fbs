@@ -1,3 +1,9 @@
+### 30/09/2026
+
+#### What's new
+
+- Custom POCs you type in are remembered on this device and suggested the next time you book
+
 ### 29/09/2026
 
 #### What's new
