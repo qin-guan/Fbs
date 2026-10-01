@@ -1,0 +1,82 @@
+using FastEndpoints;
+using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Data.Entities;
+using SqlSugar;
+
+namespace Fbs.WebApi.Endpoints.Me.Get;
+
+public class Response
+{
+    public required Guid Id { get; init; }
+
+    public string? Name { get; init; }
+
+    public string? Email { get; init; }
+
+    /// <summary>The organisations they belong to, or have asked to.</summary>
+    public required List<Membership> Memberships { get; init; }
+}
+
+public class Membership
+{
+    public required string TenantSlug { get; init; }
+
+    public required string TenantName { get; init; }
+
+    public required MemberRole Role { get; init; }
+
+    public required MemberStatus Status { get; init; }
+
+    public required string DisplayName { get; init; }
+}
+
+/// <summary>Who is signed in, and which organisations they are in: what the app needs to decide where to take them.</summary>
+[RequiresClerk]
+public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql) : EndpointWithoutRequest<Response>
+{
+    public override void Configure()
+    {
+        Get("/Me");
+        AuthSchemes(ClerkAuthentication.Scheme);
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var account = await currentAccount.GetAsync(ct);
+        if (account is null)
+        {
+            await Send.UnauthorizedAsync(ct);
+            return;
+        }
+
+        var accountId = account.Id;
+        var removed = MemberStatus.Removed;
+        var members = await sql.Queryable<TenantMember>().Where(m => m.UserId == accountId && m.Status != removed).ToListAsync(ct);
+        var tenantIds = members.Select(m => m.TenantId).Distinct().ToList();
+        var tenants = tenantIds.Count == 0
+            ? new Dictionary<Guid, Tenant>()
+            : (await sql.Queryable<Tenant>().Where(t => tenantIds.Contains(t.Id)).ToListAsync(ct)).ToDictionary(t => t.Id);
+
+        await Send.OkAsync(
+            new Response
+            {
+                Id = account.Id,
+                Name = account.Name,
+                Email = account.Email,
+                Memberships = members
+                    .Where(m => tenants.ContainsKey(m.TenantId))
+                    .Select(m => new Membership
+                    {
+                        TenantSlug = tenants[m.TenantId].Slug,
+                        TenantName = tenants[m.TenantId].Name,
+                        Role = m.Role,
+                        Status = m.Status,
+                        DisplayName = m.DisplayName,
+                    })
+                    .OrderBy(m => m.TenantName)
+                    .ToList(),
+            },
+            ct
+        );
+    }
+}

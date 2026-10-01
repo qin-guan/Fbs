@@ -4,6 +4,7 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi;
+using Fbs.WebApi.Auth.Clerk;
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.CalendarSync;
 using Fbs.WebApi.Data;
@@ -156,6 +157,13 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
     builder.Services.Configure<CalendarSyncOptions>(builder.Configuration.GetSection("CalendarSync"));
     builder.Services.AddHostedService<CalendarReconciler>();
 
+    // Signing in with Clerk, alongside the Telegram code and cookie that are still what the app uses. Whoever
+    // signs in becomes an account, which belongs to no organisation until they are a member of one
+    if (ClerkAuthentication.IsEnabled(builder.Configuration))
+    {
+        builder.Services.AddClerkAuthentication(builder.Configuration);
+    }
+
     // Until there are screens to manage people and facilities in, the sheets can stay where they are edited
     if (builder.Configuration.GetValue<bool>("ReferenceData:Sheets:Enabled"))
     {
@@ -169,11 +177,20 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
 }
 else
 {
+    if (ClerkAuthentication.IsEnabled(builder.Configuration))
+    {
+        throw new InvalidOperationException("Clerk needs Storage:Provider=Database: accounts and organisations are kept in it.");
+    }
+
     builder.Services.AddGoogleStorage();
     builder.Services.AddHostedService<CacheRefreshService>();
 }
 
-builder.Services.AddFastEndpoints();
+// What is for people signed in with Clerk isn't there unless that is on, as it needs accounts to be
+var clerkEnabled = ClerkAuthentication.IsEnabled(builder.Configuration);
+builder.Services.AddFastEndpoints(options =>
+    options.Filter = type => clerkEnabled || !Attribute.IsDefined(type, typeof(RequiresClerkAttribute))
+);
 builder.Services.SwaggerDocument(options =>
 {
     options.EndpointFilter = ep => ep.EndpointTags?.Contains("Telegram") is false or null;
@@ -268,6 +285,8 @@ app.UseAuthorization();
 
 app.UseFastEndpoints(config =>
 {
+    // Roles and statuses are said in words, so the app doesn't have to know what the numbers are
+    config.Serializer.Options.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     config.Errors.UseProblemDetails(c =>
     {
         c.IndicateErrorCode = true;

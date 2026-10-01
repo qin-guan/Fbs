@@ -86,6 +86,20 @@ facility, first locks the facility's row, then looks for a clash with a locking 
 marked as cancelled. Whoever made a booking never changes; changing one records who did, and the point of contact is
 stored with the booking.
 
+### Signing in with Clerk
+
+With `Storage:Provider=Database` and `Clerk:Issuer` (Clerk's Frontend API, such as `https://example.clerk.accounts.dev`) set, the
+API also accepts Clerk session tokens as `Authorization: Bearer` tokens, alongside the Telegram code and cookie the app uses
+today. `Clerk:AuthorizedParties` lists the origins of the apps that may use one, checked against the token's `azp` (it is
+required), so a token issued to another app on the same Clerk instance is refused. The keys come from
+`{Issuer}/.well-known/jwks.json` and are kept for an hour (`Clerk:JwksUrl` if they are elsewhere). Only RS256 is accepted, and a
+token has to be signed, unexpired, from that issuer, and for someone.
+
+Whoever signs in gets an account (`UserAccount`), made the first time they are seen from their token's `sub`, `email` and `name`
+(add `email` and `name` as custom claims in Clerk's session token settings), kept up to date from it, and belonging to no
+organisation until they are a member of one. `GET /Me` says who is signed in and which organisations they belong to. Enums are
+written in words in JSON.
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and
