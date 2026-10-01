@@ -10,6 +10,7 @@ using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Middleware;
 using Fbs.WebApi.Options;
+using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Repository;
 using Fbs.WebApi.Repository.Database;
 using Google.Apis.Auth.OAuth2;
@@ -166,6 +167,12 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
     builder.Services.AddScoped<INominalRollRepository, DatabaseNominalRollRepository>();
     builder.Services.AddScoped<IOtpRepository, DatabaseOtpRepository>();
     builder.Services.AddScoped<IBookingService, DatabaseBookingService>();
+
+    // What is to be done once a change is saved, such as telling people about it
+    builder.Services.Configure<OutboxOptions>(builder.Configuration.GetSection("Outbox"));
+    builder.Services.AddSingleton<OutboxSignal>();
+    builder.Services.AddSingleton<OutboxDispatcher>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<OutboxDispatcher>());
 }
 else
 {

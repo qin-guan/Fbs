@@ -181,5 +181,7 @@ public class DatabaseFbsApiFactory : FbsApiFactory
         builder.UseSetting("Storage:Provider", "Database");
         builder.UseSetting("ConnectionStrings:db", _database.ConnectionString);
         builder.UseSetting("Storage:TenantSlug", Slug);
+        // Every test's API shares the one outbox table, and only this one's messages are its to send
+        builder.UseSetting("Outbox:TenantId", _tenantId.ToString());
     }
 }

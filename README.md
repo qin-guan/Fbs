@@ -86,6 +86,21 @@ facility, first locks the facility's row, then looks for a clash with a locking 
 marked as cancelled. Whoever made a booking never changes; changing one records who did, and the point of contact is
 stored with the booking.
 
+### Outbox
+
+Work that follows a change, such as telling people about it, is written to the `OutboxMessage` table in the same
+transaction as the change, so it is neither lost when the change is kept nor left behind when it isn't. A background
+dispatcher (`OutboxDispatcher`) takes the messages that are due, has the handler for their type do them, and puts back the
+ones that fail, 5 seconds later the first time and twice as long each time up to 15 minutes, until they have been tried
+`Outbox:MaxAttempts` times (8), when they are kept as `Dead`, with the error, rather than tried again. Handlers have to be
+safe to repeat.
+
+TiDB has no `SKIP LOCKED`, so messages are taken with a lease, in a single statement: any number of API instances can run
+at once, as they do while a new version starts, and a message that an instance died holding is taken over when its lease
+(`Outbox:LeaseDuration`, 2 minutes) runs out. Only whoever holds the lease can say the message is done or failed. Messages
+that are done are removed after `Outbox:Retention` (7 days). `Outbox:PollInterval` (10 seconds) is how long an idle
+dispatcher waits before looking, for messages written by another instance, and `Outbox:TenantId` limits it to one tenant.
+
 ## Testing
 
 The API tests use [TUnit](https://tunit.dev) and run the API in memory, with Google and Telegram faked, so they need
