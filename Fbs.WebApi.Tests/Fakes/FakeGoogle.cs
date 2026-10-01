@@ -61,6 +61,15 @@ public partial class FakeGoogle
     /// </summary>
     public int? FailInsertNumber { get; set; }
 
+    /// <summary>Calendars that answer every request as if Google had a problem, so it is worth trying again.</summary>
+    public HashSet<string> FailingCalendars { get; } = [];
+
+    /// <summary>Calendars that answer every request as if they weren't shared with us, which trying again won't change.</summary>
+    public HashSet<string> ForbiddenCalendars { get; } = [];
+
+    /// <summary>Calendars that answer every request as if we were asking too often.</summary>
+    public HashSet<string> RateLimitedCalendars { get; } = [];
+
     /// <summary>
     /// How long each request takes, to stand in for the round trip to Google.
     /// </summary>
@@ -312,6 +321,21 @@ public partial class FakeGoogle
         // /calendar/v3/calendars/{calendarId}/events[/{eventId}]
         if (segments is ["calendar", "v3", "calendars", var calendarId, "events", ..])
         {
+            if (FailingCalendars.Contains(calendarId))
+            {
+                return Error(HttpStatusCode.InternalServerError, "Backend Error", "backendError");
+            }
+
+            if (ForbiddenCalendars.Contains(calendarId))
+            {
+                return Error(HttpStatusCode.Forbidden, "Forbidden", "forbidden");
+            }
+
+            if (RateLimitedCalendars.Contains(calendarId))
+            {
+                return Error(HttpStatusCode.Forbidden, "Rate Limit Exceeded", "rateLimitExceeded");
+            }
+
             var calendar = Calendar(calendarId);
             var eventId = segments.Length > 5 ? segments[5] : null;
 
@@ -328,6 +352,12 @@ public partial class FakeGoogle
                 }
 
                 var @event = JsonNode.Parse(body!)!.AsObject();
+                // As with the real API, an ID that has been used can't be inserted again, even if what used it was deleted
+                if (@event["id"]?.GetValue<string>() is { } insertedId && calendar.ContainsKey(insertedId))
+                {
+                    return Error(HttpStatusCode.Conflict, "The requested identifier already exists.", "duplicate");
+                }
+
                 @event["status"] = "confirmed";
                 Store(calendarId, @event);
                 return Json(HttpStatusCode.OK, @event.DeepClone());
@@ -335,12 +365,18 @@ public partial class FakeGoogle
 
             if (eventId is not null && method == HttpMethod.Put)
             {
-                if (!calendar.TryGetValue(eventId, out var existing) || existing.Deleted)
+                if (!calendar.TryGetValue(eventId, out var existing))
                 {
                     return Error(HttpStatusCode.NotFound, "Not Found");
                 }
 
+                // What was deleted can't be found, or brought back with an update that says it is confirmed
                 var @event = JsonNode.Parse(body!)!.AsObject();
+                if (existing.Deleted && @event["status"]?.GetValue<string>() != "confirmed")
+                {
+                    return Error(HttpStatusCode.NotFound, "Not Found");
+                }
+
                 @event["status"] = "confirmed";
                 Store(calendarId, @event);
                 return Json(HttpStatusCode.OK, @event.DeepClone());
@@ -455,8 +491,19 @@ public partial class FakeGoogle
     private static HttpResponseMessage Json(HttpStatusCode status, JsonNode body) =>
         new(status) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json") };
 
-    private static HttpResponseMessage Error(HttpStatusCode status, string message) =>
-        Json(status, new JsonObject { ["error"] = new JsonObject { ["code"] = (int)status, ["message"] = message } });
+    private static HttpResponseMessage Error(HttpStatusCode status, string message, string? reason = null) =>
+        Json(
+            status,
+            new JsonObject
+            {
+                ["error"] = new JsonObject
+                {
+                    ["code"] = (int)status,
+                    ["message"] = message,
+                    ["errors"] = new JsonArray(new JsonObject { ["message"] = message, ["reason"] = reason ?? "error" }),
+                },
+            }
+        );
 
     public record Request(
         HttpMethod Method,

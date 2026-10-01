@@ -1,3 +1,4 @@
+using Fbs.WebApi.CalendarSync;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Notifications;
@@ -105,6 +106,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
             },
             cancellationToken
         );
+        await CalendarOutbox.EnqueueAsync(sql, tenantId, rows.Select(r => r.Id), cancellationToken);
         tran.CommitTran();
         signal.Notify();
 
@@ -216,6 +218,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
             },
             cancellationToken
         );
+        await CalendarOutbox.EnqueueAsync(sql, tenantId, [row.Id], cancellationToken);
         tran.CommitTran();
         signal.Notify();
 
@@ -254,6 +257,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
             new TelegramBookingPayload { Change = BookingChange.Cancelled, BookingIds = [id], ActorMemberId = cancelledById },
             cancellationToken
         );
+        await CalendarOutbox.EnqueueAsync(sql, tenantId, [id], cancellationToken);
         tran.CommitTran();
         signal.Notify();
     }
