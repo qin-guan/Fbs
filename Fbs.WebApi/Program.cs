@@ -65,7 +65,7 @@ builder
             if (!builder.Environment.IsProduction())
                 return;
 
-            options.Cookie.Domain = ".from.sg";
+            options.Cookie.Domain = ".temasek3.cc";
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         }
     )
