@@ -62,24 +62,7 @@ public class LegacyImporterTests
         public bool TenantExists => Db.Queryable<Tenant>().Any(t => t.Slug == Slug);
 
         /// <summary>The legacy stores reading the fake Google, made afresh as they are each time the importer is run.</summary>
-        public ServiceProvider Legacy()
-        {
-            var services = new ServiceCollection();
-            services.AddLogging();
-            services.AddOptions<GoogleOptions>().Configure(o =>
-            {
-                o.ServiceAccountJsonCredential = "unused";
-                o.SpreadsheetId = "spreadsheet";
-                o.CalendarId = FakeGoogle.MainCalendar;
-                o.CarbonCopyCalendarId = FakeGoogle.CarbonCopyCalendar;
-            });
-            var initializer = new BaseClientService.Initializer { ApplicationName = "Tests", HttpClientFactory = Google.CreateHttpClientFactory() };
-            services.AddSingleton(new CalendarService(initializer));
-            services.AddSingleton(new SheetsService(initializer));
-            services.AddFusionCache().AsHybridCache();
-            services.AddGoogleStorage();
-            return services.BuildServiceProvider();
-        }
+        public ServiceProvider Legacy() => LegacyGoogle.Services(Google);
 
         public async Task<LegacyImportReport> ImportAsync(bool dryRun = false, bool overwrite = false, string? slug = null)
         {
