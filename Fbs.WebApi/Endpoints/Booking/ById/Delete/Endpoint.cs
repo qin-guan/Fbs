@@ -1,12 +1,13 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using Fbs.WebApi.Events;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Booking.ById.Delete;
 
 public class Endpoint(
-    BookingRepository bookingRepository,
+    IBookingService bookingService,
     IUserRepository userRepository,
     BackgroundPublisher publisher
 ) : Endpoint<Request>
@@ -21,7 +22,7 @@ public class Endpoint(
     {
         var phone = User.ClaimValue("Phone");
 
-        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        var booking = await bookingService.FindAsync(req.Id, ct);
         if (booking is null)
         {
             await Send.NotFoundAsync(ct);
@@ -39,7 +40,7 @@ public class Endpoint(
             return;
         }
 
-        await bookingRepository.DeleteAsync(b => b.Id == booking.Id, ct);
+        await bookingService.DeleteAsync(booking.Id, ct);
         publisher.Publish(
             new BookingDeletedEvent
             {

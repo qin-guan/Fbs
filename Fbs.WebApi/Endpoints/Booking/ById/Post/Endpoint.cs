@@ -1,14 +1,14 @@
 using FastEndpoints;
 using FastEndpoints.Security;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Events;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Booking.ById.Post;
 
 public class Endpoint(
-    BookingRepository bookingRepository,
+    IBookingService bookingService,
     IUserRepository userRepository,
-    BookingWriteLock bookingWriteLock,
     BackgroundPublisher publisher
 ) : Endpoint<Request, Entities.Booking>
 {
@@ -22,7 +22,7 @@ public class Endpoint(
     {
         var phone = User.ClaimValue("Phone");
 
-        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        var booking = await bookingService.FindAsync(req.Id, ct);
         if (booking is null)
         {
             await Send.NotFoundAsync(ct);
@@ -73,35 +73,21 @@ public class Endpoint(
             UserPhone = phone,
         };
 
-        if (!BookingRepository.FitsInEventData(updated))
+        if (!bookingService.CanStore(updated))
         {
             AddError(r => r.Description, "Event information is too long.");
             ThrowIfAnyErrors();
         }
 
-        using (await bookingWriteLock.AcquireAsync(ct))
+        var result = await bookingService.UpdateAsync(updated, checkForClash: timeChanged, ct);
+        if (result.Updated is not { } saved)
         {
-            if (timeChanged)
-            {
-                // Check against the latest bookings, ignoring this booking's current slot
-                var bookings = await bookingRepository.GetLatestListAsync(ct);
-                var overlapping = bookings.FirstOrDefault(b =>
-                    b.Id != updated.Id
-                    && b.FacilityName == updated.FacilityName
-                    && b.StartDateTime < updated.EndDateTime
-                    && b.EndDateTime > updated.StartDateTime
-                );
-
-                if (overlapping is not null)
-                {
-                    AddError(r => r.EndDateTime, $"Overlaps with booking {overlapping.Id}");
-                    await Send.ErrorsAsync(cancellation: ct);
-                    return;
-                }
-            }
-
-            booking = await bookingRepository.UpdateAsync(updated, ct);
+            AddError(r => r.EndDateTime, $"Overlaps with booking {result.ClashesWith}");
+            await Send.ErrorsAsync(cancellation: ct);
+            return;
         }
+
+        booking = saved;
 
         publisher.Publish(
             new BookingUpdatedEvent

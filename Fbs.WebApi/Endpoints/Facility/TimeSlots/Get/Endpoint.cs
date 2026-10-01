@@ -1,5 +1,6 @@
 using FastEndpoints;
 using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Facility.TimeSlots.Get;
@@ -7,7 +8,7 @@ namespace Fbs.WebApi.Endpoints.Facility.TimeSlots.Get;
 public class Endpoint(
     IFacilityRepository facilityRepository,
     IUserRepository userRepository,
-    BookingRepository bookingRepository
+    IBookingService bookingService
 ) : Endpoint<Request, IEnumerable<TimeSlot>>
 {
     public override void Configure()
@@ -31,7 +32,7 @@ public class Endpoint(
         var facility = await facilityRepository.GetAsync(f => f.Name == req.Name, ct);
 
         var users = await userRepository.GetByPhoneAsync(ct);
-        var bookings = await bookingRepository.GetListAsync(ct);
+        var bookings = await bookingService.ListAsync(ct);
         var overlapping = bookings
             .Where(b => b.FacilityName == facility.Name)
             .Where(b => b.StartDateTime <= req.EndTime && b.EndDateTime >= req.StartTime)

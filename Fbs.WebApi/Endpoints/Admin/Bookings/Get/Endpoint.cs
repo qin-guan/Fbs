@@ -1,11 +1,12 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Admin.Bookings.Get;
 
-public class Endpoint(IUserRepository userRepository, BookingRepository bookingRepository)
+public class Endpoint(IUserRepository userRepository, IBookingService bookingService)
     : EndpointWithoutRequest<IEnumerable<BookingWithUser>>
 {
     public override void Configure()
@@ -28,7 +29,7 @@ public class Endpoint(IUserRepository userRepository, BookingRepository bookingR
             throw new Exception("You do not have permission to access admin bookings.");
         }
 
-        var all = await bookingRepository.GetListAsync(ct);
+        var all = await bookingService.ListAsync(ct);
         var users = await userRepository.GetByPhoneAsync(ct);
 
         var withUser = all.Select(booking => new BookingWithUser

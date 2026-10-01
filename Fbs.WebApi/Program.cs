@@ -4,6 +4,7 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Endpoints.Auth;
 using Fbs.WebApi.Events;
@@ -155,6 +156,7 @@ builder.Services.AddScoped<IOtpRepository, OtpRepository>();
 builder.Services.AddSingleton<OtpAttemptTracker>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<BookingRepository>();
+builder.Services.AddScoped<IBookingService, CalendarBookingService>();
 builder.Services.AddSingleton<BookingWriteLock>();
 builder.Services.AddScoped<INominalRollRepository, NominalRollRepository>();
 

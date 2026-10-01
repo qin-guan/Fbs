@@ -1,10 +1,11 @@
 using FastEndpoints;
 using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Booking.Get;
 
-public class Endpoint(IUserRepository userRepository, BookingRepository bookingRepository)
+public class Endpoint(IUserRepository userRepository, IBookingService bookingService)
     : EndpointWithoutRequest<IEnumerable<BookingWithUser>>
 {
     public override void Configure()
@@ -14,7 +15,7 @@ public class Endpoint(IUserRepository userRepository, BookingRepository bookingR
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        var all = await bookingRepository.GetListAsync(ct);
+        var all = await bookingService.ListAsync(ct);
 
         var userPhone = Query<string?>("userPhone", false);
         if (userPhone is not null)

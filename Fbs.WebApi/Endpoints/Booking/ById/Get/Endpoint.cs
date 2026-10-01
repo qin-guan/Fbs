@@ -1,10 +1,11 @@
 using FastEndpoints;
 using Fbs.WebApi.Dtos;
+using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.Booking.ById.Get;
 
-public class Endpoint(BookingRepository bookingRepository, IUserRepository userRepository)
+public class Endpoint(IBookingService bookingService, IUserRepository userRepository)
     : Endpoint<Request, BookingWithUser>
 {
     public override void Configure()
@@ -14,7 +15,7 @@ public class Endpoint(BookingRepository bookingRepository, IUserRepository userR
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
-        var booking = await bookingRepository.FindAsync(b => b.Id == req.Id, ct);
+        var booking = await bookingService.FindAsync(req.Id, ct);
         if (booking is null)
         {
             await Send.NotFoundAsync(ct);
