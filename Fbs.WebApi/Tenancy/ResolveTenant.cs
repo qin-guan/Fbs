@@ -11,12 +11,17 @@ namespace Fbs.WebApi.Tenancy;
 /// from <see cref="ITenantContext"/> rather than from anything the caller sends.
 /// </summary>
 /// <remarks>
+/// An endpoint for an organisation has <c>/t/{slug}</c> at the start of its route and adds this in
+/// <c>Configure</c>, with <c>PreProcessor&lt;ResolveTenant&gt;()</c>. <see cref="RequireAdmin"/> goes after it
+/// when only admins can use the endpoint.
+/// <para>
 /// Someone who isn't a member, or has left, is told there is no such organisation, the same as for one that
 /// doesn't exist, so addresses can't be tried to find which do.
+/// </para>
 /// </remarks>
-public sealed class ResolveTenant : IGlobalPreProcessor
+public sealed class ResolveTenant : IPreProcessor<object>
 {
-    public async Task PreProcessAsync(IPreProcessorContext context, CancellationToken ct)
+    public async Task PreProcessAsync(IPreProcessorContext<object> context, CancellationToken ct)
     {
         var http = context.HttpContext;
         var services = http.RequestServices;
@@ -66,25 +71,4 @@ public sealed class ResolveTenant : IGlobalPreProcessor
 
     private static Task<TenantMember?> FindMemberAsync(ISqlSugarClient sql, Guid tenantId, Guid accountId, CancellationToken ct) =>
         sql.Queryable<TenantMember>().FirstAsync(m => m.TenantId == tenantId && m.UserId == accountId, ct)!;
-}
-
-/// <summary>For what only an admin of the organisation can do.</summary>
-public sealed class RequireAdmin : IGlobalPreProcessor
-{
-    public async Task PreProcessAsync(IPreProcessorContext context, CancellationToken ct)
-    {
-        if (context.HttpContext.Response.HasStarted)
-        {
-            return;
-        }
-
-        if (!context.HttpContext.RequestServices.GetRequiredService<ITenantContext>().IsAdmin)
-        {
-            await context.HttpContext.Response.SendAsync(
-                new { title = "Admins only", status = 403, detail = "Only an admin can do this.", code = "admin-only" },
-                StatusCodes.Status403Forbidden,
-                cancellation: ct
-            );
-        }
-    }
 }
