@@ -9,12 +9,11 @@ using TUnit.Assertions.Enums;
 
 namespace Fbs.WebApi.Tests;
 
-public class BookingBatchTests
+public abstract class BookingBatchTests(FbsApiFactory factory)
 {
     private static readonly TimeSpan Singapore = TimeSpan.FromHours(8);
 
-    [ClassDataSource<FbsApiFactory>]
-    public required FbsApiFactory Factory { get; init; }
+    protected FbsApiFactory Factory { get; } = factory;
 
     private HttpClient _client = null!;
 
@@ -349,3 +348,13 @@ public class BookingBatchTests
         await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(2);
     }
 }
+
+/// <summary>BookingBatchTests with users, facilities, the roster and login codes in Google Sheets.</summary>
+[ClassDataSource<FbsApiFactory>]
+[InheritsTests]
+public class GoogleBookingBatchTests(FbsApiFactory factory) : BookingBatchTests(factory);
+
+/// <summary>BookingBatchTests with users, facilities, the roster and login codes in the database.</summary>
+[ClassDataSource<DatabaseFbsApiFactory>]
+[InheritsTests]
+public class DatabaseBookingBatchTests(DatabaseFbsApiFactory factory) : BookingBatchTests(factory);

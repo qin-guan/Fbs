@@ -56,9 +56,9 @@ aspire run;
 
 ## Database
 
-Bookings and users still come from Google. The database is where they are moving to (see `docs/adr/`), on
-[TiDB](https://www.pingcap.com/tidb/) through SqlSugar. Its schema is applied with the migrator, which the API never
-does itself:
+Bookings still come from Google Calendar, and users, facilities, the roster and login codes from Google Sheets. The
+database is where they are moving to (see `docs/adr/`), on [TiDB](https://www.pingcap.com/tidb/) through SqlSugar. Its
+schema is applied with the migrator, which the API never does itself:
 
 ```powershell
 $env:ConnectionStrings__db = "Server=<host>;Port=4000;User ID=<user>;Password=<password>;Database=fbs;SslMode=VerifyFull";
@@ -75,6 +75,11 @@ Once `ConnectionStrings:db` is set, the API checks at startup that the database 
 needs, and refuses to start if not, so a version deployed before its schema was applied never takes traffic. Extra
 columns and indexes are fine, so the previous version keeps working after the next one has been applied. Turn the
 check off with `Startup:ValidateDatabaseSchema=false`.
+
+Set `Storage:Provider=Database` to read users, facilities, the roster and login codes from the database instead of
+Google Sheets. It needs `ConnectionStrings:db`, and the API refuses to start without it. They belong to the tenant
+named by `Storage:TenantSlug` (`3sib` by default), which has to exist. The Sheets stay the default until the data has
+been imported.
 
 ## Testing
 

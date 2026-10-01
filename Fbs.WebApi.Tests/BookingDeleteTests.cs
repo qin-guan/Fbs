@@ -8,10 +8,9 @@ using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public class BookingDeleteTests
+public abstract class BookingDeleteTests(FbsApiFactory factory)
 {
-    [ClassDataSource<FbsApiFactory>]
-    public required FbsApiFactory Factory { get; init; }
+    protected FbsApiFactory Factory { get; } = factory;
 
     private HttpClient _client = null!;
     private readonly Booking _booking = new()
@@ -104,3 +103,13 @@ public class BookingDeleteTests
         await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).HasSingleItem();
     }
 }
+
+/// <summary>BookingDeleteTests with users, facilities, the roster and login codes in Google Sheets.</summary>
+[ClassDataSource<FbsApiFactory>]
+[InheritsTests]
+public class GoogleBookingDeleteTests(FbsApiFactory factory) : BookingDeleteTests(factory);
+
+/// <summary>BookingDeleteTests with users, facilities, the roster and login codes in the database.</summary>
+[ClassDataSource<DatabaseFbsApiFactory>]
+[InheritsTests]
+public class DatabaseBookingDeleteTests(DatabaseFbsApiFactory factory) : BookingDeleteTests(factory);

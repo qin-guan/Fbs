@@ -19,12 +19,7 @@ public sealed class CacheRefreshService(
             await using var scope = scopeFactory.CreateAsyncScope();
             await Task.WhenAll(
                 bookingCache.SyncAsync(stoppingToken),
-                scope
-                    .ServiceProvider.GetRequiredService<IUserRepository>()
-                    .GetListAsync(stoppingToken),
-                scope
-                    .ServiceProvider.GetRequiredService<IFacilityRepository>()
-                    .GetListAsync(stoppingToken)
+                LoadReferenceDataAsync(scope.ServiceProvider, stoppingToken)
             );
         }
         catch (Exception e) when (!stoppingToken.IsCancellationRequested)
@@ -45,5 +40,15 @@ public sealed class CacheRefreshService(
                 logger.LogWarning(e, "Failed to sync bookings with the calendar");
             }
         }
+    }
+
+    /// <summary>
+    /// One after the other, because queries started together from the same place share a database
+    /// connection, and one of them fails saying it is already connecting.
+    /// </summary>
+    private static async Task LoadReferenceDataAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        await services.GetRequiredService<IUserRepository>().GetListAsync(cancellationToken);
+        await services.GetRequiredService<IFacilityRepository>().GetListAsync(cancellationToken);
     }
 }

@@ -5,10 +5,9 @@ using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public class CachePurgeTests
+public abstract class CachePurgeTests(FbsApiFactory factory)
 {
-    [ClassDataSource<FbsApiFactory>]
-    public required FbsApiFactory Factory { get; init; }
+    protected FbsApiFactory Factory { get; } = factory;
 
     private int FullCalendarLists() =>
         Factory.Google.Requests.Count(r => r.IsFullEventList(FakeGoogle.MainCalendar));
@@ -52,3 +51,13 @@ public class CachePurgeTests
         await Assert.That(FullCalendarLists()).IsEqualTo(before + 1);
     }
 }
+
+/// <summary>CachePurgeTests with users, facilities, the roster and login codes in Google Sheets.</summary>
+[ClassDataSource<FbsApiFactory>]
+[InheritsTests]
+public class GoogleCachePurgeTests(FbsApiFactory factory) : CachePurgeTests(factory);
+
+/// <summary>CachePurgeTests with users, facilities, the roster and login codes in the database.</summary>
+[ClassDataSource<DatabaseFbsApiFactory>]
+[InheritsTests]
+public class DatabaseCachePurgeTests(DatabaseFbsApiFactory factory) : CachePurgeTests(factory);
