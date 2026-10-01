@@ -44,7 +44,7 @@ public class Endpoint(
             throw new Exception("Booking does not exist.");
         }
 
-        await bookingService.DeleteAsync(booking.Id, ct);
+        await bookingService.DeleteAsync(booking.Id, phone, ct);
 
         publisher.Publish(
             new BookingDeletedEvent

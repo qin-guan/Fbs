@@ -57,14 +57,30 @@ public class FbsApiFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Adds a booking to the calendar and waits for the API to pick it up, as if it was made
+    /// Adds a booking where bookings are kept, and waits for the API to pick it up, as if it was made
     /// before the test.
     /// </summary>
-    public async Task AddBookingAsync(Booking booking)
+    public virtual async Task AddBookingAsync(Booking booking)
     {
         Google.AddBooking(booking);
         await Services.GetRequiredService<BookingCache>().SyncAsync();
     }
+
+    /// <summary>Adds a lot of bookings before the test starts, quicker than one at a time.</summary>
+    public virtual void AddBookings(IReadOnlyList<Booking> bookings)
+    {
+        foreach (var booking in bookings)
+        {
+            Google.AddBooking(booking);
+        }
+    }
+
+    /// <summary>
+    /// How many bookings each place that keeps them holds, which is the same for all of them unless
+    /// something has gone wrong. Cancelled bookings aren't counted.
+    /// </summary>
+    public virtual IReadOnlyList<int> StoredBookingCounts =>
+        [Google.Events(FakeGoogle.MainCalendar).Count, Google.Events(FakeGoogle.CarbonCopyCalendar).Count];
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

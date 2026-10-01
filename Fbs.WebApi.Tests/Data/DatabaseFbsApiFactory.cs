@@ -2,6 +2,8 @@ using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Microsoft.AspNetCore.Hosting;
 using SqlSugar;
+using Booking = Fbs.WebApi.Entities.Booking;
+using DataBooking = Fbs.WebApi.Data.Entities.Booking;
 using DataFacility = Fbs.WebApi.Data.Entities.Facility;
 using DataUnit = Fbs.WebApi.Data.Entities.Unit;
 
@@ -12,8 +14,7 @@ namespace Fbs.WebApi.Tests.Data;
 /// Sheets, seeded with the same people and facilities that <see cref="Fakes.FakeGoogle"/> starts with.
 /// </summary>
 /// <remarks>
-/// Bookings are still in Google Calendar. Every factory gets a tenant of its own in the shared test
-/// database, so tests don't see each other's data.
+/// Every factory gets a tenant of its own in the shared test database, so tests don't see each other's data.
 /// </remarks>
 public class DatabaseFbsApiFactory : FbsApiFactory
 {
@@ -92,6 +93,66 @@ public class DatabaseFbsApiFactory : FbsApiFactory
             )
             .ExecuteCommand();
     }
+
+    public override Task AddBookingAsync(Booking booking)
+    {
+        AddBookings([booking]);
+        return Task.CompletedTask;
+    }
+
+    /// <remarks>
+    /// Someone who booked and isn't a member, as with bookings that were made by people since taken off
+    /// the users sheet, is kept as a member who has left.
+    /// </remarks>
+    public override void AddBookings(IReadOnlyList<Booking> bookings)
+    {
+        var facilities = _db.Queryable<DataFacility>().Where(f => f.TenantId == _tenantId).ToList().ToDictionary(f => f.Name);
+        var members = _db.Queryable<TenantMember>().Where(m => m.TenantId == _tenantId).ToList().ToDictionary(m => m.Phone!);
+        var now = DateTimeOffset.UtcNow;
+
+        var rows = new List<DataBooking>();
+        foreach (var booking in bookings)
+        {
+            var phone = PhoneNumbers.ToStored(booking.UserPhone)!;
+            if (!members.TryGetValue(phone, out var member))
+            {
+                member = new TenantMember
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = _tenantId,
+                    DisplayName = "Former member",
+                    Phone = phone,
+                    Status = MemberStatus.Removed,
+                };
+                _db.Insertable(member).ExecuteCommand();
+                members[phone] = member;
+            }
+
+            rows.Add(
+                new DataBooking
+                {
+                    Id = booking.Id == Guid.Empty ? Guid.NewGuid() : booking.Id,
+                    TenantId = _tenantId,
+                    FacilityId = facilities[booking.FacilityName!].Id,
+                    StartUtc = booking.StartDateTime!.Value.ToUniversalTime(),
+                    EndUtc = booking.EndDateTime!.Value.ToUniversalTime(),
+                    Conduct = booking.Conduct ?? string.Empty,
+                    Description = booking.Description,
+                    PocName = booking.PocName,
+                    PocPhone = booking.PocPhone,
+                    BookedByMemberId = member.Id,
+                    UnitId = member.UnitId,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                }
+            );
+        }
+
+        _db.Insertable(rows).PageSize(500).ExecuteCommand();
+    }
+
+    public override IReadOnlyList<int> StoredBookingCounts =>
+        [_db.Queryable<DataBooking>().Count(b => b.TenantId == _tenantId && b.CancelledAt == null)];
 
     public override string? TelegramChatIdOf(string phone)
     {

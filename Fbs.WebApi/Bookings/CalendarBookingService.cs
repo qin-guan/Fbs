@@ -9,6 +9,7 @@ namespace Fbs.WebApi.Bookings;
 public sealed class CalendarBookingService(
     ILogger<CalendarBookingService> logger,
     BookingRepository bookingRepository,
+    BookingCache bookingCache,
     BookingWriteLock bookingWriteLock
 ) : IBookingService
 {
@@ -49,6 +50,7 @@ public sealed class CalendarBookingService(
 
     public async Task<UpdateResult> UpdateAsync(
         Booking updated,
+        string updatedByPhone,
         bool checkForClash,
         CancellationToken cancellationToken = default
     )
@@ -70,8 +72,10 @@ public sealed class CalendarBookingService(
         }
     }
 
-    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+    public Task DeleteAsync(Guid id, string cancelledByPhone, CancellationToken cancellationToken = default) =>
         bookingRepository.DeleteAsync(b => b.Id == id, cancellationToken);
+
+    public Task ReloadAsync(CancellationToken cancellationToken = default) => bookingCache.ReloadAsync(cancellationToken);
 
     private async Task InsertAllOrNothingAsync(IReadOnlyList<Booking> bookings, CancellationToken cancellationToken)
     {

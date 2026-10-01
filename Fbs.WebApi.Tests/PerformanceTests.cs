@@ -26,24 +26,27 @@ public abstract class PerformanceTests(FbsApiFactory factory)
     {
         var facilities = new[] { "Eiger", "Field", "Gym" };
         var users = new[] { Users.Booker, Users.SameUnit, Users.AllGroup, Users.OtherUnit };
-        for (var i = 0; i < ExistingBookings; i++)
-        {
-            var start = Midnight(-1 - i / 3).AddHours(8 + i % 3 * 3);
-            Factory.Google.AddBooking(
-                new Booking
+        Factory.AddBookings(
+            Enumerable
+                .Range(0, ExistingBookings)
+                .Select(i =>
                 {
-                    Id = Guid.NewGuid(),
-                    FacilityName = facilities[i % facilities.Length],
-                    Conduct = $"Conduct {i}",
-                    Description = "Past training",
-                    PocName = "POC",
-                    PocPhone = "6590000000",
-                    StartDateTime = start,
-                    EndDateTime = start.AddHours(2),
-                    UserPhone = users[i % users.Length],
-                }
-            );
-        }
+                    var start = Midnight(-1 - i / 3).AddHours(8 + i % 3 * 3);
+                    return new Booking
+                    {
+                        Id = Guid.NewGuid(),
+                        FacilityName = facilities[i % facilities.Length],
+                        Conduct = $"Conduct {i}",
+                        Description = "Past training",
+                        PocName = "POC",
+                        PocPhone = "6590000000",
+                        StartDateTime = start,
+                        EndDateTime = start.AddHours(2),
+                        UserPhone = users[i % users.Length],
+                    };
+                })
+                .ToList()
+        );
 
         for (var i = 0; i < Subscribers; i++)
         {

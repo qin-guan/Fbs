@@ -1,7 +1,6 @@
 using System.Net;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Tests.Data;
-using Fbs.WebApi.Tests.Fakes;
 using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
@@ -10,7 +9,7 @@ public abstract class BookingCancelTests(FbsApiFactory factory)
 {
     protected FbsApiFactory Factory { get; } = factory;
 
-    private Booking AddBooking(string userPhone = Users.Booker)
+    private async Task<Booking> AddBookingAsync(string userPhone = Users.Booker)
     {
         var start = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(10), TimeSpan.Zero);
         var booking = new Booking
@@ -22,7 +21,7 @@ public abstract class BookingCancelTests(FbsApiFactory factory)
             EndDateTime = start.AddHours(2),
             UserPhone = userPhone,
         };
-        Factory.Google.AddBooking(booking);
+        await Factory.AddBookingAsync(booking);
         return booking;
     }
 
@@ -35,25 +34,23 @@ public abstract class BookingCancelTests(FbsApiFactory factory)
     [Test]
     public async Task The_booker_can_cancel_their_booking()
     {
-        var booking = AddBooking();
+        var booking = await AddBookingAsync();
 
         var response = await CancelAsync(Users.Booker, booking.Id);
 
         await Assert.That(response).HasStatus(HttpStatusCode.NoContent);
-        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).IsEmpty();
-        await Assert.That(Factory.Google.Events(FakeGoogle.CarbonCopyCalendar)).IsEmpty();
+        await Factory.AssertStoredBookingsAsync(0);
     }
 
     [Test]
     public async Task Someone_in_the_same_unit_can_cancel_the_booking_and_the_booker_is_told_who()
     {
-        var booking = AddBooking();
+        var booking = await AddBookingAsync();
 
         var response = await CancelAsync(Users.SameUnit, booking.Id);
 
         await Assert.That(response).HasStatus(HttpStatusCode.NoContent);
-        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).IsEmpty();
-        await Assert.That(Factory.Google.Events(FakeGoogle.CarbonCopyCalendar)).IsEmpty();
+        await Factory.AssertStoredBookingsAsync(0);
 
         var messages = await Factory.Telegram.WaitForMessagesAsync(3);
         var toBooker = await Assert.That(messages).HasSingleItem(m => m.ChatId == 1001);
@@ -65,13 +62,12 @@ public abstract class BookingCancelTests(FbsApiFactory factory)
     [Test]
     public async Task Other_units_cannot_cancel_the_booking()
     {
-        var booking = AddBooking();
+        var booking = await AddBookingAsync();
 
         var response = await CancelAsync(Users.OtherUnit, booking.Id);
 
         await Assert.That(response).HasStatus(HttpStatusCode.Forbidden);
-        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).HasSingleItem();
-        await Assert.That(Factory.Google.Events(FakeGoogle.CarbonCopyCalendar)).HasSingleItem();
+        await Factory.AssertStoredBookingsAsync(1);
         await Task.Delay(200);
         await Assert.That(Factory.Telegram.Messages).IsEmpty();
     }
@@ -87,13 +83,13 @@ public abstract class BookingCancelTests(FbsApiFactory factory)
     [Test]
     public async Task Requires_a_signed_in_user()
     {
-        var booking = AddBooking();
+        var booking = await AddBookingAsync();
         using var anonymous = Factory.CreateClient();
 
         var response = await anonymous.DeleteAsync($"/Booking/{booking.Id}");
 
         await Assert.That(response).HasStatus(HttpStatusCode.Unauthorized);
-        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).HasSingleItem();
+        await Factory.AssertStoredBookingsAsync(1);
     }
 }
 

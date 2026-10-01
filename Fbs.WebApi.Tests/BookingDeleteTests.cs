@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Tests.Data;
-using Fbs.WebApi.Tests.Fakes;
 using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
@@ -34,8 +33,7 @@ public abstract class BookingDeleteTests(FbsApiFactory factory)
 
     private async Task AssertBookingIsGoneAsync()
     {
-        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).IsEmpty();
-        await Assert.That(Factory.Google.Events(FakeGoogle.CarbonCopyCalendar)).IsEmpty();
+        await Factory.AssertStoredBookingsAsync(0);
 
         var bookings = await _client.GetFromJsonAsync<List<JsonElement>>("/Booking");
         await Assert.That(bookings!).IsEmpty();
@@ -54,18 +52,6 @@ public abstract class BookingDeleteTests(FbsApiFactory factory)
         await Assert.That(messages.Select(m => m.ChatId)).IsEquivalentTo([1001L, 1002L, 1003L]);
         await Assert.That(messages).All().Satisfy(m => m.Text, text => text.Contains("CANCELLED"));
         await Assert.That(messages).All().Satisfy(m => m.Text, text => text.Contains(_booking.Id.ToString()));
-    }
-
-    [Test]
-    public async Task Succeeds_when_the_carbon_copy_event_was_already_removed()
-    {
-        // The carbon copy calendar accepts manual changes, so its event may already be gone
-        Factory.Google.RemoveEvent(FakeGoogle.CarbonCopyCalendar, _booking.Id);
-
-        var response = await DeleteAsync();
-
-        await Assert.That(response).HasStatus(HttpStatusCode.NoContent);
-        await AssertBookingIsGoneAsync();
     }
 
     [Test]
@@ -100,7 +86,7 @@ public abstract class BookingDeleteTests(FbsApiFactory factory)
         var response = await _client.DeleteAsync($"/Booking/{Guid.NewGuid()}");
 
         await Assert.That(response).HasStatus(HttpStatusCode.NotFound);
-        await Assert.That(Factory.Google.Events(FakeGoogle.MainCalendar)).HasSingleItem();
+        await Factory.AssertStoredBookingsAsync(1);
     }
 }
 

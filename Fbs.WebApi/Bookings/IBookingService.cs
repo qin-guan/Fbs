@@ -31,13 +31,21 @@ public interface IBookingService
     /// Saves a booking's new details. With <paramref name="checkForClash"/>, as when its time changed,
     /// it isn't saved if it would clash with another booking.
     /// </summary>
+    /// <param name="updated">The booking with its new details.</param>
+    /// <param name="updatedByPhone">Who is changing it. A store that keeps who made the booking never
+    /// changes that, and records this as who last changed it.</param>
     Task<UpdateResult> UpdateAsync(
         Booking updated,
+        string updatedByPhone,
         bool checkForClash,
         CancellationToken cancellationToken = default
     );
 
-    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    /// <param name="cancelledByPhone">Who is cancelling it, which a store that keeps cancelled bookings records.</param>
+    Task DeleteAsync(Guid id, string cancelledByPhone, CancellationToken cancellationToken = default);
+
+    /// <summary>Forgets anything held in memory, so the next read is of what is stored.</summary>
+    Task ReloadAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>

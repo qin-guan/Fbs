@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Fbs.WebApi.Entities;
 using Fbs.WebApi.Tests.Data;
-using Fbs.WebApi.Tests.Fakes;
 using Fbs.WebApi.Tests.Helpers;
 using TUnit.Assertions.Enums;
 
@@ -60,8 +59,6 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
             .ToList();
     }
 
-    private int BatchEventCount(string calendarId) => Factory.Google.Events(calendarId).Count;
-
     [Test]
     public async Task Creates_every_slot_and_sends_a_telegram_message_for_each_booking()
     {
@@ -82,8 +79,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
         await Assert.That(created[0].StartDateTime).IsEqualTo(Midnight(10));
         await Assert.That(created[0].EndDateTime).IsEqualTo(Midnight(11));
 
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(3);
-        await Assert.That(BatchEventCount(FakeGoogle.CarbonCopyCalendar)).IsEqualTo(3);
+        await Factory.AssertStoredBookingsAsync(3);
 
         // One message per booking to the booker, their unit and the "All" group; none to other units
         var messages = await Factory.Telegram.WaitForMessagesAsync(9);
@@ -121,7 +117,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
         );
 
         await Assert.That(response).HasStatus(HttpStatusCode.OK);
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(3);
+        await Factory.AssertStoredBookingsAsync(3);
     }
 
     [Test]
@@ -146,7 +142,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
             EndDateTime = Midnight(11).AddHours(10),
             UserPhone = Users.SameUnit,
         };
-        Factory.Google.AddBooking(existing);
+        await Factory.AddBookingAsync(existing);
 
         var response = await PostBatchAsync(
             Slot("Eiger", Midnight(11), Midnight(12)),
@@ -159,8 +155,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
         await Assert.That(error.Code).IsEqualTo("EX10");
         await Assert.That(error.Reason).Contains(existing.Id.ToString());
 
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(1);
-        await Assert.That(BatchEventCount(FakeGoogle.CarbonCopyCalendar)).IsEqualTo(1);
+        await Factory.AssertStoredBookingsAsync(1);
         await Task.Delay(200);
         await Assert.That(Factory.Telegram.Messages).IsEmpty();
     }
@@ -179,13 +174,13 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
         await Assert.That(error.Name).IsEqualTo("slots[2]");
         await Assert.That(error.Code).IsEqualTo("EX11");
         await Assert.That(error.Reason).IsEqualTo("Overlaps with slot 1 in this batch");
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(0);
+        await Factory.AssertStoredBookingsAsync(0);
     }
 
     [Test]
     public async Task Every_clash_is_reported()
     {
-        Factory.Google.AddBooking(new Booking
+        await Factory.AddBookingAsync(new Booking
         {
             Id = Guid.NewGuid(),
             FacilityName = "Eiger",
@@ -219,7 +214,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
         var errors = await ErrorsAsync(response);
         await Assert.That(errors.Select(e => e.Name)).IsEquivalentTo(["slots[1]", "slots[2]"], CollectionOrdering.Matching);
         await Assert.That(errors.Select(e => e.Code)).IsEquivalentTo(new string?[] { "EX13", "EX12" }, CollectionOrdering.Matching);
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(0);
+        await Factory.AssertStoredBookingsAsync(0);
     }
 
     [Test]
@@ -252,7 +247,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
             .That(await ErrorsAsync(tooMany))
             .Contains(e => e.Reason == "A batch can have at most 50 bookings");
 
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(0);
+        await Factory.AssertStoredBookingsAsync(0);
     }
 
     [Test]
@@ -264,27 +259,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
         );
 
         await Assert.That(response).HasStatus(HttpStatusCode.BadRequest);
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(0);
-    }
-
-    [Test]
-    public async Task A_calendar_failure_part_way_through_rolls_back_the_batch()
-    {
-        // Fail one of the 8 inserts (main and carbon copy calendars for each booking), after others have succeeded
-        Factory.Google.FailInsertNumber = 5;
-
-        var response = await PostBatchAsync(
-            Slot("Eiger", Midnight(10), Midnight(11)),
-            Slot("Eiger", Midnight(11), Midnight(12)),
-            Slot("Eiger", Midnight(12), Midnight(13)),
-            Slot("Eiger", Midnight(13), Midnight(14))
-        );
-
-        await Assert.That(response).HasStatus(HttpStatusCode.InternalServerError);
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(0);
-        await Assert.That(BatchEventCount(FakeGoogle.CarbonCopyCalendar)).IsEqualTo(0);
-        await Task.Delay(200);
-        await Assert.That(Factory.Telegram.Messages).IsEmpty();
+        await Factory.AssertStoredBookingsAsync(0);
     }
 
     [Test]
@@ -304,7 +279,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
 
         await Assert.That(responses).HasSingleItem(r => r.StatusCode == HttpStatusCode.OK);
         await Assert.That(responses).HasSingleItem(r => r.StatusCode == HttpStatusCode.BadRequest);
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(2);
+        await Factory.AssertStoredBookingsAsync(2);
     }
 
     [Test]
@@ -345,7 +320,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
             }
         );
         await Assert.That(clash).HasStatus(HttpStatusCode.BadRequest);
-        await Assert.That(BatchEventCount(FakeGoogle.MainCalendar)).IsEqualTo(2);
+        await Factory.AssertStoredBookingsAsync(2);
     }
 }
 

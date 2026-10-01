@@ -40,7 +40,7 @@ public class Endpoint(
             return;
         }
 
-        await bookingService.DeleteAsync(booking.Id, ct);
+        await bookingService.DeleteAsync(booking.Id, phone, ct);
         publisher.Publish(
             new BookingDeletedEvent
             {
