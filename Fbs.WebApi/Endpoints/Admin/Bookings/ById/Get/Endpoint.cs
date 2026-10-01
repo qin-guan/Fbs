@@ -11,7 +11,7 @@ public class Request
     public Guid Id { get; set; }
 }
 
-public class Endpoint(BookingRepository bookingRepository, UserRepository userRepository)
+public class Endpoint(BookingRepository bookingRepository, IUserRepository userRepository)
     : Endpoint<Request, BookingWithUser>
 {
     public override void Configure()

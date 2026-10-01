@@ -3,7 +3,7 @@ using Fbs.WebApi.Repository;
 
 namespace Fbs.WebApi.Endpoints.NominalRoll.Get;
 
-public class Endpoint(NominalRollRepository nominalRoll)
+public class Endpoint(INominalRollRepository nominalRoll)
     : EndpointWithoutRequest<IEnumerable<Entities.NominalRoll>>
 {
     public override void Configure()

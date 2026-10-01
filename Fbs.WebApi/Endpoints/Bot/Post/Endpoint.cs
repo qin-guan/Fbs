@@ -14,7 +14,7 @@ namespace Fbs.WebApi.Endpoints.Bot.Post;
 public class Endpoint(
     ILogger<Endpoint> logger,
     TelegramBotClient client,
-    UserRepository userRepository,
+    IUserRepository userRepository,
     IOptions<TelegramOptions> options
 ) : Endpoint<Update>
 {

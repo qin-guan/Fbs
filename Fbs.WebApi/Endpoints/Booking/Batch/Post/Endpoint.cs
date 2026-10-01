@@ -13,8 +13,8 @@ namespace Fbs.WebApi.Endpoints.Booking.Batch.Post;
 public class Endpoint(
     ILogger<Endpoint> logger,
     BookingRepository bookingRepository,
-    UserRepository userRepository,
-    FacilityRepository facilityRepository,
+    IUserRepository userRepository,
+    IFacilityRepository facilityRepository,
     BookingWriteLock bookingWriteLock,
     BackgroundPublisher publisher
 ) : Endpoint<Request, List<Entities.Booking>>

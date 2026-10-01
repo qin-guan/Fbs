@@ -12,7 +12,7 @@ public class NominalRollRepository(
     HybridCache cache,
     IOptions<GoogleOptions> options,
     SheetsService sheetsService
-) : IRepository<NominalRoll>
+) : INominalRollRepository
 {
     private readonly string[] _header = ["Name", "Unit", "Phone"];
 

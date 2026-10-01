@@ -7,8 +7,8 @@ namespace Fbs.WebApi.Endpoints.Booking.Post;
 
 public class Endpoint(
     BookingRepository bookingRepository,
-    UserRepository userRepository,
-    FacilityRepository facilityRepository,
+    IUserRepository userRepository,
+    IFacilityRepository facilityRepository,
     BookingWriteLock bookingWriteLock,
     BackgroundPublisher publisher
 ) : Endpoint<Request, Entities.Booking>
