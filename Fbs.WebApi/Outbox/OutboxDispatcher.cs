@@ -131,7 +131,7 @@ public sealed class OutboxDispatcher(
               AND (LockedUntil IS NULL OR LockedUntil < @now)
               AND Attempts < @maxAttempts
               {(tenantId is null ? "" : "AND TenantId = @tenantId")}
-            ORDER BY NextAttemptAt
+            ORDER BY NextAttemptAt, CreatedAt
             LIMIT @limit
             """,
             parameters
@@ -145,6 +145,7 @@ public sealed class OutboxDispatcher(
         return await sql.Queryable<OutboxMessage>()
             .Where(m => m.LockedBy == token && m.Status == OutboxStatus.Pending)
             .OrderBy(m => m.NextAttemptAt)
+            .OrderBy(m => m.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 

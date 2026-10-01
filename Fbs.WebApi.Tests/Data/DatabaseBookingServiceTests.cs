@@ -1,5 +1,8 @@
 using Fbs.WebApi.Bookings;
+using System.Text.Json;
 using Fbs.WebApi.Data.Entities;
+using Fbs.WebApi.Notifications;
+using Fbs.WebApi.Outbox;
 using SqlSugar;
 using Booking = Fbs.WebApi.Entities.Booking;
 using DataBooking = Fbs.WebApi.Data.Entities.Booking;
@@ -50,6 +53,19 @@ public class DatabaseBookingServiceTests
         }
 
         public DataBooking Row(Guid id) => Tenant.Db.Queryable<DataBooking>().Single(b => b.Id == id);
+
+        /// <summary>The messages written to tell people, oldest first.</summary>
+        public List<(OutboxMessage Message, TelegramBookingPayload Payload)> Outbox()
+        {
+            var tenantId = Tenant.TenantId;
+            return Tenant
+                .Db.Queryable<OutboxMessage>()
+                .Where(m => m.TenantId == tenantId)
+                .OrderBy(m => m.CreatedAt)
+                .ToList()
+                .Select(m => (m, JsonSerializer.Deserialize<TelegramBookingPayload>(m.Payload)!))
+                .ToList();
+        }
     }
 
     private static async Task<Setup> SetUpAsync(string timeZone = "Asia/Singapore")
@@ -347,6 +363,125 @@ public class DatabaseBookingServiceTests
         // Another request for the facility isn't left waiting for a lock the failure still holds
         var next = await setup.Service.CreateAsync([NewBooking("Field", 8, 10)]).WaitAsync(TimeSpan.FromSeconds(10));
         await Assert.That(next.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task A_booking_writes_a_message_to_tell_people_about_it()
+    {
+        var setup = await SetUpAsync();
+        var booking = NewBooking("Field", 8, 10);
+
+        await setup.Service.CreateAsync([booking]);
+
+        var (message, payload) = await Assert.That(setup.Outbox()).HasSingleItem();
+        await Assert.That(message.Type).IsEqualTo(TelegramBookingNotifier.MessageType);
+        await Assert.That(message.Status).IsEqualTo(OutboxStatus.Pending);
+        await Assert.That(payload.Change).IsEqualTo(BookingChange.Created);
+        await Assert.That(payload.BookingIds).IsEquivalentTo([booking.Id]);
+        await Assert.That(payload.ActorMemberId).IsEqualTo(setup.Booker);
+    }
+
+    [Test]
+    public async Task Bookings_made_together_write_one_message_between_them()
+    {
+        var setup = await SetUpAsync();
+        var bookings = new[] { NewBooking("Field", 8, 10, days: 10), NewBooking("Field", 8, 10, days: 11), NewBooking("Gym", 8, 10, days: 12) };
+
+        await setup.Service.CreateAsync(bookings);
+
+        var (_, payload) = await Assert.That(setup.Outbox()).HasSingleItem();
+        await Assert.That(payload.BookingIds).IsEquivalentTo(bookings.Select(b => b.Id).ToList());
+    }
+
+    [Test]
+    public async Task Nobody_is_told_about_a_booking_that_was_not_made()
+    {
+        var setup = await SetUpAsync();
+        await setup.Service.CreateAsync([NewBooking("Field", 8, 10)]);
+        var tooLong = NewBooking("Field", 14, 16);
+        tooLong.Conduct = new string('a', 500);
+
+        await setup.Service.CreateAsync([NewBooking("Field", 9, 11)]);
+        await Assert.That(async () => await setup.Service.CreateAsync([NewBooking("Field", 12, 13), tooLong])).Throws<Exception>();
+
+        // Only the first, which was made
+        await Assert.That(setup.Outbox()).HasSingleItem();
+    }
+
+    [Test]
+    public async Task An_update_writes_a_message_that_says_where_it_was_only_when_it_moved()
+    {
+        var setup = await SetUpAsync();
+        var booking = NewBooking("Field", 8, 10);
+        await setup.Service.CreateAsync([booking]);
+        var rename = NewBooking("Field", 8, 10);
+        rename.Id = booking.Id;
+        rename.Conduct = "Renamed";
+        var move = NewBooking("Field", 12, 14);
+        move.Id = booking.Id;
+
+        await setup.Service.UpdateAsync(rename, ColleaguePhone, checkForClash: false);
+        await setup.Service.UpdateAsync(move, ColleaguePhone, checkForClash: true);
+
+        var outbox = setup.Outbox();
+        await Assert.That(outbox.Count).IsEqualTo(3);
+        await Assert.That(outbox[1].Payload.Change).IsEqualTo(BookingChange.Updated);
+        await Assert.That(outbox[1].Payload.ActorMemberId).IsEqualTo(setup.Colleague);
+        await Assert.That(outbox[1].Payload.PreviousStartUtc).IsNull();
+        await Assert.That(outbox[2].Payload.PreviousStartUtc).IsEqualTo(At(8));
+        await Assert.That(outbox[2].Payload.PreviousEndUtc).IsEqualTo(At(10));
+    }
+
+    [Test]
+    public async Task A_clash_on_update_writes_nothing()
+    {
+        var setup = await SetUpAsync();
+        var booking = NewBooking("Field", 8, 10);
+        await setup.Service.CreateAsync([booking, NewBooking("Field", 12, 14)]);
+        var move = NewBooking("Field", 12, 14);
+        move.Id = booking.Id;
+
+        await setup.Service.UpdateAsync(move, BookerPhone, checkForClash: true);
+
+        await Assert.That(setup.Outbox().Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Cancelling_writes_a_message_once()
+    {
+        var setup = await SetUpAsync();
+        var booking = NewBooking("Field", 8, 10);
+        await setup.Service.CreateAsync([booking]);
+
+        await setup.Service.DeleteAsync(booking.Id, ColleaguePhone);
+        await setup.Service.DeleteAsync(booking.Id, ColleaguePhone);
+
+        var outbox = setup.Outbox();
+        await Assert.That(outbox.Count).IsEqualTo(2);
+        await Assert.That(outbox[1].Payload.Change).IsEqualTo(BookingChange.Cancelled);
+        await Assert.That(outbox[1].Payload.ActorMemberId).IsEqualTo(setup.Colleague);
+        await Assert.That(outbox[1].Payload.BookingIds).IsEquivalentTo([booking.Id]);
+    }
+
+    [Test]
+    public async Task The_dispatcher_is_woken_when_a_booking_is_saved_and_not_when_it_is_not()
+    {
+        var setup = await SetUpAsync();
+        var signal = new OutboxSignal();
+        var service = setup.Tenant.BookingServiceFor(await setup.Tenant.NewClientAsync(), signal);
+        var woken = async () =>
+        {
+            var started = DateTime.UtcNow;
+            await signal.WaitAsync(TimeSpan.FromSeconds(1), CancellationToken.None);
+            return DateTime.UtcNow - started < TimeSpan.FromMilliseconds(500);
+        };
+
+        await service.CreateAsync([NewBooking("Field", 8, 10)]);
+        await Assert.That(await woken()).IsTrue();
+
+        var clash = await service.CreateAsync([NewBooking("Field", 9, 11)]);
+        await Assert.That(clash.Succeeded).IsFalse();
+        await Assert.That(await woken()).IsFalse();
     }
 
     [Test]

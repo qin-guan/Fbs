@@ -101,6 +101,12 @@ at once, as they do while a new version starts, and a message that an instance d
 that are done are removed after `Outbox:Retention` (7 days). `Outbox:PollInterval` (10 seconds) is how long an idle
 dispatcher waits before looking, for messages written by another instance, and `Outbox:TenantId` limits it to one tenant.
 
+With `Storage:Provider=Database`, telling people about bookings on Telegram goes through the outbox: whoever made the booking,
+plus those who asked to hear about everyone's bookings or their unit's, once each. Bookings made together are one message
+that lists them, not one for each. People with no Telegram are left out, and so are those who have blocked the bot; a
+Telegram outage is tried again later without telling twice the people who were told already. Times are in the tenant's
+time zone. Sending is kept to `Telegram:MessagesPerSecond` (25) across everything, as Telegram allows a bot about 30.
+
 ## Testing
 
 The API tests use [TUnit](https://tunit.dev) and run the API in memory, with Google and Telegram faked, so they need

@@ -183,5 +183,7 @@ public class DatabaseFbsApiFactory : FbsApiFactory
         builder.UseSetting("Storage:TenantSlug", Slug);
         // Every test's API shares the one outbox table, and only this one's messages are its to send
         builder.UseSetting("Outbox:TenantId", _tenantId.ToString());
+        // Looks often, as messages written by another instance are only found that way
+        builder.UseSetting("Outbox:PollInterval", "00:00:01");
     }
 }

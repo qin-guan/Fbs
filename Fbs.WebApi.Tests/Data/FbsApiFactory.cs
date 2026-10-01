@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -105,9 +106,14 @@ public class FbsApiFactory : WebApplicationFactory<Program>
             services.RemoveAll<SheetsService>();
             services.AddSingleton(new SheetsService(initializer));
 
+            // Without the retries every HTTP client gets, which would make a failure from the fake take
+            // seconds to show, and are not what these tests are about
+#pragma warning disable EXTEXP0001 // Experimental, but only used here, to stand in for what is being kept out of these tests
             services
                 .AddHttpClient("tgwebhook")
-                .ConfigurePrimaryHttpMessageHandler(() => Telegram.CreateHandler());
+                .ConfigurePrimaryHttpMessageHandler(() => Telegram.CreateHandler())
+                .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
 
             services
                 .AddAuthentication(options =>

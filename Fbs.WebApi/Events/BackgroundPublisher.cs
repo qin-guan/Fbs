@@ -1,7 +1,17 @@
 using System.Threading.Channels;
 using FastEndpoints;
+using Microsoft.Extensions.Options;
 
 namespace Fbs.WebApi.Events;
+
+public sealed class EventOptions
+{
+    /// <summary>
+    /// Whether events are published at all. Off when bookings are in the database, which tells people about
+    /// them through the outbox, inside the same transaction, instead. Goes with the events.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+}
 
 /// <summary>
 /// Publishes events one at a time in the background, so requests don't wait for the Telegram
@@ -9,7 +19,8 @@ namespace Fbs.WebApi.Events;
 /// </summary>
 public sealed class BackgroundPublisher(
     ILogger<BackgroundPublisher> logger,
-    IServiceProvider serviceProvider
+    IServiceProvider serviceProvider,
+    IOptions<EventOptions> options
 ) : IHostedLifecycleService
 {
     private readonly Channel<(object Event, Func<Task> Publish)> _queue = Channel.CreateUnbounded<(
@@ -22,6 +33,11 @@ public sealed class BackgroundPublisher(
     public void Publish<TEvent>(TEvent @event)
         where TEvent : notnull
     {
+        if (!options.Value.Enabled)
+        {
+            return;
+        }
+
         var bus = serviceProvider.GetRequiredService<EventBus<TEvent>>();
         if (!_queue.Writer.TryWrite((@event, () => bus.PublishAsync(@event, Mode.WaitForAll))))
         {

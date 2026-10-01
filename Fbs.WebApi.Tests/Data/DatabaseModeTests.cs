@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Entities;
+using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Tests.Helpers;
 using Booking = Fbs.WebApi.Entities.Booking;
 using DataBooking = Fbs.WebApi.Data.Entities.Booking;
@@ -105,5 +106,48 @@ public class DatabaseModeTests(DatabaseFbsApiFactory factory)
         var row = factory.Db.Queryable<DataBooking>().Single(b => b.Id == id);
         await Assert.That(row.CancelledAt).IsNotNull();
         await Assert.That(await client.GetAsync($"/Booking/{id}")).HasStatus(HttpStatusCode.NotFound);
+    }
+
+    [Test]
+    public async Task A_telegram_outage_is_ridden_out_without_telling_anyone_twice()
+    {
+        factory.Telegram.FailingChatIds.Add(1003);
+        using var client = factory.CreateClientFor(Users.Booker);
+
+        var created = await client.PostAsJsonAsync(
+            "/Booking",
+            new
+            {
+                conduct = "Range",
+                facilityName = "Field",
+                startDateTime = Midnight(3).AddHours(8),
+                endDateTime = Midnight(3).AddHours(10),
+            }
+        );
+        await Assert.That(created).HasStatus(HttpStatusCode.Created);
+
+        // The two whose chats work are told at once, and the message is put back to try the third again later
+        await factory.Telegram.WaitForMessagesAsync(2);
+        var tenantId = factory.TenantId;
+        OutboxMessage? message = null;
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline && message?.LastError is null)
+        {
+            await Task.Delay(100);
+            message = factory.Db.Queryable<OutboxMessage>().Single(m => m.TenantId == tenantId);
+        }
+
+        await Assert.That(message!.Status).IsEqualTo(OutboxStatus.Pending);
+        await Assert.That(message.LastError).IsNotNull();
+        await Assert.That(factory.Telegram.Messages.Select(m => m.ChatId)).IsEquivalentTo([1001L, 1002L]);
+
+        factory.Telegram.FailingChatIds.Clear();
+        factory.Db.Updateable<OutboxMessage>().SetColumns(m => new OutboxMessage { NextAttemptAt = DateTimeOffset.UtcNow.AddMinutes(-1) }).Where(m => m.TenantId == tenantId).ExecuteCommand();
+        await factory.Telegram.WaitForMessagesAsync(3);
+        await Task.Delay(500);
+
+        // Each told once, including those told before it failed
+        await Assert.That(factory.Telegram.Messages.Select(m => m.ChatId)).IsEquivalentTo([1001L, 1002L, 1003L]);
+        await Assert.That(factory.Db.Queryable<OutboxMessage>().Single(m => m.TenantId == tenantId).Status).IsEqualTo(OutboxStatus.Done);
     }
 }

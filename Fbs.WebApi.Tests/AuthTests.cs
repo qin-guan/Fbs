@@ -144,11 +144,10 @@ public class GoogleAuthTests(FbsApiFactory factory) : AuthTests(factory);
 /// <summary>AuthTests with users, facilities, the roster and login codes in the database.</summary>
 [ClassDataSource<DatabaseFbsApiFactory>]
 [InheritsTests]
-// A login code belongs to a phone number, not to a tenant, and every test asks for one for the same
-// number, so these can't run alongside each other, and nothing else asks for codes
-[NotInParallel("login-codes")]
 public class DatabaseAuthTests(DatabaseFbsApiFactory factory) : AuthTests(factory)
 {
+    // A login code belongs to a phone number, not to a tenant, and every test asks for one for the same
+    // number, so one left by the last test would stop the next asking for another
     [Before(Test)]
     public void ClearLoginCodes() => ((DatabaseFbsApiFactory)Factory).ClearLoginCodes();
 }

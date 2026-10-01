@@ -1,5 +1,7 @@
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
+using Fbs.WebApi.Notifications;
+using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Repository.Database;
 using SqlSugar;
 using Booking = Fbs.WebApi.Entities.Booking;
@@ -25,7 +27,7 @@ namespace Fbs.WebApi.Bookings;
 /// cancelling keeps the booking, marked as cancelled, so nothing that refers to it is left dangling.
 /// </para>
 /// </remarks>
-public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant tenant) : IBookingService
+public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant tenant, OutboxSignal signal) : IBookingService
 {
     // The most each column holds, see the Booking entity
     private const int ConductLength = 200;
@@ -91,7 +93,20 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         }
 
         await sql.Insertable(rows).ExecuteCommandAsync(cancellationToken);
+        await OutboxWriter.EnqueueAsync(
+            sql,
+            tenantId,
+            TelegramBookingNotifier.MessageType,
+            new TelegramBookingPayload
+            {
+                Change = BookingChange.Created,
+                BookingIds = rows.Select(r => r.Id).ToList(),
+                ActorMemberId = rows[0].BookedByMemberId,
+            },
+            cancellationToken
+        );
         tran.CommitTran();
+        signal.Notify();
 
         for (var i = 0; i < bookings.Count; i++)
         {
@@ -157,6 +172,9 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         }
 
         var now = DateTimeOffset.UtcNow;
+        var previousStart = row.StartUtc;
+        var previousEnd = row.EndUtc;
+        var timeChanged = previousStart != start || previousEnd != end;
         row.FacilityId = facility.Id;
         row.StartUtc = start;
         row.EndUtc = end;
@@ -184,7 +202,22 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
                 b.Revision,
             })
             .ExecuteCommandAsync(cancellationToken);
+        await OutboxWriter.EnqueueAsync(
+            sql,
+            tenantId,
+            TelegramBookingNotifier.MessageType,
+            new TelegramBookingPayload
+            {
+                Change = BookingChange.Updated,
+                BookingIds = [row.Id],
+                ActorMemberId = editor.Id,
+                PreviousStartUtc = timeChanged ? previousStart : null,
+                PreviousEndUtc = timeChanged ? previousEnd : null,
+            },
+            cancellationToken
+        );
         tran.CommitTran();
+        signal.Notify();
 
         return new UpdateResult(snapshot.ToBooking(row), null);
     }
@@ -196,8 +229,9 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         var cancelledById = snapshot.MemberByPhone(cancelledByPhone).Id;
         var now = DateTimeOffset.UtcNow;
 
-        // One statement, so cancelling something already cancelled changes nothing
-        await sql.Updateable<DataBooking>()
+        // Cancelling something already cancelled changes nothing, and tells nobody
+        using var tran = sql.Ado.UseTran();
+        var cancelled = await sql.Updateable<DataBooking>()
             .SetColumns(b => new DataBooking
             {
                 CancelledAt = now,
@@ -208,6 +242,20 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
             })
             .Where(b => b.Id == id && b.TenantId == tenantId && b.CancelledAt == null)
             .ExecuteCommandAsync(cancellationToken);
+        if (cancelled == 0)
+        {
+            return;
+        }
+
+        await OutboxWriter.EnqueueAsync(
+            sql,
+            tenantId,
+            TelegramBookingNotifier.MessageType,
+            new TelegramBookingPayload { Change = BookingChange.Cancelled, BookingIds = [id], ActorMemberId = cancelledById },
+            cancellationToken
+        );
+        tran.CommitTran();
+        signal.Notify();
     }
 
     /// <summary>Bookings are read from the database every time, so there is nothing to reload.</summary>
@@ -262,19 +310,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         // Including those who have left: what they booked is still theirs
         var members = await sql.Queryable<TenantMember>().Where(m => m.TenantId == tenantId).ToListAsync(cancellationToken);
 
-        return new Snapshot(current, ZoneOf(current), facilities, members);
-    }
-
-    private static TimeZoneInfo ZoneOf(Tenant tenant)
-    {
-        try
-        {
-            return TimeZoneInfo.FindSystemTimeZoneById(tenant.TimeZone);
-        }
-        catch (Exception e) when (e is TimeZoneNotFoundException or InvalidTimeZoneException)
-        {
-            return TimeZoneInfo.Utc;
-        }
+        return new Snapshot(current, TenantTimeZone.Of(current), facilities, members);
     }
 
     /// <summary>What is needed to turn bookings into rows, and rows into bookings.</summary>
