@@ -115,9 +115,23 @@ The old storage calendar is no longer read or written. Keep it, read only, as a 
 
 ## If it goes wrong
 
-Set `Storage__Provider` back (or remove it) and redeploy: the API reads Google again, exactly as before. What was done in the
-database after the switch is not copied back to Google, so bookings made in between would have to be made again in it, and
-`import-legacy --overwrite` will refuse to run over the database once it has been used. The sooner it is noticed, the less there is.
+Going back loses nothing if the bookings made in the database since the switch are written back first. In the container:
+
+```sh
+dotnet Fbs.DbMigrator.dll export-legacy --tenant 3sib --dry-run
+dotnet Fbs.DbMigrator.dll export-legacy --tenant 3sib
+```
+
+This writes what was booked, changed and cancelled since to Google Calendar, in the form the old version reads (in both
+calendars, with the IDs bookings have in the database), and says what it could not write: a booking by someone since taken off
+the Users sheet, or with more written on it than an event can hold. It exits 2 when there is anything to say, and running it
+again writes only what is still different. Put `Maintenance__ReadOnly=true` on first, as for the switch, so that nothing is
+made while it runs.
+
+Then set `Storage__Provider` back (or remove it) and redeploy: the API reads Google again, as before. Only bookings are written
+back. The sheets are where users and facilities are edited, so they are as they were, but who linked a Telegram chat, was made
+an admin, or changed whom they hear about, since the switch, is not. After going back, `import-legacy --overwrite` will refuse to
+run over the database once it has been used, which is as it should be.
 
 ## Afterwards
 

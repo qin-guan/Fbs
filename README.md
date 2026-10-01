@@ -97,6 +97,7 @@ dotnet run --project ./Fbs.DbMigrator -- import-legacy --tenant 3sib --name "3 S
 dotnet run --project ./Fbs.DbMigrator -- import-legacy --tenant 3sib --name "3 SIB";             # import it, and make the tenant if it isn't there
 dotnet run --project ./Fbs.DbMigrator -- verify-legacy --tenant 3sib;                            # exits 2 if anything is different
 dotnet run --project ./Fbs.DbMigrator -- import-legacy --tenant 3sib --overwrite;                # replace what an earlier import saved, for the last one
+dotnet run --project ./Fbs.DbMigrator -- export-legacy --tenant 3sib;                            # going back: write what was booked in the database back to Google Calendar
 ```
 
 It keeps the IDs bookings have, so the events that go with them stay the same, and people who have never signed in with an account
@@ -105,7 +106,11 @@ sheet twice (the first counts, as it always has), are left out and listed as war
 on the sheet (kept as by a member who has left), of facilities no longer on the sheet (kept, and nobody can book them), and
 bookings that overlap another. Everything is done in one transaction, so it is all imported or none of it.
 
-Running it again only adds what is new, so it can be run days ahead, and again just before switching. `--overwrite` replaces
+`export-legacy` is for going back after the switch: it writes bookings made, changed and cancelled in the database back to
+Google Calendar in the form the old version reads (in both calendars, keeping their IDs), lists any it can't, and writes only
+what is still different when run again.
+
+Running `import-legacy` again only adds what is new, so it can be run days ahead, and again just before switching. `--overwrite` replaces
 what was imported with what Google has now, and is refused once anything has been done in the database, as Google is by then
 out of date.
 

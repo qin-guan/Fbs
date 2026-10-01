@@ -139,7 +139,7 @@ public class MigratorTests
         await using var database = await TestDatabase.CreateAsync();
         await RunAsync(database.ConnectionString, "apply");
 
-        foreach (var command in new[] { "import-legacy", "verify-legacy" })
+        foreach (var command in new[] { "import-legacy", "verify-legacy", "export-legacy" })
         {
             var result = await RunAsync(database.ConnectionString, command);
 
@@ -167,6 +167,7 @@ public class MigratorTests
 
         await Assert.That(result.Output).Contains("import-legacy");
         await Assert.That(result.Output).Contains("verify-legacy");
+        await Assert.That(result.Output).Contains("export-legacy");
     }
 
     private static bool HasColumn(SqlSugar.ISqlSugarClient db, string table, string column) =>

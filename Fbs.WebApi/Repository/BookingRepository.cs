@@ -87,7 +87,12 @@ public class BookingRepository(
             cancellationToken
         );
 
-        entity.Id = Guid.NewGuid();
+        // Made here unless it has one already, as when a booking that was made in the database is written back
+        if (entity.Id == Guid.Empty)
+        {
+            entity.Id = Guid.NewGuid();
+        }
+
         var data = Convert.ToBase64String(MemoryPackSerializer.Serialize(entity));
 
         if (data.Length > MaxEventDataLength)

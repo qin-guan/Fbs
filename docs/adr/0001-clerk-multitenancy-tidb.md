@@ -311,7 +311,7 @@ Each is a small PR stacked on the one before.
 - [x] Sheets as inbound reference data (#234)
 - [x] Cutover readiness: migrator in the image, `/health` pings the database, `Maintenance:ReadOnly`,
   runbook, AppHost with TiDB
-- [ ] `export-legacy` for rollback
+- [x] `export-legacy` for rollback (writes bookings made, changed and cancelled in the database back as legacy events)
 - [ ] Delete the Google-as-store code, the legacy events and handlers, and the importer, after the
   switch has been verified in production (a separate change, so the switch can be undone by
   configuration alone until then)
