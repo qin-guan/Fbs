@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using SqlSugar;
 
@@ -37,22 +38,54 @@ public static class SchemaDifferenceInspector
         return new SchemaDifferenceReport(
             entityTypes,
             differenceProvider.ToDiffString()?.Trim() ?? string.Empty,
-            schemaDifferences
+            schemaDifferences,
+            FindMissingIndexes(sql, entityTypes)
         );
+    }
+
+    /// <summary>
+    /// The indexes the entities declare that a table that is there doesn't have. SqlSugar's own
+    /// comparison only looks at columns, so a dropped unique index would go unnoticed, and with it
+    /// what stops duplicates. Tables that aren't there yet are reported as whole tables instead.
+    /// </summary>
+    private static IReadOnlyList<MissingIndex> FindMissingIndexes(ISqlSugarClient sql, Type[] entityTypes)
+    {
+        var missing = new List<MissingIndex>();
+        foreach (var type in entityTypes)
+        {
+            var declared = type.GetCustomAttributes<SugarIndexAttribute>().ToList();
+            var table = sql.EntityMaintenance.GetEntityInfo(type).DbTableName;
+            if (declared.Count == 0 || !sql.DbMaintenance.IsAnyTable(table, false))
+            {
+                continue;
+            }
+
+            var existing = sql.DbMaintenance.GetIndexList(table).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            missing.AddRange(
+                declared
+                    .Where(index => !existing.Contains(index.IndexName))
+                    .Select(index => new MissingIndex(table, index.IndexName, index.IsUnique))
+            );
+        }
+
+        return missing;
     }
 }
 
 public sealed record SchemaDifferenceReport(
     IReadOnlyList<Type> EntityTypes,
     string RawText,
-    IReadOnlyList<SchemaDifferenceTable> Tables
+    IReadOnlyList<SchemaDifferenceTable> Tables,
+    IReadOnlyList<MissingIndex> MissingIndexes
 )
 {
-    public bool HasDifferences => Tables.Count > 0;
+    public bool HasDifferences => Tables.Count > 0 || MissingIndexes.Count > 0;
 
     /// <summary>Whether applying the changes would drop a column, and the data in it.</summary>
     public bool HasDestructiveChanges => Tables.Any(table => table.DeleteColumns.Count > 0);
 }
+
+public sealed record MissingIndex(string TableName, string IndexName, bool IsUnique);
 
 public sealed record SchemaDifferenceTable(
     string TableName,

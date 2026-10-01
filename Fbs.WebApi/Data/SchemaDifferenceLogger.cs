@@ -17,9 +17,21 @@ public static class SchemaDifferenceLogger
 
         logger.Log(
             differenceLevel,
-            "Pending database schema changes detected across {TableCount} table(s).",
-            report.Tables.Count
+            "Pending database schema changes detected across {TableCount} table(s) and {IndexCount} missing index(es).",
+            report.Tables.Count,
+            report.MissingIndexes.Count
         );
+
+        foreach (var index in report.MissingIndexes)
+        {
+            logger.Log(
+                differenceLevel,
+                "{TableName}: missing {Kind} index {IndexName}",
+                index.TableName,
+                index.IsUnique ? "unique" : "non-unique",
+                index.IndexName
+            );
+        }
 
         foreach (var table in report.Tables)
         {

@@ -88,6 +88,25 @@ public class SchemaTests
     }
 
     [Test]
+    public async Task A_dropped_index_is_a_difference_and_putting_it_back_is_not_destructive()
+    {
+        var (database, db) = await NewDatabaseAsync();
+        await using var _ = database;
+        await db.Ado.ExecuteCommandAsync("DROP INDEX UX_Facility_TenantId_Name ON Facility");
+
+        var report = SchemaDifferenceInspector.Inspect(db);
+
+        await Assert.That(report.HasDifferences).IsTrue();
+        await Assert.That(report.HasDestructiveChanges).IsFalse();
+        var missing = await Assert.That(report.MissingIndexes).HasSingleItem();
+        await Assert.That(missing).IsEqualTo(new MissingIndex("Facility", "UX_Facility_TenantId_Name", IsUnique: true));
+
+        db.CodeFirst.InitTables(report.EntityTypes.ToArray());
+
+        await Assert.That(SchemaDifferenceInspector.Inspect(db).HasDifferences).IsFalse();
+    }
+
+    [Test]
     public async Task Leftover_temporary_tables_are_only_dropped_when_allowed()
     {
         var (database, db) = await NewDatabaseAsync();

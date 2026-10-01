@@ -208,6 +208,29 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// A version whose schema hasn't been applied yet should fail here, before it takes any traffic. The
+// migrator applies it, see Fbs.DbMigrator
+if (
+    app.Services.GetService<ISqlSugarClient>() is { } database
+    && app.Configuration.GetValue("Startup:ValidateDatabaseSchema", true)
+)
+{
+    var problems = SchemaValidator.FindProblems(database);
+    if (problems.Count > 0)
+    {
+        app.Logger.LogCritical(
+            "Database schema does not match what this version needs: {Problems}",
+            string.Join("; ", problems)
+        );
+        throw new InvalidOperationException(
+            "Database schema does not match what this version needs. Apply it with Fbs.DbMigrator before starting the API. "
+                + string.Join("; ", problems)
+        );
+    }
+
+    app.Logger.LogInformation("Database schema validation passed.");
+}
+
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var client = scope.ServiceProvider.GetRequiredService<TelegramBotClient>();
