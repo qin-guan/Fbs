@@ -114,6 +114,20 @@ and so does anyone in an organisation that has been suspended. `GET /t/{slug}` s
 in it. `GET` and `PUT /t/{slug}/Settings` are for admins: name, time zone, calling code, the length of a slot (15, 30 or 60
 minutes) and whether people who join with an invite wait to be approved (they do unless it's turned off).
 
+Admins manage what the organisation is made of, all under `/t/{slug}`:
+
+- Units: `GET /Units` (every member, as it is what people pick from), and `POST /Units`, `PUT /Units/{id}`, `DELETE /Units/{id}`
+  for admins. A unit can't be deleted while people are in it or bookings were made for it; one that goes takes the access it
+  gave to facilities with it.
+- Facilities: `GET /Facilities`, `POST /Facilities`, `PUT /Facilities/{id}` (which replaces who can book it), `DELETE
+  /Facilities/{id}`. A facility is available to everyone, or to the units listed, which have to be the organisation's own. One
+  that anything was booked on (cancelled or not) can't be deleted.
+- Members: `GET /Members` (`?includeRemoved=true` for those who have left), `POST /Members` and `PUT /Members/{id}`.
+  Adding someone is by phone number, and they are unclaimed until they sign in. A phone number with a plus (or 00) is taken
+  as it is, and one without is in the organisation's country. `PUT` sets their name, phone, unit, role (`Member` or `Admin`),
+  whose bookings they hear about (`None`, `Unit`, `All`), and `membership`: `In` lets them in (or lets someone waiting in),
+  `Removed` takes them out. The organisation always keeps an admin: the change that would take the last one is a 409.
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and
