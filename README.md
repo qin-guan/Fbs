@@ -392,9 +392,9 @@ A gauge says nothing until the first look, and keeps the last one when the datab
 
 ### Traces
 
-Each statement a request runs is a span in that request's trace (`Open` for getting a connection, `Execute` for the statement, with `db.statement` as the SQL, whose values are
-parameters and so aren't in it, and `db.name`, `db.user` and the address of the server), so a slow request can be told from a slow database, and the statement that was slow found. The password
-is not in a span. Traces go where `OTEL_EXPORTER_OTLP_ENDPOINT` says, as metrics do, and the Aspire dashboard shows them locally.
+Each statement a request runs is a span in that request's trace (`Open` for getting a connection, `Execute` for a statement, with `db.operation` for what kind it was, `select`, `insert`, `update`, `delete` and so on, and `db.name`, `db.user` and the address of the server), so a slow request can be told from a slow database, and the request a slow statement belonged to found. Traces go where `OTEL_EXPORTER_OTLP_ENDPOINT` says, as metrics do, and the Aspire dashboard shows them locally.
+
+**The SQL is not in a span.** A batch of inserts has some of its values (the ids and times of what it inserts) in the statement itself and not in parameters, and the SQL isn't for wherever traces are sent, so `DatabaseSpans` takes it out before the exporter has the span. To see which statement was slow, ask the database: TiDB keeps the slow ones (its slow query log, and `information_schema.statements_summary` for the ones that add up). The password is not in a span.
 
 ## Testing
 
