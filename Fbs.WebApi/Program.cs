@@ -128,8 +128,13 @@ if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseC
     builder.Services.AddHostedService<DatabaseGaugesService>();
 }
 
-// What is counted and timed, which is sent wherever OTEL_EXPORTER_OTLP_ENDPOINT says once it is named here
-builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics.AddMeter(FbsMetrics.MeterName));
+// What is counted and timed, which is sent wherever OTEL_EXPORTER_OTLP_ENDPOINT says once it is named here. The database driver
+// makes a span of each statement, in the trace of the request that ran it, and counts its connection pool, but only for those
+// that ask for them by its name
+builder
+    .Services.AddOpenTelemetry()
+    .WithMetrics(metrics => metrics.AddMeter(FbsMetrics.MeterName, "MySqlConnector"))
+    .WithTracing(tracing => tracing.AddSource("MySqlConnector"));
 
 builder.Services.AddSingleton<InstrumentationSource>();
 builder.Services.AddSingleton<BackgroundPublisher>();

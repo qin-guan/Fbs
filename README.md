@@ -369,6 +369,7 @@ which organisation it is, look in the audit log, at the `OutboxMessage` table, o
 | `fbs.tenants.created`, `fbs.accounts.created`, `fbs.accounts.erased` | | Organisations made, people who signed in for the first time, and accounts erased after Clerk said they were deleted |
 | `fbs.invites.used` | `outcome` | Joining with a link: `joined`, `waiting` (for an admin), `already_in`, `full`, `unusable` (ended, revoked or used up) or `not_found` |
 | `fbs.claims.completed`, `fbs.telegram.linked` | | People who took over their place from before accounts, and Telegram chats connected to an account |
+| `db.client.connections.usage` (gauge) | `state` | The database's connection pool, from MySqlConnector: connections `idle` and `used`. Also `.max`, `.idle.max`, `.idle.min` and `.pending_requests` (callers waiting for a connection), `.timeouts`, and `.wait_time`, `.use_time` and `.create_time` (seconds) |
 
 What is worth being told about:
 
@@ -376,6 +377,8 @@ What is worth being told about:
   the part nobody sees fail.
 - **`fbs.db.transaction.given_up` going up at all** is somebody who got an error, and **`fbs.db.transaction.retries` going up a lot** is the database being fought over.
   Along with **`fbs.db.query.errors`** and the 99th percentile of **`fbs.db.query.duration`** (over a second), this is TiDB not coping.
+- **`db.client.connections.pending_requests` above 0 for long**, **`db.client.connections.timeouts` going up**, or the 99th percentile of **`db.client.connections.wait_time`** over a
+  few milliseconds: requests are waiting for a connection, which is the pool being too small (`Maximum Pool Size` in the connection string) or something holding connections too long.
 - **`fbs.calendar.connections{status="Failed"}` going up**: an organisation's calendar was refused, and stays that way until somebody puts it right.
 - **`fbs.telegram.messages{result="failed"}` as a share of what is sent**. `blocked` is people who left, and isn't a problem.
 - **`fbs.auth.failures{reason="unknown_key"}` or `{reason="azp"}`**: Clerk's keys aren't being fetched, or the web app is at an address `Clerk:AuthorizedParties` doesn't have. `expired` is
@@ -386,6 +389,12 @@ What is worth being told about:
 The gauges are read from the database every `Metrics__DatabaseGauges__Interval` (30 seconds, and `00:00:00` turns it off), not when they are scraped, so a scrape isn't a
 query, and they are the same for every instance, so with more than one, take the largest of them and not the sum. The counters are for one instance each, so add them up.
 A gauge says nothing until the first look, and keeps the last one when the database can't be reached, which is what the health check is for.
+
+### Traces
+
+Each statement a request runs is a span in that request's trace (`Open` for getting a connection, `Execute` for the statement, with `db.statement` as the SQL, whose values are
+parameters and so aren't in it, and `db.name`, `db.user` and the address of the server), so a slow request can be told from a slow database, and the statement that was slow found. The password
+is not in a span. Traces go where `OTEL_EXPORTER_OTLP_ENDPOINT` says, as metrics do, and the Aspire dashboard shows them locally.
 
 ## Testing
 
@@ -409,7 +418,7 @@ the one that is running, and says nothing more than `Healthy` or `Unhealthy`. Th
 runs in the container can apply the schema before the version starts: `dotnet Fbs.DbMigrator.dll apply`.
 
 Nothing is sent anywhere until `OTEL_EXPORTER_OTLP_ENDPOINT` is set to a collector, such as Grafana Cloud's or one of your own, with `OTEL_EXPORTER_OTLP_HEADERS` for
-whatever it needs to let it in. Then the metrics in [Metrics](#metrics) are sent, and are worth putting alerts on before the first organisation other than 3SIB is let in.
+whatever it needs to let it in. Then the metrics in [Metrics](#metrics) and the traces in [Traces](#traces) are sent, and the metrics are worth putting alerts on before the first organisation other than 3SIB is let in.
 
 Behind a proxy such as Coolify's, the client's address and scheme come in `X-Forwarded-For` and `X-Forwarded-Proto`, which are only
 believed from a proxy in a private range (`10/8`, `172.16/12`, `192.168/16`, loopback and `fc00::/7`), and only the last hop of them
