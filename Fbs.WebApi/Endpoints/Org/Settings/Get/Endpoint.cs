@@ -1,0 +1,33 @@
+using FastEndpoints;
+using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Tenancy;
+
+namespace Fbs.WebApi.Endpoints.Org.Settings.Get;
+
+[RequiresClerk]
+public class Endpoint(ITenantContext tenantContext) : EndpointWithoutRequest<Response>
+{
+    public override void Configure()
+    {
+        Get("/t/{slug}/Settings");
+        AuthSchemes(ClerkAuthentication.Scheme);
+        PreProcessor<ResolveTenant>();
+        PreProcessor<RequireAdmin>();
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var tenant = tenantContext.Tenant;
+        await Send.OkAsync(
+            new Response
+            {
+                Name = tenant.Name,
+                TimeZone = tenant.TimeZone,
+                DefaultCountryCode = tenant.DefaultCountryCode,
+                SlotMinutes = tenant.SlotMinutes,
+                RequireApproval = tenant.RequireApproval,
+            },
+            ct
+        );
+    }
+}

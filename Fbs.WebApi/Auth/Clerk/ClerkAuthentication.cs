@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Fbs.WebApi.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols;
@@ -43,6 +44,9 @@ public static class ClerkAuthentication
         services.AddHttpClient(HttpClientName);
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentAccount, CurrentAccount>();
+        services.AddScoped<TenantContext>();
+        services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
+        services.Configure<TenantLimits>(configuration.GetSection("Limits"));
 
         services.AddAuthentication().AddJwtBearer(Scheme, _ => { });
         services

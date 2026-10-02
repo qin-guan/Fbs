@@ -6,6 +6,7 @@ namespace Fbs.WebApi.Data.Entities;
 /// An organisation that uses the system, such as a unit. Everything else belongs to one.
 /// </summary>
 [SugarIndex("UX_Tenant_Slug", nameof(Slug), OrderByType.Asc, IsUnique = true)]
+[SugarIndex("IX_Tenant_CreatedByUserId", nameof(CreatedByUserId), OrderByType.Asc)]
 public class Tenant
 {
     [SugarColumn(IsPrimaryKey = true)]
@@ -30,6 +31,16 @@ public class Tenant
     public int SlotMinutes { get; set; } = 30;
 
     public TenantStatus Status { get; set; } = TenantStatus.Active;
+
+    /// <summary>
+    /// Whether someone who joins with an invite waits for an admin to let them in. On unless the tenant chooses
+    /// otherwise, so a link that gets shared further than it should exposes nothing.
+    /// </summary>
+    public bool RequireApproval { get; set; } = true;
+
+    /// <summary>Who made it, if it was made by someone signing up rather than carried over from before.</summary>
+    [SugarColumn(IsNullable = true)]
+    public Guid? CreatedByUserId { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
