@@ -1,3 +1,4 @@
+using Fbs.WebApi.Telemetry;
 using MySqlConnector;
 using SqlSugar;
 
@@ -54,6 +55,10 @@ public static class SqlSugarClientFactory
             return new KeyValuePair<string, SugarParameter[]>(sql, parameters!);
         };
 
+        // How long each statement takes, and which fail: the first thing to look at when it is slow
+        db.Aop.OnLogExecuted = (sql, _) => FbsMetrics.QueryDuration.Record(db.Ado.SqlExecutionTime.TotalSeconds, new KeyValuePair<string, object?>("operation", OperationOf(sql)));
+        db.Aop.OnError = exception => FbsMetrics.QueryErrors.Add(1, new KeyValuePair<string, object?>("operation", OperationOf(exception.Sql)));
+
         // Insertable/Updateable/Storageable entities. Batched statements inline their values into the SQL
         // text instead of using parameters, so the entity values themselves have to be normalized
         db.Aop.DataExecuting = (value, entityInfo) =>
@@ -63,6 +68,15 @@ public static class SqlSugarClientFactory
                 entityInfo.SetValue(dateTimeOffset.ToUniversalTime());
             }
         };
+    }
+
+    /// <summary>What a statement does, which is few enough values to tag by: never the statement, which has what people typed in it.</summary>
+    internal static string OperationOf(string? sql)
+    {
+        var text = sql?.TrimStart() ?? string.Empty;
+        var end = text.IndexOfAny([' ', '\n', '\r', '\t']);
+        var word = (end < 0 ? text : text[..end]).ToLowerInvariant();
+        return word is "select" or "insert" or "update" or "delete" or "begin" or "commit" or "rollback" ? word : "other";
     }
 
     private static object? ToUtc(object? value)

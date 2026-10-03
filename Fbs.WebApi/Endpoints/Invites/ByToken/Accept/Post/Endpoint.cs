@@ -1,5 +1,6 @@
 using FastEndpoints;
 using Fbs.WebApi.RateLimiting;
+using Fbs.WebApi.Telemetry;
 using Microsoft.AspNetCore.RateLimiting;
 using Fbs.WebApi.Auth.Clerk;
 using Fbs.WebApi.Data;
@@ -39,6 +40,7 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, Tenan
         var tenant = invite is null ? null : await sql.Queryable<Tenant>().FirstAsync(t => t.Id == tenantId && t.Status == TenantStatus.Active, ct);
         if (invite is null || tenant is null)
         {
+            Count("not_found");
             await Send.NotFoundAsync(ct);
             return;
         }
@@ -47,6 +49,7 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, Tenan
         var existing = await sql.Queryable<TenantMember>().FirstAsync(m => m.TenantId == tenantId && m.UserId == accountId, ct);
         if (existing is not null)
         {
+            Count("already_in");
             await Respond(tenant, existing, ct);
             return;
         }
@@ -54,12 +57,14 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, Tenan
         var now = DateTimeOffset.UtcNow;
         if (InviteResponse.StatusOf(invite, now) != InviteStatus.Active)
         {
+            Count("unusable");
             await Send.NotFoundAsync(ct);
             return;
         }
 
         if (await quotas.CheckMemberAsync(invite.TenantId, ct) is { } refusal)
         {
+            Count("full");
             AddError(refusal.Reason, refusal.Code);
             await Send.ErrorsAsync(StatusCodes.Status403Forbidden, ct);
             return;
@@ -119,16 +124,22 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, Tenan
         switch (joined)
         {
             case Joined.NoUsesLeft:
+                // Somebody else took the last use at the same moment
+                Count("unusable");
                 await Send.NotFoundAsync(ct);
                 return;
             case Joined.AlreadyMember:
+                Count("already_in");
                 var other = await sql.Queryable<TenantMember>().FirstAsync(m => m.TenantId == tenantId && m.UserId == accountId, ct);
                 await Respond(tenant, other ?? member, ct);
                 return;
         }
 
+        Count(member.Status == MemberStatus.Pending ? "waiting" : "joined");
         await Respond(tenant, member, ct);
     }
+
+    private static void Count(string outcome) => FbsMetrics.InvitesUsed.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
 
     private enum Joined
     {

@@ -1,4 +1,5 @@
 using Fbs.WebApi.Data.Entities;
+using Fbs.WebApi.Telemetry;
 using Microsoft.Extensions.Options;
 using SqlSugar;
 using DataFacility = Fbs.WebApi.Data.Entities.Facility;
@@ -21,13 +22,13 @@ public sealed class TenantQuotas(ISqlSugarClient sql, IOptions<TenantLimits> opt
     public async Task<QuotaRefusal?> CheckUnitAsync(Guid tenantId, CancellationToken ct)
     {
         var count = await sql.Queryable<DataUnit>().CountAsync(u => u.TenantId == tenantId, ct);
-        return count >= _limits.MaxUnits ? new QuotaRefusal($"An organisation can have {_limits.MaxUnits} units. Delete one that isn't needed.", "unit-limit") : null;
+        return count >= _limits.MaxUnits ? Refused($"An organisation can have {_limits.MaxUnits} units. Delete one that isn't needed.", "unit-limit") : null;
     }
 
     public async Task<QuotaRefusal?> CheckFacilityAsync(Guid tenantId, CancellationToken ct)
     {
         var count = await sql.Queryable<DataFacility>().CountAsync(f => f.TenantId == tenantId, ct);
-        return count >= _limits.MaxFacilities ? new QuotaRefusal($"An organisation can have {_limits.MaxFacilities} facilities. Delete one that isn't needed.", "facility-limit") : null;
+        return count >= _limits.MaxFacilities ? Refused($"An organisation can have {_limits.MaxFacilities} facilities. Delete one that isn't needed.", "facility-limit") : null;
     }
 
     /// <summary>Whether one more person can be in: somebody who was removed and is being let back in is one more.</summary>
@@ -35,7 +36,7 @@ public sealed class TenantQuotas(ISqlSugarClient sql, IOptions<TenantLimits> opt
     {
         var removed = MemberStatus.Removed;
         var count = await sql.Queryable<TenantMember>().CountAsync(m => m.TenantId == tenantId && m.Status != removed, ct);
-        return count >= _limits.MaxMembers ? new QuotaRefusal($"An organisation can have {_limits.MaxMembers} people. Remove somebody who isn't needed.", "member-limit") : null;
+        return count >= _limits.MaxMembers ? Refused($"An organisation can have {_limits.MaxMembers} people. Remove somebody who isn't needed.", "member-limit") : null;
     }
 
     /// <summary>Whether <paramref name="adding"/> more bookings can be made, on top of what has been in the last 24 hours.</summary>
@@ -44,7 +45,14 @@ public sealed class TenantQuotas(ISqlSugarClient sql, IOptions<TenantLimits> opt
         var since = DateTimeOffset.UtcNow.AddHours(-24);
         var made = await sql.Queryable<Booking>().CountAsync(b => b.TenantId == tenantId && b.CreatedAt > since, ct);
         return made + adding > _limits.MaxBookingsPerDay
-            ? new QuotaRefusal($"An organisation can make {_limits.MaxBookingsPerDay} bookings in a day, and this one has made {made} in the last 24 hours. Try again later.", "booking-limit")
+            ? Refused($"An organisation can make {_limits.MaxBookingsPerDay} bookings in a day, and this one has made {made} in the last 24 hours. Try again later.", "booking-limit")
             : null;
+    }
+
+    /// <summary>The refusal, counted by which limit it was: somebody at a limit is somebody to talk to, or to stop.</summary>
+    private static QuotaRefusal Refused(string reason, string code)
+    {
+        FbsMetrics.QuotaRefusals.Add(1, new KeyValuePair<string, object?>("limit", code));
+        return new QuotaRefusal(reason, code);
     }
 }

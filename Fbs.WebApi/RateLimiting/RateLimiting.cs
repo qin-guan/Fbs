@@ -1,5 +1,6 @@
 using System.Net;
 using System.Threading.RateLimiting;
+using Fbs.WebApi.Telemetry;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
@@ -92,6 +93,9 @@ public static class RateLimitingExtensions
             limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             limiter.OnRejected = async (context, token) =>
             {
+                // The policy is the one whose name was set on the endpoint, which is ours and not something sent
+                var policy = context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName ?? "unknown";
+                FbsMetrics.RateLimitRejections.Add(1, new KeyValuePair<string, object?>("policy", policy));
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
                 {
                     context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();

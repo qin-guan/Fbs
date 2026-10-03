@@ -1,4 +1,5 @@
 using Fbs.WebApi.Data.Entities;
+using Fbs.WebApi.Telemetry;
 using SqlSugar;
 
 namespace Fbs.WebApi.Auth.Clerk;
@@ -51,6 +52,8 @@ public sealed class AccountErasure(ISqlSugarClient sql, ILogger<AccountErasure> 
             await sql.Deleteable<MemberClaimToken>().Where(t => t.UserId == userId).ExecuteCommandAsync(ct);
             tran.CommitTran();
         }
+
+        FbsMetrics.AccountsErased.Add(1);
 
         // An organisation whose only admin deleted their account can't be managed until somebody who runs the system makes another
         var admin = MemberRole.Admin;

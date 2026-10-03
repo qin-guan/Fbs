@@ -1,6 +1,7 @@
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Options;
+using Fbs.WebApi.Telemetry;
 using Fbs.WebApi.Tenancy;
 using Microsoft.Extensions.Options;
 using SqlSugar;
@@ -98,6 +99,7 @@ public sealed class TelegramLinker(ISqlSugarClient sql, TelegramBotClient bot, I
                 .Where(l => l.Id == link.Id)
                 .ExecuteCommandAsync(ct);
             tran.CommitTran();
+            FbsMetrics.TelegramLinked.Add(1);
         }
         catch (Exception e) when (e.IsDuplicate())
         {
@@ -128,10 +130,11 @@ public sealed class TelegramLinker(ISqlSugarClient sql, TelegramBotClient bot, I
             if (link is null)
             {
                 await sql.Insertable(new TelegramLink { Id = Guid.NewGuid(), UserId = userId, ChatId = chatId, LinkedAt = now }).ExecuteCommandAsync(ct);
+                FbsMetrics.TelegramLinked.Add(1);
             }
-            else
+            else if (await sql.Updateable<TelegramLink>().SetColumns(l => new TelegramLink { ChatId = chatId, LinkedAt = now }).Where(l => l.Id == link.Id && l.ChatId == null).ExecuteCommandAsync(ct) > 0)
             {
-                await sql.Updateable<TelegramLink>().SetColumns(l => new TelegramLink { ChatId = chatId, LinkedAt = now }).Where(l => l.Id == link.Id && l.ChatId == null).ExecuteCommandAsync(ct);
+                FbsMetrics.TelegramLinked.Add(1);
             }
         }
         catch (Exception e) when (e.IsDuplicate())
