@@ -6,6 +6,7 @@ using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Tests.Data;
 using Fbs.WebApi.Tests.Fakes;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Telegram.Bot;
 using Booking = Fbs.WebApi.Entities.Booking;
@@ -279,5 +280,55 @@ public class TelegramBookingNotifierTests
 
         // 10 at once, then 10 a second: two more seconds for the other 20
         await Assert.That(stopwatch.Elapsed).IsBetween(TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(6));
+    }
+
+    private static async Task<OutboxDispatcher> DispatcherFor(Setup setup) =>
+        new(
+            NullLogger<OutboxDispatcher>.Instance,
+            await setup.Tenant.NewClientAsync(),
+            new ServiceCollection().AddSingleton<IOutboxHandler>(setup.Notifier()).BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            new OutboxSignal(),
+            Microsoft.Extensions.Options.Options.Create(new OutboxOptions { TenantId = setup.Tenant.TenantId })
+        );
+
+    private static void SetStatus(Setup setup, TenantStatus status) =>
+        setup.Tenant.Db.Updateable<Tenant>().SetColumns(t => new Tenant { Status = status }).Where(t => t.Id == setup.Tenant.TenantId).ExecuteCommand();
+
+    [Test]
+    [Arguments(TenantStatus.Suspended)]
+    [Arguments(TenantStatus.PendingDeletion)]
+    public async Task Nobody_is_told_about_an_organisation_that_cannot_be_used_and_what_was_not_sent_is_not_sent_later(TenantStatus status)
+    {
+        var setup = await SetUpAsync();
+        await setup.CreateAsync(NewBooking("Field", 8, 10));
+        var message = setup.Messages().Single();
+        SetStatus(setup, status);
+        var dispatcher = await DispatcherFor(setup);
+
+        await dispatcher.ProcessDueAsync();
+
+        await Assert.That(setup.Telegram.Messages).IsEmpty();
+        await Assert.That(setup.Messages().Single(m => m.Id == message.Id).Status).IsEqualTo(OutboxStatus.Skipped);
+
+        // Made active again it is not sent, as it is about what happened then, and what happens next is
+        SetStatus(setup, TenantStatus.Active);
+        await dispatcher.ProcessDueAsync();
+        await Assert.That(setup.Telegram.Messages).IsEmpty();
+        await setup.CreateAsync(NewBooking("Eiger", 8, 10));
+        await dispatcher.ProcessDueAsync();
+        await Assert.That(Chats(setup.Telegram)).IsEquivalentTo([1001L, 1002L, 1003L]);
+    }
+
+    [Test]
+    public async Task A_message_taken_just_before_the_organisation_was_suspended_tells_nobody_either()
+    {
+        var setup = await SetUpAsync();
+        await setup.CreateAsync(NewBooking("Field", 8, 10));
+        SetStatus(setup, TenantStatus.Suspended);
+
+        // Handled directly, as if the dispatcher had taken it a moment before
+        await setup.HandleAsync(setup.Messages().Single());
+
+        await Assert.That(setup.Telegram.Messages).IsEmpty();
     }
 }
