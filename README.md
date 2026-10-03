@@ -217,6 +217,10 @@ when. Any admin of it can take it back with `DELETE /Tenants/{slug}/Deletion` un
 `Limits__DeletionGraceDays` (30) is how long from asking until it can be deleted for good. Only an organisation that is active can be asked to be deleted (not one that
 is suspended, or that is to be already), and one that is to be deleted can't be suspended: `suspend` says so and exits with 1. Both are written in its history.
 
+Nothing is deleted for good until `purge-tenants` is run, which deletes the organisations that are due, and everything of them (accounts stay), by
+their ID, in a transaction for each; run it on a schedule. `--dry-run` says what it would delete, `--tenant <slug>` is for one, and `--early` with it deletes one
+that an admin has asked to be deleted before the time is up, for when somebody has to be erased sooner. See [the runbook](docs/runbooks/offboarding.md).
+
 ### Running the system: looking at and suspending organisations
 
 Anybody can make an organisation, so whoever runs the system can stop one being used. From the migrator, which is in the image:
