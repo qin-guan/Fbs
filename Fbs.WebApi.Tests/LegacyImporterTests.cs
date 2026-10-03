@@ -135,7 +135,7 @@ public class LegacyImporterTests
         var report = await setup.ImportAsync();
 
         await Assert.That(report.TenantCreated).IsTrue();
-        // Those it carries over can claim their places once they have accounts
+        // So the imported members can claim their rows with Clerk accounts in Cutover 2
         await Assert.That(setup.Db.Queryable<Tenant>().Single(t => t.Slug == setup.Slug).LegacyClaimEnabled).IsTrue();
         await Assert.That(report.Units.Added).IsEqualTo(3);
         await Assert.That(report.Members.Added).IsEqualTo(5);

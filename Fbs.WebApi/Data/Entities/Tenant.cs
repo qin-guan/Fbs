@@ -39,9 +39,9 @@ public class Tenant
     public bool RequireApproval { get; set; } = true;
 
     /// <summary>
-    /// Whether people carried over from before can take over their places by showing they control the Telegram chat that was
-    /// linked to them. Only ever on for a tenant that came from the old version, for a while after the switch to accounts, and
-    /// an organisation can turn it off but not on.
+    /// Whether members imported from the old version can still claim their rows with a Clerk account (see
+    /// <see cref="Fbs.WebApi.Claims.MemberClaims"/>). The importer turns it on; admins turn it off about three months after
+    /// Cutover 2. It can never be turned back on from the app.
     /// </summary>
     public bool LegacyClaimEnabled { get; set; }
 

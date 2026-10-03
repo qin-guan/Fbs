@@ -109,7 +109,10 @@ public sealed class TelegramLinker(ISqlSugarClient sql, TelegramBotClient bot, I
         return account?.Name ?? account?.Email ?? "your account";
     }
 
-    /// <summary>Connects the chat to the account if the account has none connected and nobody else has this one.</summary>
+    /// <summary>
+    /// Connects the chat to the account for notifications, unless the account already has a chat connected or another
+    /// account has this chat. Used after a claim, where the chat has just proved who the user is.
+    /// </summary>
     public async Task LinkIfNoneAsync(Guid userId, string chatId, CancellationToken ct)
     {
         try
@@ -133,7 +136,7 @@ public sealed class TelegramLinker(ISqlSugarClient sql, TelegramBotClient bot, I
         }
         catch (Exception e) when (e.IsDuplicate())
         {
-            // Somebody connected it at the same moment, which is theirs to keep
+            // Another account connected this chat at the same moment, and keeps it
         }
     }
 

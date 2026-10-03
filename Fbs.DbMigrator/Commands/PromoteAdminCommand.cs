@@ -7,12 +7,12 @@ namespace Fbs.DbMigrator.Commands;
 public class PromoteAdminCommand(ILogger<PromoteAdminCommand> logger, MemberPromotions promotions)
 {
     /// <summary>
-    /// Makes a member an admin of an organisation. People carried over from the old version become members when they claim
-    /// their places, so this is how the first admin of such an organisation is made, and it can be used for any other
-    /// too. They have to have signed in and taken their place first. Exits with 1 if it couldn't be done.
+    /// Makes a member an admin of an organisation. Claiming never gives admin rights, so after Cutover 2 this is how the old
+    /// admins get them back (docs/runbooks/cutover-2-accounts.md). The member must have claimed first. Exits with 1 if it
+    /// couldn't be done.
     /// </summary>
     /// <param name="tenant">The slug of the organisation.</param>
-    /// <param name="phone">The member's phone number, in the form it is stored in or as it would be typed in the organisation's country.</param>
+    /// <param name="phone">The member's phone number: +6591234567, 6591234567 (as in the old sheet) or 9123 4567 (local).</param>
     /// <param name="cancellationToken"></param>
     [Command("promote-admin")]
     public async Task<int> Promote(string tenant, string phone, CancellationToken cancellationToken = default)
@@ -33,7 +33,7 @@ public class PromoteAdminCommand(ILogger<PromoteAdminCommand> logger, MemberProm
                 logger.LogError("There is nobody in {Tenant} with the number {Phone}.", tenant, phone);
                 return 1;
             default:
-                logger.LogError("{Phone} hasn't signed in and taken their place in {Tenant} yet, or has left it.", phone, tenant);
+                logger.LogError("{Phone} in {Tenant} hasn't claimed yet, is waiting for approval, or was removed.", phone, tenant);
                 return 1;
         }
     }

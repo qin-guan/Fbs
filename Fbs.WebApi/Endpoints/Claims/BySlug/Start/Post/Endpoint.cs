@@ -4,7 +4,10 @@ using Fbs.WebApi.Claims;
 
 namespace Fbs.WebApi.Endpoints.Claims.BySlug.Start.Post;
 
-/// <summary>Makes the link for claiming a place. It works once, for ten minutes, and a new one replaces it.</summary>
+/// <summary>
+/// Makes the Telegram link the user opens to claim their imported member (see <see cref="MemberClaims"/>). It works once, for 10
+/// minutes, and replaces any link they had for this organisation. 404 when <c>GET /Claims/{slug}</c> would be.
+/// </summary>
 [RequiresClerk]
 public class Endpoint(ICurrentAccount currentAccount, MemberClaims claims) : Endpoint<Request, Response>
 {

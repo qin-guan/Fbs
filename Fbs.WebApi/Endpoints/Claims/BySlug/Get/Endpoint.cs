@@ -5,8 +5,8 @@ using Fbs.WebApi.Claims;
 namespace Fbs.WebApi.Endpoints.Claims.BySlug.Get;
 
 /// <summary>
-/// Whether somebody signed in can claim their place in an organisation that came from the old version. If they can't,
-/// whatever the reason, it isn't found.
+/// Whether the signed-in user can claim an imported member in this organisation (see <see cref="MemberClaims"/>). Any reason
+/// they can't (no such organisation, claiming turned off, already a member) is the same 404.
 /// </summary>
 [RequiresClerk]
 public class Endpoint(ICurrentAccount currentAccount, MemberClaims claims) : Endpoint<Request, Response>

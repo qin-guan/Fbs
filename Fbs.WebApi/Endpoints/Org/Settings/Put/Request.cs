@@ -13,6 +13,6 @@ public class Request
 
     public bool RequireApproval { get; set; }
 
-    /// <summary>Leave it out to keep it as it is. It can only be turned off: an organisation that has it off can't turn it on.</summary>
+    /// <summary>Whether imported members can still claim. Leave it out to keep it as it is. It can be turned off, but not back on.</summary>
     public bool? LegacyClaimEnabled { get; set; }
 }

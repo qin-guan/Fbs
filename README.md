@@ -170,13 +170,19 @@ Telegram is where a person is told about bookings, connected to their account fr
   people carried over from before are told as they were. Somebody waiting to be let in, or who has left, is told nothing.
   Somebody who is in more than one organisation is told which one a booking is in.
 
-People carried over from before take over their places (imported as unclaimed) once they have accounts, by showing they control
-the Telegram chat their place was linked to. `GET /Claims/{slug}` says whether they can (a 404 if claiming is off for the
-organisation, or they are in it already), `POST /Claims/{slug}/Start` returns a link `https://t.me/<bot>?start=claim_<token>` that works once, for ten
-minutes, and opening it in that chat gives them the place: its phone, unit and notification scope stay as they were, the chat is
-connected to their account, and their role is **member**, even if they were an admin. `Tenant.LegacyClaimEnabled` is on for a tenant the
-importer made, and an organisation can turn it off but not on. An admin is made from the command line: `dotnet Fbs.DbMigrator.dll
-promote-admin --tenant 3sib --phone +6591234567`, for somebody who has taken their place. See
+**Claiming** moves people from the old sign-in (phone number and a Telegram code) to Clerk accounts. `import-legacy` creates
+them as `Unclaimed` members with no account, and keeps the Telegram chat the old version sent their codes to
+(`LegacyChatId`). A signed-in user claims their member row like this:
+
+1. `GET /Claims/{slug}` checks they can (404 if claiming is off, or they are a member already).
+2. `POST /Claims/{slug}/Start` returns `https://t.me/<bot>?start=claim_<token>`, valid once for ten minutes.
+3. They open it in Telegram. The bot gives their account the unclaimed member whose `LegacyChatId` is the chat it came from,
+   and connects that chat for notifications.
+
+The member keeps its phone, unit and notification scope, but its role is always **member**, even for old admins: the old bot
+let anyone link their chat to another person's number, so the chat is not trusted with admin rights. Make the admins with
+`dotnet Fbs.DbMigrator.dll promote-admin --tenant 3sib --phone +6591234567` once they have claimed.
+`Tenant.LegacyClaimEnabled` is on for organisations the importer made, and can be turned off but not back on. See
 [Cutover 2](docs/runbooks/cutover-2-accounts.md).
 
 ### Moving from Google

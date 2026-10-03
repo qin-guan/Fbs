@@ -13,16 +13,22 @@ using PromoteAdminCommand = Migrator::Fbs.DbMigrator.Commands.PromoteAdminComman
 
 namespace Fbs.WebApi.Tests;
 
-/// <summary>People carried over from before taking over their places, by opening a link in the Telegram chat they were linked to.</summary>
+/// <summary>
+/// Claiming: a signed-in user attaches their Clerk account to the member imported for them, by opening a one-time Telegram link
+/// from the chat the old version sent their login codes to (<see cref="TenantMember.LegacyChatId"/>). See <see cref="MemberClaims"/>.
+/// </summary>
 public class ClaimsTests
 {
     [ClassDataSource<ClerkFbsApiFactory>]
     public required ClerkFbsApiFactory Factory { get; init; }
 
-    /// <summary>The organisation as it is when it has just been imported: nobody has an account, and claiming is on.</summary>
+    /// <summary>
+    /// Puts the test organisation in the state <c>import-legacy</c> leaves it in: every member unclaimed, each with a legacy chat,
+    /// and claiming on.
+    /// </summary>
     private void AsImported(bool claimEnabled = true)
     {
-        // Chats are one person's each, and the database is shared with other tests, so these are their own
+        // Random chat IDs, as the database is shared with other tests
         foreach (var phone in new[] { Users.Booker, Users.SameUnit, Users.AllGroup, Users.OtherUnit, Users.Admin })
         {
             var chat = Random.Shared.NextInt64(1_000_000_000, 9_000_000_000);
@@ -55,7 +61,7 @@ public class ClaimsTests
     private string LastMessageTo(long chat) => Factory.Telegram.Messages.Last(m => m.ChatId == chat).Text;
 
     [Test]
-    public async Task Somebody_takes_over_their_place_by_opening_the_link_in_the_chat_it_was_linked_to()
+    public async Task Opening_the_link_from_a_members_legacy_chat_attaches_the_account_to_that_member()
     {
         AsImported();
         var client = Person();
@@ -74,13 +80,13 @@ public class ClaimsTests
         await Assert.That(after.UserId).IsEqualTo(accountId);
         await Assert.That(after.Status).IsEqualTo(MemberStatus.Active);
         await Assert.That(after.Role).IsEqualTo(MemberRole.Member);
-        // What they were carried over with is kept
+        // The imported details are kept
         await Assert.That(after.Phone).IsEqualTo(before.Phone);
         await Assert.That(after.DisplayName).IsEqualTo(before.DisplayName);
         await Assert.That(after.UnitId).IsEqualTo(before.UnitId);
         await Assert.That(after.NotificationScope).IsEqualTo(before.NotificationScope);
         await Assert.That(LastMessageTo(ChatOf(Users.Booker))).Contains("Welcome back, CPT Booker");
-        // They are in, and the chat they proved they control is connected to their account
+        // They can use the organisation now, and the chat is connected to their account for notifications
         await Assert.That(await client.GetAsync($"/t/{Factory.Slug}")).HasStatus(HttpStatusCode.OK);
         await Assert.That((await client.GetFromJsonAsync<JsonElement>("/Me/Telegram")).GetProperty("linked").GetBoolean()).IsTrue();
         await Assert.That(Factory.Db.Queryable<TelegramLink>().First(l => l.UserId == accountId)!.ChatId).IsEqualTo(ChatOf(Users.Booker).ToString());
@@ -88,7 +94,7 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task Somebody_who_was_an_admin_before_is_a_member_until_somebody_who_runs_the_system_says_otherwise()
+    public async Task A_legacy_admin_who_claims_becomes_a_member()
     {
         AsImported();
         var client = Person("Old admin");
@@ -103,7 +109,7 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task A_chat_nobody_was_linked_to_gets_nothing_and_the_link_is_still_good_from_the_right_one()
+    public async Task A_chat_with_no_imported_member_claims_nothing_and_the_link_still_works_from_the_right_chat()
     {
         AsImported();
         var client = Person();
@@ -131,16 +137,14 @@ public class ClaimsTests
 
         (await OpenAsync(replacement, chat: ChatOf(Users.Booker))).EnsureSuccessStatusCode();
         await Assert.That(Stored(Users.Booker).Status).IsEqualTo(MemberStatus.Active);
-        // And used, it is no good to somebody else in the same chat
-        var other = Person("Other");
+        // Once used, opening it again does nothing
         (await OpenAsync(replacement, chat: ChatOf(Users.Booker))).EnsureSuccessStatusCode();
         await Assert.That(LastMessageTo(ChatOf(Users.Booker))).Contains("expired or has been used");
         await Assert.That(Factory.Db.Queryable<TenantMember>().Count(m => m.TenantId == Factory.TenantId && m.UserId != null)).IsEqualTo(1);
-        await Assert.That(other).IsNotNull();
     }
 
     [Test]
-    public async Task A_link_that_has_run_out_claims_nothing()
+    public async Task An_expired_link_claims_nothing()
     {
         AsImported();
         var client = Person();
@@ -155,7 +159,7 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task Only_a_private_chat_can_claim_and_only_with_a_link_that_was_made()
+    public async Task Only_a_private_chat_with_a_token_that_was_issued_can_claim()
     {
         AsImported();
         var client = Person();
@@ -170,7 +174,7 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task Where_claiming_is_off_it_is_not_found_and_a_link_made_before_it_was_turned_off_does_nothing()
+    public async Task When_claiming_is_off_the_endpoints_are_404_and_links_made_earlier_do_nothing()
     {
         AsImported(claimEnabled: false);
         var client = Person();
@@ -189,7 +193,7 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task Somebody_who_is_in_the_organisation_already_cannot_claim_and_without_signing_in_there_is_nothing()
+    public async Task An_existing_member_cannot_claim_and_claiming_needs_sign_in()
     {
         AsImported();
         var client = Person();
@@ -204,12 +208,12 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task Only_a_place_nobody_has_taken_can_be_claimed_and_a_chat_that_is_linked_to_two_is_left_alone()
+    public async Task Only_unclaimed_members_can_be_claimed_and_a_chat_shared_by_two_members_claims_neither()
     {
         AsImported();
         var client = Person();
         var parameter = await StartAsync(client, Factory.Slug);
-        // A place that was let in another way, and two that share a chat
+        // Booker is already active rather than unclaimed, and AllGroup now has the same legacy chat as SameUnit
         Factory.Db.Updateable<TenantMember>().SetColumns(m => new TenantMember { Status = MemberStatus.Active }).Where(m => m.Id == Factory.MemberIdOf(Users.Booker)).ExecuteCommand();
         var shared = ChatOf(Users.SameUnit);
         Factory.Db.Updateable<TenantMember>().SetColumns(m => new TenantMember { LegacyChatId = shared.ToString() }).Where(m => m.Id == Factory.MemberIdOf(Users.AllGroup)).ExecuteCommand();
@@ -223,7 +227,7 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task Two_accounts_opening_links_in_the_same_chat_at_the_same_moment_leave_the_place_with_one()
+    public async Task Links_of_several_accounts_opened_from_one_chat_at_once_claim_the_member_once()
     {
         AsImported();
         var people = Enumerable.Range(0, 5).Select(i => Person($"Claimer {i}")).ToList();
@@ -247,7 +251,7 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task An_organisation_can_turn_claiming_off_and_not_on()
+    public async Task An_organisation_can_turn_claiming_off_but_not_back_on()
     {
         var org = await Factory.CreateOrgAsync();
         Factory.Db.Updateable<Tenant>().SetColumns(t => new Tenant { LegacyClaimEnabled = true }).Where(t => t.Id == org.TenantId).ExecuteCommand();
@@ -262,7 +266,7 @@ public class ClaimsTests
         await Assert.That(on).HasStatus(HttpStatusCode.BadRequest);
         await Assert.That(await on.Content.ReadAsStringAsync()).Contains("claim-cannot-enable");
         await Assert.That(Factory.Db.Queryable<Tenant>().First(t => t.Id == org.TenantId).LegacyClaimEnabled).IsFalse();
-        // One that never had it can't be given it, and its settings still say so
+        // An organisation made in the app, not imported, can't turn it on either
         var plain = await Factory.CreateOrgAsync();
         await Assert.That(await plain.Admin.PutAsJsonAsync($"/t/{plain.Slug}/Settings", Settings(true))).HasStatus(HttpStatusCode.BadRequest);
         var read = await plain.Admin.GetFromJsonAsync<JsonElement>($"/t/{plain.Slug}/Settings");
@@ -270,12 +274,13 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task An_admin_is_made_by_somebody_who_runs_the_system_and_only_from_a_member_who_has_a_place()
+    public async Task Promote_admin_finds_the_member_by_phone_and_only_promotes_active_members()
     {
         AsImported();
         var promotions = new MemberPromotions(Factory.Db);
         var claimer = Person();
         (await OpenAsync(await StartAsync(claimer, Factory.Slug), chat: ChatOf(Users.Booker))).EnsureSuccessStatusCode();
+        // Booker has claimed and has the number +6591234567, which a member of another organisation has too
         var other = await Factory.CreateOrgAsync();
         Factory.Db.Insertable(new TenantMember { Id = Guid.NewGuid(), TenantId = other.TenantId, DisplayName = "Same number", Phone = "+6591234567", Status = MemberStatus.Active }).ExecuteCommand();
         Factory.Db.Updateable<TenantMember>().SetColumns(m => new TenantMember { Phone = "+6591234567" }).Where(m => m.Id == Factory.MemberIdOf(Users.Booker)).ExecuteCommand();
@@ -283,6 +288,7 @@ public class ClaimsTests
         var unclaimed = await promotions.PromoteAsync(Factory.Slug, Users.SameUnit, default);
         var missing = await promotions.PromoteAsync(Factory.Slug, "+6500000000", default);
         var noOrg = await promotions.PromoteAsync("no-such-org", "+6591234567", default);
+        // A local number is read in the organisation's country
         var promoted = await promotions.PromoteAsync(Factory.Slug, "9123 4567", default);
         var again = await promotions.PromoteAsync(Factory.Slug, "+65 9123 4567", default);
 
@@ -297,7 +303,7 @@ public class ClaimsTests
     }
 
     [Test]
-    public async Task The_command_says_what_happened_in_its_exit_code()
+    public async Task Promote_admin_exits_with_1_when_it_cannot_promote()
     {
         AsImported();
         var command = new PromoteAdminCommand(NullLogger<PromoteAdminCommand>.Instance, new MemberPromotions(Factory.Db));

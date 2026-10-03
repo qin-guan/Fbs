@@ -11,13 +11,14 @@ public enum PromotionOutcome
     NoSuchOrganization = 3,
     NoSuchMember = 4,
 
-    /// <summary>They haven't signed in and taken their place yet, or aren't in the organisation any more.</summary>
+    /// <summary>The member hasn't claimed yet (still unclaimed), is waiting for approval, or was removed.</summary>
     NotActive = 5,
 }
 
 /// <summary>
-/// Makes somebody an admin. This is for whoever runs the system: people carried over from before become members when they
-/// claim their places, so that an admin is always somebody who was chosen, and this is how the first one is.
+/// Makes an active member an admin, for whoever runs the system (the <c>promote-admin</c> command). A claim always gives the role
+/// Member (see <see cref="MemberClaims"/>), and only admins can promote in the app, so this is how an imported organisation
+/// gets its first admins back.
 /// </summary>
 public sealed class MemberPromotions(ISqlSugarClient sql)
 {
@@ -30,9 +31,12 @@ public sealed class MemberPromotions(ISqlSugarClient sql)
         }
 
         var tenantId = tenant.Id;
-        // As it would be typed in the organisation's country, and as the old version wrote it, with the calling code and no plus
+        // Without a "+", a number could be local ("9123 4567") or already have the calling code, as the old sheet wrote it
+        // ("6591234567"). Look for both; if they match two different members, it is not clear who was meant.
         var digits = new string(phone.Where(char.IsAsciiDigit).ToArray());
-        var candidates = new[] { MemberPhones.Normalize(phone, tenant.DefaultCountryCode), digits.Length == 0 ? null : "+" + digits }.Where(p => p is not null).Distinct().ToList();
+        var asTyped = MemberPhones.Normalize(phone, tenant.DefaultCountryCode);
+        var asInSheet = digits.Length == 0 ? null : "+" + digits;
+        var candidates = new[] { asTyped, asInSheet }.Where(p => p is not null).Distinct().ToList();
         var matches = candidates.Count == 0 ? [] : await sql.Queryable<TenantMember>().Where(m => m.TenantId == tenantId && candidates.Contains(m.Phone)).ToListAsync(ct);
         var member = matches.Count == 1 ? matches[0] : null;
         if (member is null)

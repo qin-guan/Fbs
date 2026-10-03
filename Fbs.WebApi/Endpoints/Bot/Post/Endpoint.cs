@@ -128,7 +128,7 @@ public class Endpoint(
 
                 break;
             }
-            // Opened from the link the app makes for claiming a place carried over from before
+            // "/start claim_<token>": somebody opened the link from POST /Claims/{slug}/Start, to claim their imported member
             case { Text: { } claimText }
                 when claimText.StartsWith("/start " + MemberClaims.StartPrefix, StringComparison.Ordinal)
                     && req.Message.Chat.Type == ChatType.Private
@@ -142,9 +142,9 @@ public class Endpoint(
                     result.Outcome switch
                     {
                         ClaimOutcome.Claimed => $"Welcome back, {result.MemberName}! You are in {result.OrganizationName} now, so you can sign in with your account.",
-                        ClaimOutcome.NoPlaceForChat => $"This chat is not linked to anyone in {result.OrganizationName}. Open the link from the Telegram account you used before, or ask an admin to add you.",
+                        ClaimOutcome.NoMemberForChat => $"This chat is not linked to anyone in {result.OrganizationName}. Open the link from the Telegram account you used before, or ask an admin to add you.",
                         ClaimOutcome.AlreadyMember => "You are in that organization already.",
-                        ClaimOutcome.Unavailable => "Claiming a place is not available for that organization.",
+                        ClaimOutcome.Unavailable => "Claiming is not available for that organization.",
                         _ => "That link has expired or has been used already. Make a new one in the app.",
                     },
                     cancellationToken: ct

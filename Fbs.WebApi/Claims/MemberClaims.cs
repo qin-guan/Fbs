@@ -13,29 +13,42 @@ public enum ClaimOutcome
 {
     Claimed = 1,
 
-    /// <summary>The link is unknown, has been used, or has run out.</summary>
+    /// <summary>The token is unknown, already used, or expired.</summary>
     NoSuchLink = 2,
 
-    /// <summary>Claiming is off for the organisation, or the organisation isn't there.</summary>
+    /// <summary>The organisation doesn't exist, isn't active, or has claiming turned off.</summary>
     Unavailable = 3,
 
-    /// <summary>No place was linked to the chat, or more than one was, so it can't be told which is theirs.</summary>
-    NoPlaceForChat = 4,
+    /// <summary>
+    /// No unclaimed member has this chat as their <see cref="TenantMember.LegacyChatId"/>, or more than one does. The token
+    /// is not used up, so it can still be opened from the right chat.
+    /// </summary>
+    NoMemberForChat = 4,
 
-    /// <summary>The account already has a place in the organisation.</summary>
+    /// <summary>The account is already a member of the organisation.</summary>
     AlreadyMember = 5,
 }
 
 public sealed record ClaimResult(ClaimOutcome Outcome, string? MemberName = null, string? OrganizationName = null);
 
 /// <summary>
-/// Lets somebody who was in the old version, and is signed in with an account now, take over their place: by opening a
-/// link in the Telegram chat their place was linked to, which shows they control it.
+/// Claiming: attaching a Clerk account to a member imported from the old version (status
+/// <see cref="MemberStatus.Unclaimed"/>, no <see cref="TenantMember.UserId"/>).
 /// </summary>
 /// <remarks>
-/// The place is kept as it was, apart from the role: whoever is claiming is a member even if they were an admin, as
-/// which chat was linked to them can't be relied on for that, and an admin is made by somebody who runs the system
-/// (see <see cref="MemberPromotions"/>).
+/// <para>
+/// The old version knew people by phone number and sent their login codes to a Telegram chat, which the import kept as
+/// <see cref="TenantMember.LegacyChatId"/>. To claim, a signed-in user asks for a one-time Telegram link
+/// (<see cref="StartAsync"/>) and opens it. Telegram then sends <c>/start claim_&lt;token&gt;</c> to the bot from their chat,
+/// and <see cref="CompleteAsync"/> gives the account the member whose <c>LegacyChatId</c> is that chat. Being able to send from
+/// the chat is the proof of identity.
+/// </para>
+/// <para>
+/// The member keeps their phone, unit and notification settings, but always becomes a <see cref="MemberRole.Member"/>, even
+/// if they were an admin. The old bot let anyone link their chat to another person's phone number, so a
+/// <c>LegacyChatId</c> is not trusted with admin rights. Admins are made with <see cref="MemberPromotions"/>.
+/// See docs/runbooks/cutover-2-accounts.md.
+/// </para>
 /// </remarks>
 public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOptions<TelegramOptions> options, TelegramBotIdentity identity, TelegramLinker linker)
 {
@@ -45,7 +58,10 @@ public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOp
 
     public sealed record Started(string Url, DateTimeOffset ExpiresAt);
 
-    /// <summary>The organisation someone can claim their place in, if claiming is on for it, and they haven't a place in it already.</summary>
+    /// <summary>
+    /// The organisation with this slug, if the user can claim in it: it is active, has claiming on, and the user is not a member
+    /// of it already. Otherwise null.
+    /// </summary>
     public async Task<Tenant?> ClaimableAsync(string slug, Guid userId, CancellationToken ct)
     {
         var tenant = await sql.Queryable<Tenant>().FirstAsync(t => t.Slug == slug && t.LegacyClaimEnabled && t.Status == TenantStatus.Active, ct);
@@ -58,7 +74,10 @@ public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOp
         return await sql.Queryable<TenantMember>().AnyAsync(m => m.TenantId == tenantId && m.UserId == userId, ct) ? null : tenant;
     }
 
-    /// <summary>A link to open in Telegram. It replaces one made for the same organisation that wasn't used.</summary>
+    /// <summary>
+    /// Makes the Telegram link to open, valid once for <see cref="TokenLifetime"/>. Only a hash of the token is stored, and any
+    /// unused token the user had for this organisation is deleted.
+    /// </summary>
     public async Task<Started> StartAsync(Guid userId, Tenant tenant, CancellationToken ct)
     {
         var token = InviteTokens.Generate();
@@ -72,13 +91,16 @@ public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOp
         return new Started($"https://t.me/{username}?start={StartPrefix}{token}", expiresAt);
     }
 
-    /// <summary>Gives the place that was linked to the chat to the account the token was made for.</summary>
+    /// <summary>
+    /// Called by the bot when <paramref name="chatId"/> sends <c>/start claim_&lt;token&gt;</c>. Attaches the account the token was made
+    /// for to the unclaimed member whose <c>LegacyChatId</c> is <paramref name="chatId"/>, and uses up the token.
+    /// </summary>
     public async Task<ClaimResult> CompleteAsync(string token, string chatId, CancellationToken ct)
     {
         var result = await TransactionRetry.RunAsync(() => CompleteOnceAsync(token, chatId, ct), ct);
         if (result.Outcome == ClaimOutcome.Claimed && result.UserId is { } userId)
         {
-            // The chat they proved they control is where they are told from now on, unless they have one connected already
+            // Send their booking notifications to this chat, unless their account already has one connected
             await linker.LinkIfNoneAsync(userId, chatId, ct);
         }
 
@@ -95,6 +117,7 @@ public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOp
         try
         {
             using var tran = sql.Ado.UseTran();
+            // Locked, so a token is used at most once even if it is opened twice at the same moment
             var claim = await sql.Queryable<MemberClaimToken>().Where(t => t.TokenHash == hash && t.UsedAt == null && t.ExpiresAt > now).TranLock(DbLockType.Wait).FirstAsync(ct);
             if (claim is null)
             {
@@ -108,6 +131,7 @@ public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOp
                 return new Completed(ClaimOutcome.Unavailable);
             }
 
+            // Locked, so that if several accounts open their links from this chat at the same moment, only one gets the member
             var unclaimed = MemberStatus.Unclaimed;
             var places = await sql.Queryable<TenantMember>()
                 .Where(m => m.TenantId == tenantId && m.LegacyChatId == chatId && m.UserId == null && m.Status == unclaimed)
@@ -115,13 +139,14 @@ public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOp
                 .ToListAsync(ct);
             if (places.Count != 1)
             {
-                // The link is left as it is, so they can open it from the right chat
-                return new Completed(ClaimOutcome.NoPlaceForChat, OrganizationName: tenant.Name);
+                // Leave the token unused, so they can still open it from the right chat
+                return new Completed(ClaimOutcome.NoMemberForChat, OrganizationName: tenant.Name);
             }
 
             var place = places[0];
             var userId = claim.UserId;
             var claimId = claim.Id;
+            // Always Member, never Admin: see the remarks on the class
             await sql.Updateable<TenantMember>()
                 .SetColumns(m => new TenantMember { UserId = userId, Status = MemberStatus.Active, Role = MemberRole.Member })
                 .Where(m => m.Id == place.Id)
@@ -133,7 +158,7 @@ public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOp
         }
         catch (Exception e) when (e.IsDuplicate())
         {
-            // They have a place in the organisation already
+            // The unique index on (TenantId, UserId): the account is already a member of this organisation
             return new Completed(ClaimOutcome.AlreadyMember);
         }
     }
