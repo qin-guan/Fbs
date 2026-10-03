@@ -48,21 +48,13 @@ public sealed class ResolveTenant : IPreProcessor<object>
 
         if (member.Status == MemberStatus.Pending)
         {
-            await response.SendAsync(
-                new { title = "Waiting for approval", status = 403, detail = "An admin has to let you in first.", code = "pending" },
-                StatusCodes.Status403Forbidden,
-                cancellation: ct
-            );
+            await Problem.SendAsync(response, StatusCodes.Status403Forbidden, "Waiting for approval", "An admin has to let you in first.", "pending", ct);
             return;
         }
 
         if (member.Status != MemberStatus.Active || tenant.Status != TenantStatus.Active)
         {
-            await response.SendAsync(
-                new { title = "Not available", status = 403, detail = "This organisation is not available.", code = "unavailable" },
-                StatusCodes.Status403Forbidden,
-                cancellation: ct
-            );
+            await Problem.SendAsync(response, StatusCodes.Status403Forbidden, "Not available", "This organisation is not available.", "unavailable", ct);
             return;
         }
 
@@ -71,4 +63,17 @@ public sealed class ResolveTenant : IPreProcessor<object>
 
     private static Task<TenantMember?> FindMemberAsync(ISqlSugarClient sql, Guid tenantId, Guid accountId, CancellationToken ct) =>
         sql.Queryable<TenantMember>().FirstAsync(m => m.TenantId == tenantId && m.UserId == accountId, ct)!;
+}
+
+/// <summary>
+/// A refusal that says why, in the form the rest of the API's errors are in, so that whoever reads it can tell it from a
+/// session that has run out, which is a 403 with nothing in it.
+/// </summary>
+internal static class Problem
+{
+    public static Task SendAsync(HttpResponse response, int status, string title, string detail, string code, CancellationToken ct)
+    {
+        response.StatusCode = status;
+        return response.WriteAsJsonAsync(new { title, status, detail, code }, options: null, contentType: "application/problem+json", ct);
+    }
 }

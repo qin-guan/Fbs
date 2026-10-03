@@ -1,47 +1,9 @@
-// Checks the pages for accounts in a real browser, against a build made with NUXT_PUBLIC_AUTH_MODE=test (see
-// nuxt.config.ts), where nobody needs to sign in. The API is answered by this script, so nothing else has to be running.
-//
-//   pnpm test:e2e            builds the app for it, serves it, and runs this
-//
-import { chromium } from 'playwright'
+// The pages for accounts and organizations, in a real browser, against a build made with NUXT_PUBLIC_AUTH_MODE=test (see
+// nuxt.config.ts), where nobody needs to sign in. The API is answered by the test, so nothing else has to be running.
+import { check, finish, json, noContent, problem, shot, start, stub } from './support.mjs'
 
+const { browser, context } = await start()
 const base = process.env.BASE_URL ?? 'http://localhost:3123'
-const api = process.env.API_URL ?? 'https://localhost:5204'
-// Screenshots are kept if this is set, for looking at
-const out = process.env.SCREENSHOTS
-async function shot(page, name) {
-  if (out) {
-    await page.screenshot({ path: `${out}/${name}.png`, fullPage: true })
-  }
-}
-
-const json = (body, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body), headers: { 'access-control-allow-origin': base, 'access-control-allow-credentials': 'true', 'access-control-allow-headers': '*' } })
-const problem = (status, errors) => json({ title: 'x', status, errors }, status)
-
-/** Answers the API's calls from a table of `METHOD /path` to a function of the request. */
-async function stub(page, table, log) {
-  await page.route(`${api}/**`, async (route) => {
-    const request = route.request()
-    const url = new URL(request.url())
-    const key = `${request.method()} ${url.pathname}`
-    if (request.method() === 'OPTIONS') {
-      return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': base, 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'access-control-allow-credentials': 'true' } })
-    }
-    log.push({ key, auth: request.headers()['authorization'], body: request.postData() })
-    const handler = table[key]
-    if (!handler) return route.fulfill(json({ title: 'not stubbed' }, 404))
-    return route.fulfill(await handler(request))
-  })
-}
-
-const results = []
-function check(name, ok, detail = '') {
-  results.push({ name, ok })
-  console.log(`${ok ? 'PASS' : 'FAIL'} ${name} ${ok ? '' : detail}`)
-}
-
-const browser = await chromium.launch()
-const context = await browser.newContext({ viewport: { width: 1000, height: 800 }, ignoreHTTPSErrors: true })
 
 // 1. Nobody in any organization yet: sent to get started, and the token goes with the request
 {
@@ -189,7 +151,7 @@ const context = await browser.newContext({ viewport: { width: 1000, height: 800 
     'POST /Me/Telegram/Link': () => json({ url: 'https://t.me/fbs_bot?start=abc', expiresAt: new Date(Date.now() + 600000).toISOString() }),
     'DELETE /Me/Telegram': () => {
       linked = false
-      return { status: 204, body: '', headers: { 'access-control-allow-origin': base } }
+      return noContent()
     },
   }, log)
   await page.goto(base + '/account')
@@ -218,7 +180,4 @@ const context = await browser.newContext({ viewport: { width: 1000, height: 800 
   await page.close()
 }
 
-await browser.close()
-const failed = results.filter(r => !r.ok)
-console.log(`\n${results.length - failed.length}/${results.length} passed`)
-process.exit(failed.length ? 1 : 0)
+await finish(browser)
