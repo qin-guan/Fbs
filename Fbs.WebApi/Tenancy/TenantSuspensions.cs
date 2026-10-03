@@ -12,6 +12,9 @@ public enum SuspensionOutcome
     AlreadyThatWay = 2,
 
     NoSuchOrganization = 3,
+
+    /// <summary>It is to be deleted, which is more than suspended: restore it first.</summary>
+    PendingDeletion = 4,
 }
 
 /// <summary>What is known of an organisation, for whoever runs the system to choose which to suspend.</summary>
@@ -29,6 +32,11 @@ public sealed class TenantSuspensions(ISqlSugarClient sql)
         if (tenant is null)
         {
             return SuspensionOutcome.NoSuchOrganization;
+        }
+
+        if (tenant.Status == TenantStatus.PendingDeletion)
+        {
+            return SuspensionOutcome.PendingDeletion;
         }
 
         var wanted = suspended ? TenantStatus.Suspended : TenantStatus.Active;

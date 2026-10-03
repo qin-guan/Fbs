@@ -5,31 +5,6 @@ using SqlSugar;
 
 namespace Fbs.WebApi.Endpoints.Me.Get;
 
-public class Response
-{
-    public required Guid Id { get; init; }
-
-    public string? Name { get; init; }
-
-    public string? Email { get; init; }
-
-    /// <summary>The organisations they belong to, or have asked to.</summary>
-    public required List<Membership> Memberships { get; init; }
-}
-
-public class Membership
-{
-    public required string TenantSlug { get; init; }
-
-    public required string TenantName { get; init; }
-
-    public required MemberRole Role { get; init; }
-
-    public required MemberStatus Status { get; init; }
-
-    public required string DisplayName { get; init; }
-}
-
 /// <summary>Who is signed in, and which organisations they are in: what the app needs to decide where to take them.</summary>
 [RequiresClerk]
 public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql) : EndpointWithoutRequest<Response>
@@ -72,6 +47,8 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql) : End
                         Role = m.Role,
                         Status = m.Status,
                         DisplayName = m.DisplayName,
+                        TenantStatus = tenants[m.TenantId].Status,
+                        DeleteAfter = tenants[m.TenantId].Status == TenantStatus.PendingDeletion ? tenants[m.TenantId].DeleteAfter : null,
                     })
                     .OrderBy(m => m.TenantName)
                     .ToList(),

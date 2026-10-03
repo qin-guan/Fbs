@@ -32,6 +32,10 @@ public class Tenant
 
     public TenantStatus Status { get; set; } = TenantStatus.Active;
 
+    /// <summary>When it can be deleted for good, if an admin has asked for that: until then it can be restored.</summary>
+    [SugarColumn(IsNullable = true)]
+    public DateTimeOffset? DeleteAfter { get; set; }
+
     /// <summary>
     /// Whether someone who joins with an invite waits for an admin to let them in. On unless the tenant chooses
     /// otherwise, so a link that gets shared further than it should exposes nothing.
@@ -56,4 +60,7 @@ public enum TenantStatus
 {
     Active = 1,
     Suspended = 2,
+
+    /// <summary>An admin asked for it to be deleted. It can't be used, and can be restored until <see cref="Tenant.DeleteAfter"/> has passed and it has been purged.</summary>
+    PendingDeletion = 3,
 }
