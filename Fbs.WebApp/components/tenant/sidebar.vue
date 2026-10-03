@@ -40,6 +40,7 @@ const links = computed<NavigationMenuItem[][]>(() => [
         { label: 'Units', icon: 'i-lucide-layers', to: path('admin', 'units'), onSelect: close },
         { label: 'Invite links', icon: 'i-lucide-link', to: path('admin', 'invites'), onSelect: close },
         { label: 'Settings', icon: 'i-lucide-settings', to: path('admin', 'settings'), onSelect: close },
+        { label: 'History', icon: 'i-lucide-history', to: path('admin', 'audit'), onSelect: close },
       ]]
     : []),
 ])
