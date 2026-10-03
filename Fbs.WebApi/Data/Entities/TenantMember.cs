@@ -7,6 +7,7 @@ namespace Fbs.WebApi.Data.Entities;
 /// account of their own <see cref="UserId"/> is empty, which is how existing members are carried over.
 /// </summary>
 [SugarIndex("UX_TenantMember_TenantId_Phone", nameof(TenantId), OrderByType.Asc, nameof(Phone), OrderByType.Asc, IsUnique = true)]
+[SugarIndex("UX_TenantMember_TenantId_UserId", nameof(TenantId), OrderByType.Asc, nameof(UserId), OrderByType.Asc, IsUnique = true)]
 [SugarIndex("IX_TenantMember_UserId", nameof(UserId), OrderByType.Asc)]
 public class TenantMember
 {

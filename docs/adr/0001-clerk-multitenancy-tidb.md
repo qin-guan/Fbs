@@ -325,7 +325,7 @@ until the web app moves over.
 - [x] Organisations: `POST /Tenants`, `/t/{slug}` routing that only lets active members in, settings for admins (#238)
 - [x] Units, facilities and members, managed by admins, with the last admin protected
 - [x] Bookings under `/t/{slug}`, with windowed lists
-- [ ] Invites and approval
+- [x] Invites and approval (hashed token, uses taken atomically, pending until approved)
 - [ ] Telegram linking by deep link, notifications per user
 - [ ] Claiming a member carried over from before
 - [ ] Clerk `user.deleted` webhook
