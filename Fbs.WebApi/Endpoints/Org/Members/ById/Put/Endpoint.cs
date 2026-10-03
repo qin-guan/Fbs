@@ -13,7 +13,7 @@ namespace Fbs.WebApi.Endpoints.Org.Members.ById.Put;
 /// </summary>
 /// <remarks>The organisation always keeps an admin: the change that would take the last one is refused.</remarks>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas) : Endpoint<Request, MemberResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas, AuditLog audit) : Endpoint<Request, MemberResponse>
 {
     public override void Configure()
     {
@@ -102,6 +102,11 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQ
                 })
                 .Where(m => m.Id == id && m.TenantId == tenantId)
                 .ExecuteCommandAsync(ct);
+            if (MemberAudit.Describe(member, status, displayName, phone, unitId, role, scope) is var (action, summary))
+            {
+                await audit.WriteAsync(tenantId, tenantContext.Member.Id, action, summary, "member", id, ct);
+            }
+
             tran.CommitTran();
 
             member.DisplayName = displayName;

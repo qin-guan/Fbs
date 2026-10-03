@@ -11,7 +11,7 @@ namespace Fbs.WebApi.Endpoints.Tenants.Post;
 
 /// <summary>Anyone signed in can make an organisation, and becomes its admin.</summary>
 [RequiresClerk]
-public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, IOptions<TenantLimits> limits) : Endpoint<Request, Response>
+public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, IOptions<TenantLimits> limits, AuditLog audit) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
@@ -75,6 +75,7 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, IOpti
 
             await sql.Insertable(tenant).ExecuteCommandAsync(ct);
             await sql.Insertable(admin).ExecuteCommandAsync(ct);
+            await audit.WriteAsync(tenant.Id, admin.Id, "tenant.created", "Made the organisation.", "tenant", tenant.Id, ct);
             tran.CommitTran();
         }
         catch (Exception e) when (e.Message.Contains("Duplicate", StringComparison.OrdinalIgnoreCase))

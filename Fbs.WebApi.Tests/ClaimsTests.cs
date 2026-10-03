@@ -91,6 +91,11 @@ public class ClaimsTests
         await Assert.That((await client.GetFromJsonAsync<JsonElement>("/Me/Telegram")).GetProperty("linked").GetBoolean()).IsTrue();
         await Assert.That(Factory.Db.Queryable<TelegramLink>().First(l => l.UserId == accountId)!.ChatId).IsEqualTo(ChatOf(Users.Booker).ToString());
         await Assert.That(Factory.Db.Queryable<MemberClaimToken>().First(t => t.UserId == accountId)!.UsedAt).IsNotNull();
+        // And it is written down, as done by them, without their name in it
+        var written = Factory.Db.Queryable<AuditEntry>().Where(e => e.TenantId == Factory.TenantId && e.Action == "member.claimed").ToList().Single();
+        await Assert.That(written.ActorMemberId).IsEqualTo(after.Id);
+        await Assert.That(written.TargetId).IsEqualTo(after.Id);
+        await Assert.That(written.Summary).IsEqualTo("Took over their place from before accounts.");
     }
 
     [Test]
