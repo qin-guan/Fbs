@@ -93,6 +93,19 @@ const base = process.env.BASE_URL ?? 'http://localhost:3123'
   check('the name is sent', JSON.parse(log.find(l => l.key.startsWith('POST /Invites')).body).displayName === 'Sam Lee')
   await page.close()
 
+  // An organization that has as many people as it can have
+  const full = await context.newPage()
+  await stub(full, {
+    'GET /Me': () => json({ id: 'a', name: 'Sam Lee', email: null, memberships: [] }),
+    'GET /Invites/goodtokengoodtokengoodtoken': () => json({ organizationName: 'Alpha Company', requiresApproval: true }),
+    'POST /Invites/goodtokengoodtokengoodtoken/Accept': () => problem(403, [{ name: 'generalErrors', reason: 'An organisation can have 500 people. Remove somebody who isn\'t needed.', code: 'member-limit' }]),
+  }, [])
+  await full.goto(base + '/join/goodtokengoodtokengoodtoken')
+  await full.getByRole('button', { name: 'Ask to join' }).click()
+  await full.getByText('This organization is full').waitFor()
+  check('a full organization says why they are not in, and the link is still there to use', (await full.getByRole('button', { name: 'Ask to join' }).count()) === 1)
+  await full.close()
+
   const gone = await context.newPage()
   await stub(gone, { 'GET /Me': () => json({ id: 'a', name: 'S', email: null, memberships: [] }) }, [])
   await gone.goto(base + '/join/badtokenbadtokenbadtokenbad')

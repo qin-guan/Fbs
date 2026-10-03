@@ -26,7 +26,7 @@ const routes = list => new Proxy({}, {
 })
 
 /** An organization with what is in it kept, and answered from. */
-function api({ units = [], facilities = [] } = {}) {
+function api({ units = [], facilities = [], unitLimit = 50, facilityLimit = 100 } = {}) {
   const state = { units: [...units], facilities: [...facilities], deleted: [] }
   let made = 0
   const table = routes([
@@ -35,6 +35,10 @@ function api({ units = [], facilities = [] } = {}) {
     [/^GET \/t\/alpha\/Units$/, () => json(state.units)],
     [/^POST \/t\/alpha\/Units$/, (r) => {
       const { name } = JSON.parse(r.postData())
+      if (state.units.length >= unitLimit) {
+        return problem(403, [{ name: 'generalErrors', reason: `An organisation can have ${unitLimit} units. Delete one that isn't needed.`, code: 'unit-limit' }])
+      }
+
       if (state.units.some(u => u.name === name)) {
         return problem(409, [{ name: 'name', reason: 'There is a unit with that name already.', code: 'unit-exists' }])
       }
@@ -65,6 +69,10 @@ function api({ units = [], facilities = [] } = {}) {
     [/^GET \/t\/alpha\/Facilities$/, () => json(state.facilities)],
     [/^POST \/t\/alpha\/Facilities$/, (r) => {
       const body = JSON.parse(r.postData())
+      if (state.facilities.length >= facilityLimit) {
+        return problem(403, [{ name: 'generalErrors', reason: `An organisation can have ${facilityLimit} facilities. Delete one that isn't needed.`, code: 'facility-limit' }])
+      }
+
       if (state.facilities.some(f => f.name === body.name)) {
         return problem(409, [{ name: 'name', reason: 'There is a facility with that name already.', code: 'facility-exists' }])
       }
@@ -232,7 +240,36 @@ const sent = (log, key) => log.filter(l => l.key === key).map(l => JSON.parse(l.
   await page.close()
 }
 
-// 3. Nothing yet, and with no units to give it to
+// 3. As many as there can be
+{
+  const { table } = api({ units: [{ id: 'u1', name: 'Alpha' }], facilities: [{ id: 'f1', name: 'Hall', group: null, availableToAll: true, unitIds: [] }], unitLimit: 1, facilityLimit: 1 })
+  const page = await context.newPage()
+  await stub(page, table)
+  await page.goto(`${base}/t/alpha/admin/facilities`)
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Name', { exact: true }).fill('Gym')
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+  await dialog.getByText('An organisation can have 1 facilities.').waitFor()
+  check('a limit on facilities is said in the form, which stays for what was typed', (await dialog.getByLabel('Name', { exact: true }).inputValue()) === 'Gym')
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await dialog.waitFor({ state: 'detached' })
+  // ... and is gone when the form is opened again
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  check('and does not stay for the next time', (await page.getByRole('dialog').getByText('An organisation can have 1 facilities.').count()) === 0)
+  await page.close()
+
+  const units = await context.newPage()
+  await stub(units, table)
+  await units.goto(`${base}/t/alpha/admin/units`)
+  await units.getByLabel('Name of the new unit').fill('Bravo')
+  await units.getByRole('button', { name: 'Add', exact: true }).click()
+  await units.getByText('An organisation can have 1 units.').waitFor()
+  check('a limit on units is said by the box', true)
+  await units.close()
+}
+
+// 4. Nothing yet, and with no units to give it to
 {
   const { table } = api()
   const page = await context.newPage()
