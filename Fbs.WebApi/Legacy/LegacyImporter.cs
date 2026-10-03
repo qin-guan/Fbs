@@ -166,7 +166,8 @@ public sealed partial class LegacyImporter(
             return tenant;
         }
 
-        tenant = new Tenant { Id = Guid.NewGuid(), Slug = slug, Name = options.Name ?? slug };
+        // So the members it imports can claim their rows with Clerk accounts in Cutover 2
+        tenant = new Tenant { Id = Guid.NewGuid(), Slug = slug, Name = options.Name ?? slug, LegacyClaimEnabled = true };
         await sql.Insertable(tenant).ExecuteCommandAsync(cancellationToken);
         report.TenantCreated = true;
         return tenant;

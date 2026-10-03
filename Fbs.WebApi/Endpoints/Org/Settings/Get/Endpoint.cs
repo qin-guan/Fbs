@@ -26,6 +26,7 @@ public class Endpoint(ITenantContext tenantContext) : EndpointWithoutRequest<Res
                 DefaultCountryCode = tenant.DefaultCountryCode,
                 SlotMinutes = tenant.SlotMinutes,
                 RequireApproval = tenant.RequireApproval,
+                LegacyClaimEnabled = tenant.LegacyClaimEnabled,
             },
             ct
         );

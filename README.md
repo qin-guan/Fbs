@@ -170,6 +170,21 @@ Telegram is where a person is told about bookings, connected to their account fr
   people carried over from before are told as they were. Somebody waiting to be let in, or who has left, is told nothing.
   Somebody who is in more than one organisation is told which one a booking is in.
 
+**Claiming** moves people from the old sign-in (phone number and a Telegram code) to Clerk accounts. `import-legacy` creates
+them as `Unclaimed` members with no account, and keeps the Telegram chat the old version sent their codes to
+(`LegacyChatId`). A signed-in user claims their member row like this:
+
+1. `GET /Claims/{slug}` checks they can (404 if claiming is off, or they are a member already).
+2. `POST /Claims/{slug}/Start` returns `https://t.me/<bot>?start=claim_<token>`, valid once for ten minutes.
+3. They open it in Telegram. The bot gives their account the unclaimed member whose `LegacyChatId` is the chat it came from,
+   and connects that chat for notifications.
+
+The member keeps its phone, unit and notification scope, but its role is always **member**, even for old admins: the old bot
+let anyone link their chat to another person's number, so the chat is not trusted with admin rights. Make the admins with
+`dotnet Fbs.DbMigrator.dll promote-admin --tenant 3sib --phone +6591234567` once they have claimed.
+`Tenant.LegacyClaimEnabled` is on for organisations the importer made, and can be turned off but not back on. See
+[Cutover 2](docs/runbooks/cutover-2-accounts.md).
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and

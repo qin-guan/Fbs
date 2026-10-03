@@ -109,6 +109,37 @@ public sealed class TelegramLinker(ISqlSugarClient sql, TelegramBotClient bot, I
         return account?.Name ?? account?.Email ?? "your account";
     }
 
+    /// <summary>
+    /// Connects the chat to the account for notifications, unless the account already has a chat connected or another
+    /// account has this chat. Used after a claim, where the chat has just proved who the user is.
+    /// </summary>
+    public async Task LinkIfNoneAsync(Guid userId, string chatId, CancellationToken ct)
+    {
+        try
+        {
+            var taken = await sql.Queryable<TelegramLink>().AnyAsync(l => l.ChatId == chatId, ct);
+            var link = await sql.Queryable<TelegramLink>().FirstAsync(l => l.UserId == userId, ct);
+            if (taken || link?.ChatId is not null)
+            {
+                return;
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            if (link is null)
+            {
+                await sql.Insertable(new TelegramLink { Id = Guid.NewGuid(), UserId = userId, ChatId = chatId, LinkedAt = now }).ExecuteCommandAsync(ct);
+            }
+            else
+            {
+                await sql.Updateable<TelegramLink>().SetColumns(l => new TelegramLink { ChatId = chatId, LinkedAt = now }).Where(l => l.Id == link.Id && l.ChatId == null).ExecuteCommandAsync(ct);
+            }
+        }
+        catch (Exception e) when (e.IsDuplicate())
+        {
+            // Another account connected this chat at the same moment, and keeps it
+        }
+    }
+
     private Task<int> SetTokenAsync(Guid userId, string hash, DateTimeOffset expiresAt, CancellationToken ct) =>
         sql.Updateable<TelegramLink>().SetColumns(l => new TelegramLink { TokenHash = hash, TokenExpiresAt = expiresAt }).Where(l => l.UserId == userId).ExecuteCommandAsync(ct);
 }
