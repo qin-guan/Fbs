@@ -64,9 +64,14 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         && (booking.PocName?.Length ?? 0) <= PocNameLength
         && (booking.PocPhone?.Length ?? 0) <= PocPhoneLength;
 
-    public async Task<CreateResult> CreateAsync(
+    public Task<CreateResult> CreateAsync(
         IReadOnlyList<Booking> bookings,
         CancellationToken cancellationToken = default
+    ) => TransactionRetry.RunAsync(() => CreateOnceAsync(bookings, cancellationToken), cancellationToken);
+
+    private async Task<CreateResult> CreateOnceAsync(
+        IReadOnlyList<Booking> bookings,
+        CancellationToken cancellationToken
     )
     {
         var snapshot = await LoadAsync(cancellationToken);
@@ -118,11 +123,18 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         return new CreateResult([]);
     }
 
-    public async Task<UpdateResult> UpdateAsync(
+    public Task<UpdateResult> UpdateAsync(
         Booking updated,
         string updatedByPhone,
         bool checkForClash,
         CancellationToken cancellationToken = default
+    ) => TransactionRetry.RunAsync(() => UpdateOnceAsync(updated, updatedByPhone, checkForClash, cancellationToken), cancellationToken);
+
+    private async Task<UpdateResult> UpdateOnceAsync(
+        Booking updated,
+        string updatedByPhone,
+        bool checkForClash,
+        CancellationToken cancellationToken
     )
     {
         var snapshot = await LoadAsync(cancellationToken);
@@ -265,46 +277,17 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
     /// <summary>Bookings are read from the database every time, so there is nothing to reload.</summary>
     public Task ReloadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-    /// <summary>
-    /// Takes the facilities' rows, holding them until the transaction ends. They are taken in order of
-    /// their IDs, so two requests that need the same facilities can't each hold one the other is waiting for.
-    /// </summary>
-    private async Task LockFacilitiesAsync(Guid tenantId, List<Guid> facilityIds, CancellationToken cancellationToken)
-    {
-        await sql.Queryable<DataFacility>()
-            .Where(f => f.TenantId == tenantId && facilityIds.Contains(f.Id))
-            .OrderBy(f => f.Id)
-            .TranLock(DbLockType.Wait)
-            .Select(f => f.Id)
-            .ToListAsync(cancellationToken);
-    }
+    private Task LockFacilitiesAsync(Guid tenantId, List<Guid> facilityIds, CancellationToken cancellationToken) =>
+        BookingLocks.LockFacilitiesAsync(sql, tenantId, facilityIds, cancellationToken);
 
-    /// <summary>
-    /// The bookings that overlap the times, read so that they are as they are now and stay as they are
-    /// until the transaction ends.
-    /// </summary>
-    private async Task<List<DataBooking>> FindBookingsBetweenAsync(
+    private Task<List<DataBooking>> FindBookingsBetweenAsync(
         Guid tenantId,
         List<Guid> facilityIds,
         DateTimeOffset from,
         DateTimeOffset to,
         Guid? excluding,
         CancellationToken cancellationToken
-    )
-    {
-        var except = excluding ?? Guid.Empty;
-        return await sql.Queryable<DataBooking>()
-            .Where(b =>
-                b.TenantId == tenantId
-                && facilityIds.Contains(b.FacilityId)
-                && b.CancelledAt == null
-                && b.StartUtc < to
-                && b.EndUtc > from
-                && b.Id != except
-            )
-            .TranLock(DbLockType.Wait)
-            .ToListAsync(cancellationToken);
-    }
+    ) => BookingLocks.FindBookingsBetweenAsync(sql, tenantId, facilityIds, from, to, excluding, cancellationToken);
 
     private async Task<Snapshot> LoadAsync(CancellationToken cancellationToken)
     {
