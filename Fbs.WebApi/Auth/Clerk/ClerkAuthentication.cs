@@ -53,6 +53,7 @@ public static class ClerkAuthentication
         services.AddSingleton<TelegramBotIdentity>();
         services.AddScoped<TelegramLinker>();
         services.AddScoped<MemberClaims>();
+        services.AddScoped<AccountErasure>();
         services.AddScoped<MemberPromotions>();
         services.Configure<TenantLimits>(configuration.GetSection("Limits"));
 

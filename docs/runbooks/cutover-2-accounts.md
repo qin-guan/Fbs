@@ -32,7 +32,8 @@ to hand out admin rights. You make the admins yourself, from the command line (s
 
 1. A Clerk instance for production, on a domain whose DNS is ours, with `email` and `name` added to the session token as custom
    claims (`{{user.primary_email_address}}`, `{{user.full_name}}`).
-2. Set on the API: `Clerk__Issuer` (Clerk's Frontend API), `Clerk__AuthorizedParties__0` (the origin of the app), and
+2. In Clerk, add a webhook endpoint `https://<api>/webhooks/clerk` subscribed to `user.deleted`, and copy its signing secret.
+   Set on the API: `Clerk__WebhookSecret` (the `whsec_...`), `Clerk__Issuer` (Clerk's Frontend API), `Clerk__AuthorizedParties__0` (the origin of the app), and
    `Telegram__BotUsername` (the bot's name without the @, or leave it out and the API asks Telegram once).
 3. The app that uses Clerk deployed, with a page at `/claim/3sib` that asks for `GET /Claims/3sib` and then
    `POST /Claims/3sib/Start`, and shows the link it returns.
