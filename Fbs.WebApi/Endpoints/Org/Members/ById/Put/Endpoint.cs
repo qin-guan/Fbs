@@ -13,7 +13,7 @@ namespace Fbs.WebApi.Endpoints.Org.Members.ById.Put;
 /// </summary>
 /// <remarks>The organisation always keeps an admin: the change that would take the last one is refused.</remarks>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request, MemberResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas) : Endpoint<Request, MemberResponse>
 {
     public override void Configure()
     {
@@ -59,6 +59,14 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
             if (member is null)
             {
                 await Send.NotFoundAsync(ct);
+                return;
+            }
+
+            // Letting somebody back in is one more person, though they are on the list already
+            if (member.Status == MemberStatus.Removed && req.Membership == MembershipState.In && await quotas.CheckMemberAsync(tenantId, ct) is { } refusal)
+            {
+                AddError(refusal.Reason, refusal.Code);
+                await Send.ErrorsAsync(StatusCodes.Status403Forbidden, ct);
                 return;
             }
 
