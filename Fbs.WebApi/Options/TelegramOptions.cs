@@ -15,6 +15,12 @@ public partial class TelegramOptions
     public required string WebhookSecret { get; set; }
 
     /// <summary>
+    /// The bot's username, without the @, that the link for connecting Telegram to an account opens. Asked of Telegram
+    /// when it is first needed if left out.
+    /// </summary>
+    public string? BotUsername { get; set; }
+
+    /// <summary>
     /// Telegram only accepts A-Z, a-z, 0-9, '_' and '-' in a secret token. At least 16 characters
     /// keeps it from being guessable.
     /// </summary>

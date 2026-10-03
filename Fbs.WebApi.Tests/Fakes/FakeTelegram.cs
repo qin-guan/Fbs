@@ -12,9 +12,16 @@ namespace Fbs.WebApi.Tests.Fakes;
 public class FakeTelegram
 {
     private int _messageId;
+    private int _getMeCalls;
     private TaskCompletionSource _resumed = Resumed();
 
     public ConcurrentQueue<(long ChatId, string Text)> Messages { get; } = new();
+
+    /// <summary>What the bot says it is called when asked.</summary>
+    public string BotUsername { get; set; } = "fbs_test_bot";
+
+    /// <summary>How many times the bot has been asked about itself.</summary>
+    public int GetMeCalls => _getMeCalls;
 
     /// <summary>The body of every setWebhook call, oldest first.</summary>
     public ConcurrentQueue<JsonNode> WebhookRegistrations { get; } = new();
@@ -65,6 +72,10 @@ public class FakeTelegram
             case "setwebhook":
                 WebhookRegistrations.Enqueue(body!);
                 return Ok(true);
+
+            case "getme":
+                Interlocked.Increment(ref _getMeCalls);
+                return Ok(new JsonObject { ["id"] = 123456, ["is_bot"] = true, ["first_name"] = "Fbs", ["username"] = BotUsername });
 
             case "sendmessage":
                 await _resumed.Task.WaitAsync(ct);

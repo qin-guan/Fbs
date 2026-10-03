@@ -159,6 +159,17 @@ People join with a link an admin shares in a chat, as there is no email:
   statement that checks there is one left, so a link lets in no more than `maxUses` however many join together. Joining again
   changes nothing, and somebody an admin removed can't come back with a link, only be let back in by an admin.
 
+Telegram is where a person is told about bookings, connected to their account from the app:
+
+- `POST /Me/Telegram/Link` makes a link to open in Telegram (`https://t.me/<bot>?start=<token>`), which works once, for ten
+  minutes; a new one replaces it, and the chat that is connected stays until the new one is opened. Opening it starts the bot, which is
+  told whose account it is by the token, and the chat is then theirs. `GET /Me/Telegram` says whether one is connected, and
+  `DELETE /Me/Telegram` disconnects it. The bot only takes a token in a private chat. A chat belongs to one account: connecting it
+  to another takes it from the first. `Telegram:BotUsername` names the bot in the link, and is asked of Telegram if it isn't set.
+- A member is told in the chat their account connected, and otherwise in the one their phone number was linked to before, so
+  people carried over from before are told as they were. Somebody waiting to be let in, or who has left, is told nothing.
+  Somebody who is in more than one organisation is told which one a booking is in.
+
 ### Moving from Google
 
 `import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and

@@ -326,7 +326,7 @@ until the web app moves over.
 - [x] Units, facilities and members, managed by admins, with the last admin protected
 - [x] Bookings under `/t/{slug}`, with windowed lists
 - [x] Invites and approval (hashed token, uses taken atomically, pending until approved)
-- [ ] Telegram linking by deep link, notifications per user
+- [x] Telegram linking by deep link, notifications per user (across organisations, with the organisation named)
 - [ ] Claiming a member carried over from before
 - [ ] Clerk `user.deleted` webhook
 - [ ] Forwarded headers and IP rate limiting
