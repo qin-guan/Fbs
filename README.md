@@ -54,6 +54,10 @@ Or, with the [Aspire CLI](https://aspire.dev):
 aspire run;
 ```
 
+The web app is built to sign people in with a phone number and a code on Telegram (what is deployed until the switch to accounts), or with Clerk, which
+gives it the pages for accounts and organizations, `/t/{slug}`, for bookings, the timeline, and the admins of an organization. Which is decided when it
+is built: see [`Fbs.WebApp/README.md`](Fbs.WebApp/README.md), which also says how its pages are checked in a browser.
+
 ## Database
 
 Bookings are kept in Google Calendar, and users, facilities, the roster and login codes in Google Sheets. The database

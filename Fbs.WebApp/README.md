@@ -21,16 +21,54 @@ if they have none. Everything that belongs to an organization is under `/t/:slug
 nothing else in the app, or in the download for the old pages, depends on it. Clerk's session token needs `email` and `name` as custom claims (see the
 [Cutover 2 runbook](../docs/runbooks/cutover-2-accounts.md)).
 
+## Pages of an organization
+
+Everything under `/t/:slug`, in the organization's time zone (not the browser's: a day, or a slot on the half hour, is one where the facilities are).
+
+| Address | For | What |
+|---|---|---|
+| `/t/:slug` | everyone in it | the bookings in a window of time, filtered by facility, and only mine |
+| `/t/:slug/bookings/:id` | everyone in it | one booking, changed or cancelled by whoever may |
+| `/t/:slug/book`, `/t/:slug/book/confirm` | everyone in it | pick a slot on the calendar, or several facilities and days with the builder, then confirm with a point of contact |
+| `/t/:slug/timeline` | everyone in it | a row for each facility, along the days of a window |
+| `/t/:slug/admin/settings` | admins | name, time zone, calling code, shortest booking, whether people wait to be let in, and turning off claiming from before accounts |
+| `/t/:slug/admin/units`, `.../facilities` | admins | what people belong to, and what they can book |
+| `/t/:slug/admin/members` | admins | letting in, turning away, changing, removing and adding by phone number |
+| `/t/:slug/admin/invites` | admins | links to join with, shown once when they are made |
+
+An admin who opens an organization with nothing in it is shown a checklist (`components/tenant/setup-checklist.vue`). A member who reaches an admin page by its address
+is told it is for admins (`components/tenant/admin-gate.vue`), and nothing is asked of the API for them.
+
+Where the code is:
+
+- `lib/slots.ts` and `lib/timeline.ts` are the time zone logic, and have no Nuxt in them. They are in `lib/` and not `utils/` **on purpose**: everything in `utils/` and
+  `composables/` is auto-imported, and these names (`planSlots`, `findClashes`, `wholeDay` ...) are those of the pages of the old build, which would be handed the
+  wrong ones. Import them by name.
+- `composables/tenant.ts` has what every page of an organization asks of it (`useTenant`, the formatters for its zone, `invalidateUnder`).
+- `composables/api.ts` reads what the API says when it refuses: `getErrorReasons`, `getErrorCodes`, and `getFieldErrors` for forms (put in with `UForm`'s `setErrors`).
+
 ## Checks
 
 ```bash
 pnpm lint
+pnpm test                       # the time zone logic, with no browser
 pnpm build                      # the build that is deployed until the switch
 pnpm test:e2e                   # the pages for accounts in a browser, with the API answered by the test
 pnpm exec playwright install chromium   # once, for the last
 ```
 
-`pnpm test:e2e` builds for `test`, serves it, and runs `e2e/smoke.mjs`, which answers the API's calls itself. `SCREENSHOTS=<folder>` keeps pictures of the pages.
+`pnpm test:e2e` builds for `test`, serves it, and runs each of `e2e/*.mjs` named in `e2e/run.mjs`: `smoke` (signing in, and making, joining and claiming an
+organization), `tenant` (the bookings), `booking` (making them), `timeline`, and one for each of the admin pages. They answer the API's calls themselves, and those of
+the admin pages keep what they are told in a small fake of the API with its rules in it (the last admin, names that are taken, and so on). Add `--no-build` to run
+them against the last build. `SCREENSHOTS=<folder>` keeps pictures of the pages.
+
+Some of them put the browser in a time zone that isn't the organization's (Los Angeles, when it is in Singapore), and that is the point: check what is drawn, and
+what is sent to the API, is by the organization's clock. When you write one, know that:
+
+- `UForm` looks at a field as it is left, and a person can't press a button in the same instant they type, but a test can: leave the field (`press('Tab')`), or wait for
+  the earlier error to go, before pressing the button.
+- While a modal closes, the page behind it is hidden from queries by role: wait for it to be `detached` first.
+- `USelectMenu` doesn't put its `aria-label` on anything a test can find: click its placeholder. `USelect` does.
 
 ---
 
