@@ -21,13 +21,27 @@ function reviveDates(value: unknown): unknown {
 }
 
 export default defineNuxtPlugin(() => {
+  const mode = useAuthMode()
+
   client.setConfig({
     baseURL: useRuntimeConfig().public.api,
     // The session cookie belongs to the API's domain. The client only reads `credentials` per
-    // request, so set it on the fetch options instead.
-    options: { credentials: 'include' },
+    // request, so set it on the fetch options instead. With accounts it is the session token that
+    // says who is asking, and no cookie is sent.
+    options: { credentials: mode === 'legacy' ? 'include' : 'omit' },
     codecs: {
       'application/json': { deserialize: reviveDates },
     },
   })
+
+  if (mode !== 'legacy') {
+    client.interceptors.request.use(async (request) => {
+      const token = await getSessionToken(mode)
+      if (token) {
+        request.headers['Authorization'] = `Bearer ${token}`
+      }
+
+      return request
+    })
+  }
 })

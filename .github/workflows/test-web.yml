@@ -1,0 +1,34 @@
+name: Test (web)
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - Fbs.WebApp/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/test-web.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter nuxt-app lint
+      # The build that is deployed until the switch to accounts: it has to keep working
+      - run: pnpm --filter nuxt-app build
+      - run: pnpm --filter nuxt-app exec playwright install --with-deps chromium
+      # The pages for accounts, in a browser, with the API answered by the test
+      - run: pnpm --filter nuxt-app test:e2e

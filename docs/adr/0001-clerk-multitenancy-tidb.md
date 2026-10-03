@@ -330,7 +330,8 @@ until the web app moves over.
 - [x] Claiming a member carried over from before, by proving control of the linked Telegram chat; admins promoted from the command line ([runbook](../runbooks/cutover-2-accounts.md))
 - [x] Clerk `user.deleted` webhook (Svix signature, erases the account, keeps bookings as a former member)
 - [x] Forwarded headers (private ranges only) and rate limits for the self-serve endpoints, per account and per address
-- [ ] The web app moves to Clerk and `/t/{slug}`
+- [x] The web app has Clerk sign in behind a build flag (`legacy` until the switch), a client that sends the session token, the API client regenerated, and the pages for choosing, making, joining and claiming an organization, and for connecting Telegram
+- [ ] Bookings, and the admin screens, under `/t/:slug`
 
 ## Open items
 

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { useGetAuthMe } from '~/api'
 
-const { data: me } = useGetAuthMe()
+// The old phone number sign in, until the switch to accounts
+const accounts = usesAccounts()
+const { data: me } = useGetAuthMe({ query: { enabled: !accounts } })
+const { isLoaded, isSignedIn } = useAccountSession()
+const signedIn = computed(() => accounts ? isLoaded.value && isSignedIn.value === true : !!me.value?.phone)
 </script>
 
 <template>
@@ -13,28 +17,34 @@ const { data: me } = useGetAuthMe()
           class="flex items-center gap-2.5 font-semibold text-highlighted"
         >
           <img
+            v-if="!accounts"
             src="/images/logo.png"
             alt="3SIB crest"
             width="32"
             height="26"
             class="h-7 w-auto"
           >
-          <span>3SIB Facility Bookings</span>
+          <UIcon
+            v-else
+            name="i-lucide-calendar-check"
+            class="size-6 text-primary"
+          />
+          <span>{{ accounts ? 'Facility Booking' : '3SIB Facility Bookings' }}</span>
         </NuxtLink>
 
         <div class="flex items-center gap-1.5">
           <UColorModeButton />
 
           <UButton
-            v-if="me?.phone"
-            to="/booking"
+            v-if="signedIn"
+            :to="accounts ? '/' : '/booking'"
             label="Dashboard"
             trailing-icon="i-lucide-arrow-right"
           />
           <UButton
             v-else
-            to="/auth/login"
-            label="Login"
+            :to="accounts ? '/sign-in' : '/auth/login'"
+            :label="accounts ? 'Sign in' : 'Login'"
             color="neutral"
             variant="outline"
           />

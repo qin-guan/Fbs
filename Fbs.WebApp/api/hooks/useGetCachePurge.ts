@@ -4,7 +4,7 @@
 */
 
 import type { RequestConfig, ResponseErrorConfig } from '../.kubb/client'
-import type { GetCachePurgeStatus204 } from '../types/GetCachePurge'
+import type { GetCachePurgeStatus204, GetCachePurgeStatus401, GetCachePurgeStatus403 } from '../types/GetCachePurge'
 import type { QueryKey, QueryClient, UseQueryOptions, UseQueryReturnType } from '@tanstack/vue-query'
 import { getCachePurge } from '../clients/getCachePurge'
 import { queryOptions, useQuery } from '@tanstack/vue-query'
@@ -16,7 +16,7 @@ export type GetCachePurgeQueryKey = ReturnType<typeof getCachePurgeQueryKey>
 
 export function getCachePurgeQueryOptions(config: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>> = {}) {
   const queryKey = getCachePurgeQueryKey()
-  return queryOptions<GetCachePurgeStatus204, ResponseErrorConfig<Error>, GetCachePurgeStatus204>({
+  return queryOptions<GetCachePurgeStatus204, ResponseErrorConfig<GetCachePurgeStatus401 | GetCachePurgeStatus403>, GetCachePurgeStatus204>({
    queryKey,
    queryFn: async ({ signal }) => {
       return getCachePurge({ ...config, signal: config.signal ?? signal, throwOnError: true }).unwrap()
@@ -28,7 +28,7 @@ export function getCachePurgeQueryOptions(config: Partial<Omit<RequestConfig, 'p
  * {@link /Cache/Purge}
  */
 export function useGetCachePurge<TData = GetCachePurgeStatus204, TQueryData = GetCachePurgeStatus204, TQueryKey extends QueryKey = GetCachePurgeQueryKey>(options: {
-  query?: Partial<UseQueryOptions<GetCachePurgeStatus204, ResponseErrorConfig<Error>, TData, TQueryData, TQueryKey>> & { client?: QueryClient },
+  query?: Partial<UseQueryOptions<GetCachePurgeStatus204, ResponseErrorConfig<GetCachePurgeStatus401 | GetCachePurgeStatus403>, TData, TQueryData, TQueryKey>> & { client?: QueryClient },
   client?: Partial<Omit<RequestConfig, 'path' | 'query' | 'body' | 'headers' | 'url'>>
 } = {}) {
   const { query: queryConfig = {}, client: config = {} } = options ?? {}
@@ -39,7 +39,7 @@ export function useGetCachePurge<TData = GetCachePurgeStatus204, TQueryData = Ge
    ...getCachePurgeQueryOptions(config),
    ...resolvedOptions,
    queryKey
-  } as unknown as UseQueryOptions<GetCachePurgeStatus204, ResponseErrorConfig<Error>, TData, GetCachePurgeStatus204, TQueryKey>, toValue(queryClient)) as UseQueryReturnType<TData, ResponseErrorConfig<Error>> & { queryKey: TQueryKey }
+  } as unknown as UseQueryOptions<GetCachePurgeStatus204, ResponseErrorConfig<GetCachePurgeStatus401 | GetCachePurgeStatus403>, TData, GetCachePurgeStatus204, TQueryKey>, toValue(queryClient)) as UseQueryReturnType<TData, ResponseErrorConfig<GetCachePurgeStatus401 | GetCachePurgeStatus403>> & { queryKey: TQueryKey }
 
   queryResult.queryKey = queryKey as TQueryKey
 
