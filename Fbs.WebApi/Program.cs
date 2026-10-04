@@ -28,6 +28,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using SqlSugar;
 using Telegram.Bot;
@@ -128,8 +129,13 @@ if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseC
     builder.Services.AddHostedService<DatabaseGaugesService>();
 }
 
-// What is counted and timed, which is sent wherever OTEL_EXPORTER_OTLP_ENDPOINT says once it is named here
-builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics.AddMeter(FbsMetrics.MeterName));
+// What is counted and timed, which is sent wherever OTEL_EXPORTER_OTLP_ENDPOINT says once it is named here. The database driver
+// makes a span of each statement, in the trace of the request that ran it, and counts its connection pool, but only for those
+// that ask for them by its name. The spans are kept to what each statement did: DatabaseSpans leaves the SQL out of them
+builder
+    .Services.AddOpenTelemetry()
+    .WithMetrics(metrics => metrics.AddMeter(FbsMetrics.MeterName, DatabaseSpans.DriverName))
+    .WithTracing(tracing => tracing.AddSource(DatabaseSpans.DriverName).AddProcessor<DatabaseSpans>());
 
 builder.Services.AddSingleton<InstrumentationSource>();
 builder.Services.AddSingleton<BackgroundPublisher>();
