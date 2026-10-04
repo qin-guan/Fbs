@@ -16,6 +16,18 @@ public sealed class ClerkTestIssuer
     public const string Issuer = "https://clerk.test.example";
     public const string App = "https://app.test.example";
 
+    /// <summary>The signing secret of the webhook endpoint, as Clerk shows it.</summary>
+    public static readonly string WebhookSecret = "whsec_" + Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)(i * 7 + 3)).ToArray());
+
+    /// <summary>The headers Svix sends with a webhook, signed the way it does unless told otherwise.</summary>
+    public static Dictionary<string, string> WebhookHeaders(string id, string body, DateTimeOffset? sentAt = null, string? secret = null)
+    {
+        var timestamp = (sentAt ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds().ToString();
+        var key = Convert.FromBase64String((secret ?? WebhookSecret)["whsec_".Length..]);
+        var signature = Convert.ToBase64String(System.Security.Cryptography.HMACSHA256.HashData(key, System.Text.Encoding.UTF8.GetBytes($"{id}.{timestamp}.{body}")));
+        return new() { ["svix-id"] = id, ["svix-timestamp"] = timestamp, ["svix-signature"] = $"v1,{signature}" };
+    }
+
     private readonly RSA _rsa = RSA.Create(2048);
 
     public string KeyId { get; } = "test-key-1";
@@ -134,6 +146,7 @@ public class ClerkFbsApiFactory : DatabaseFbsApiFactory
         builder.UseSetting("Clerk:Issuer", ClerkTestIssuer.Issuer);
         builder.UseSetting("Clerk:AuthorizedParties:0", ClerkTestIssuer.App);
         builder.UseSetting("Clerk:JwksJson", Clerk.JwksJson);
+        builder.UseSetting("Clerk:WebhookSecret", ClerkTestIssuer.WebhookSecret);
     }
 }
 

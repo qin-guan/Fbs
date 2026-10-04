@@ -20,5 +20,11 @@ public sealed class ClerkOptions
     /// <summary>The keys themselves, for when they can't be fetched, as in tests. Used instead of <see cref="JwksUrl"/>.</summary>
     public string? JwksJson { get; set; }
 
+    /// <summary>
+    /// The signing secret of the webhook endpoint in Clerk, <c>whsec_</c> and then base64, which is what shows that a webhook came from
+    /// Clerk. Webhooks are not accepted without it.
+    /// </summary>
+    public string? WebhookSecret { get; set; }
+
     public bool Enabled => !string.IsNullOrWhiteSpace(Issuer);
 }
