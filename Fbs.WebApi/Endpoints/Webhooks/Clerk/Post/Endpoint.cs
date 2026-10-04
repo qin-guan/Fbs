@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using FastEndpoints;
+using Fbs.WebApi.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Fbs.WebApi.Auth.Clerk;
 using Microsoft.Extensions.Options;
 
@@ -24,6 +26,7 @@ public class Endpoint(IOptions<ClerkOptions> options, AccountErasure erasure, IL
     {
         Post("/webhooks/clerk");
         AllowAnonymous();
+        Options(x => x.RequireRateLimiting(RateLimitPolicies.Webhook));
         // The body is read as it was sent, as that is what is signed
         Description(d => d.ExcludeFromDescription());
     }

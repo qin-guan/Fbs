@@ -1,4 +1,6 @@
 using FastEndpoints;
+using Fbs.WebApi.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Fbs.WebApi.Auth.Clerk;
 using Fbs.WebApi.TelegramLinks;
 
@@ -15,6 +17,7 @@ public class Endpoint(ICurrentAccount currentAccount, TelegramLinker linker) : E
     {
         Post("/Me/Telegram/Link");
         AuthSchemes(ClerkAuthentication.Scheme);
+        Options(x => x.RequireRateLimiting(RateLimitPolicies.LinkTelegram));
     }
 
     public override async Task HandleAsync(CancellationToken ct)

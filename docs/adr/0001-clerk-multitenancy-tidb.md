@@ -329,7 +329,7 @@ until the web app moves over.
 - [x] Telegram linking by deep link, notifications per user (across organisations, with the organisation named)
 - [x] Claiming a member carried over from before, by proving control of the linked Telegram chat; admins promoted from the command line ([runbook](../runbooks/cutover-2-accounts.md))
 - [x] Clerk `user.deleted` webhook (Svix signature, erases the account, keeps bookings as a former member)
-- [ ] Forwarded headers and IP rate limiting
+- [x] Forwarded headers (private ranges only) and rate limits for the self-serve endpoints, per account and per address
 - [ ] The web app moves to Clerk and `/t/{slug}`
 
 ## Open items
