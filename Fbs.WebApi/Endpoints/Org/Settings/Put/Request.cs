@@ -12,4 +12,7 @@ public class Request
     public int SlotMinutes { get; set; }
 
     public bool RequireApproval { get; set; }
+
+    /// <summary>Whether imported members can still claim. Leave it out to keep it as it is. It can be turned off, but not back on.</summary>
+    public bool? LegacyClaimEnabled { get; set; }
 }

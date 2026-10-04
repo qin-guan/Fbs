@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using FastEndpoints;
+using Fbs.WebApi.Claims;
 using Fbs.WebApi.Options;
 using Fbs.WebApi.Repository;
 using Fbs.WebApi.TelegramLinks;
@@ -122,6 +123,30 @@ public class Endpoint(
                     """,
                     ParseMode.Html,
                     replyMarkup: new[] { KeyboardButton.WithRequestContact("Link account") },
+                    cancellationToken: ct
+                );
+
+                break;
+            }
+            // "/start claim_<token>": somebody opened the link from POST /Claims/{slug}/Start, to claim their imported member
+            case { Text: { } claimText }
+                when claimText.StartsWith("/start " + MemberClaims.StartPrefix, StringComparison.Ordinal)
+                    && req.Message.Chat.Type == ChatType.Private
+                    && HttpContext.RequestServices.GetService<MemberClaims>() is not null:
+            {
+                var claims = HttpContext.RequestServices.GetRequiredService<MemberClaims>();
+                var token = claimText["/start ".Length..].Trim()[MemberClaims.StartPrefix.Length..];
+                var result = await claims.CompleteAsync(token, req.Message.Chat.Id.ToString(), ct);
+                await client.SendMessage(
+                    req.Message.Chat,
+                    result.Outcome switch
+                    {
+                        ClaimOutcome.Claimed => $"Welcome back, {result.MemberName}! You are in {result.OrganizationName} now, so you can sign in with your account.",
+                        ClaimOutcome.NoMemberForChat => $"This chat is not linked to anyone in {result.OrganizationName}. Open the link from the Telegram account you used before, or ask an admin to add you.",
+                        ClaimOutcome.AlreadyMember => "You are in that organization already.",
+                        ClaimOutcome.Unavailable => "Claiming is not available for that organization.",
+                        _ => "That link has expired or has been used already. Make a new one in the app.",
+                    },
                     cancellationToken: ct
                 );
 

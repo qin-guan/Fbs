@@ -30,7 +30,7 @@ public class SchemaTests
         await Assert
             .That(names)
             .IsEquivalentTo(
-                ["Booking", "BookingCalendarEvent", "CalendarConnection", "Facility", "FacilityUnitAccess", "LoginOtp", "OutboxMessage", "RosterEntry", "TelegramLink", "Tenant", "TenantInvite", "TenantMember", "Unit", "UserAccount"]
+                ["Booking", "BookingCalendarEvent", "CalendarConnection", "Facility", "FacilityUnitAccess", "LoginOtp", "MemberClaimToken", "OutboxMessage", "RosterEntry", "TelegramLink", "Tenant", "TenantInvite", "TenantMember", "Unit", "UserAccount"]
             );
     }
 

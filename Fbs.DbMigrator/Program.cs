@@ -1,5 +1,6 @@
 using ConsoleAppFramework;
 using Fbs.DbMigrator.Commands;
+using Fbs.WebApi.Claims;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Legacy;
 using Fbs.WebApi.Options;
@@ -40,6 +41,7 @@ var app = ConsoleApp
             services.AddScoped<LegacyImporter>();
             services.AddScoped<LegacyVerifier>();
             services.AddScoped<LegacyExporter>();
+            services.AddScoped<MemberPromotions>();
         }
     )
     .ConfigureLogging(logging =>
@@ -53,5 +55,6 @@ app.Add<ApplyCommand>();
 app.Add<ImportLegacyCommand>();
 app.Add<VerifyLegacyCommand>();
 app.Add<ExportLegacyCommand>();
+app.Add<PromoteAdminCommand>();
 
 await app.RunAsync(args);

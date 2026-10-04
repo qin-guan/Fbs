@@ -38,6 +38,13 @@ public class Tenant
     /// </summary>
     public bool RequireApproval { get; set; } = true;
 
+    /// <summary>
+    /// Whether members imported from the old version can still claim their rows with a Clerk account (see
+    /// <see cref="Fbs.WebApi.Claims.MemberClaims"/>). The importer turns it on; admins turn it off about three months after
+    /// Cutover 2. It can never be turned back on from the app.
+    /// </summary>
+    public bool LegacyClaimEnabled { get; set; }
+
     /// <summary>Who made it, if it was made by someone signing up rather than carried over from before.</summary>
     [SugarColumn(IsNullable = true)]
     public Guid? CreatedByUserId { get; set; }
