@@ -26,11 +26,25 @@ nothing else in the app, or in the download for the old pages, depends on it. Cl
 ```bash
 pnpm lint
 pnpm build                      # the build that is deployed until the switch
-pnpm test:e2e                   # the pages for accounts in a browser, with the API answered by the test
+pnpm test:e2e                   # the pages for accounts in a browser, with the API answered by the tests
 pnpm exec playwright install chromium   # once, for the last
 ```
 
-`pnpm test:e2e` builds for `test`, serves it, and runs `e2e/smoke.mjs`, which answers the API's calls itself. `SCREENSHOTS=<folder>` keeps pictures of the pages.
+The browser tests use [Nuxt's test utils with the Playwright test runner](https://nuxt.com/docs/getting-started/testing#testing-with-playwright-test-runner).
+`pnpm test:e2e` builds the app for `test` and serves it once (`webServer` in `playwright.config.ts`), and the tests in `e2e/*.spec.ts` go to it with
+`goto(path, { waitUntil: 'hydration' })` from `@nuxt/test-utils/playwright`. Each test answers the API's calls itself with the `api` fixture in
+`e2e/support.ts`, which also lists the calls the app made:
+
+```ts
+test('somebody in one organization goes straight in', async ({ page, goto, api }) => {
+  const calls = await api({ 'GET /Me': () => json({ id: 'a', name: 'Sam', email: null, memberships: [/* ... */] }) })
+  await goto('/', { waitUntil: 'hydration' })
+  await expect(page).toHaveURL(/\/t\/alpha$/)
+})
+```
+
+`pnpm test:e2e e2e/smoke.spec.ts` runs one file, `--ui` opens them in Playwright's UI, and a test that fails keeps a trace and a screenshot in
+`test-results/` (`pnpm exec playwright show-trace <trace.zip>`).
 
 ---
 
