@@ -267,6 +267,8 @@ public class TenantsTests
         var response = await waiting.GetAsync($"/t/{slug}");
         await Assert.That(response).HasStatus(HttpStatusCode.Forbidden);
         await Assert.That(await response.Content.ReadAsStringAsync()).Contains("pending");
+        // As problem details, which is how a refusal that says why is told from a session that has run out
+        await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
     }
 
     [Test]
@@ -373,6 +375,7 @@ public class TenantsTests
         var read = await member.GetAsync($"/t/{slug}/Settings");
         await Assert.That(read).HasStatus(HttpStatusCode.Forbidden);
         await Assert.That(await read.Content.ReadAsStringAsync()).Contains("admin-only");
+        await Assert.That(read.Content.Headers.ContentType?.MediaType).IsEqualTo("application/problem+json");
         var change = await member.PutAsJsonAsync($"/t/{slug}/Settings", new { name = "Mine now", timeZone = "UTC", defaultCountryCode = "65", slotMinutes = 30, requireApproval = false });
         await Assert.That(change).HasStatus(HttpStatusCode.Forbidden);
         var stored = Factory.Db.Queryable<Tenant>().First(t => t.Slug == slug);
