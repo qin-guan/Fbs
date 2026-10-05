@@ -15,7 +15,7 @@ namespace Fbs.WebApi.Endpoints.Invites.ByToken.Accept.Post;
 /// admin has removed can't join again with a link, only be let back in by an admin.
 /// </summary>
 [RequiresClerk]
-public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, TenantQuotas quotas) : Endpoint<Request, Response>
+public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, TenantQuotas quotas, AuditLog audit) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
@@ -95,6 +95,15 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, Tenan
                     }
 
                     await sql.Insertable(member).ExecuteCommandAsync(ct);
+                    await audit.WriteAsync(
+                        member.TenantId,
+                        member.Id,
+                        "member.joined",
+                        member.Status == MemberStatus.Pending ? "Joined with an invite link, and is waiting to be let in." : "Joined with an invite link.",
+                        "member",
+                        member.Id,
+                        ct
+                    );
                     tran.CommitTran();
                     return Joined.Yes;
                 }
