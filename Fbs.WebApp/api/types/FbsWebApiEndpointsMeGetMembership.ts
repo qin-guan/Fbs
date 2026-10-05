@@ -5,6 +5,7 @@
 
 import type { FbsWebApiDataEntitiesMemberRoleKey } from './FbsWebApiDataEntitiesMemberRole'
 import type { FbsWebApiDataEntitiesMemberStatusKey } from './FbsWebApiDataEntitiesMemberStatus'
+import type { FbsWebApiDataEntitiesTenantStatusKey } from './FbsWebApiDataEntitiesTenantStatus'
 
 export type FbsWebApiEndpointsMeGetMembership = {
     tenantSlug: string;
@@ -12,4 +13,11 @@ export type FbsWebApiEndpointsMeGetMembership = {
     role: FbsWebApiDataEntitiesMemberRoleKey;
     status: FbsWebApiDataEntitiesMemberStatusKey;
     displayName: string;
+    tenantStatus: FbsWebApiDataEntitiesTenantStatusKey;
+    /**
+     * @description
+     * Format: `date-time`
+     * @type string | undefined
+    */
+    deleteAfter?: Date | null;
 };
