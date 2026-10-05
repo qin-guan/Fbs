@@ -4,6 +4,7 @@ using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Tests.Data;
 using Fbs.WebApi.Tests.Fakes;
+using Fbs.WebApi.Tests.Helpers;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -573,5 +574,69 @@ public class CalendarBookingSyncTests
 
         SetStatus(setup, TenantStatus.Active);
         await Assert.That(await reconciler.RunOnceAsync()).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task A_calendar_that_google_refuses_is_counted_once_even_when_messages_find_it_out_at_the_same_moment()
+    {
+        var setup = await SetUpAsync();
+        setup.Google.ForbiddenCalendars.Add(CalendarId);
+        // Slow enough that both have seen the calendar working before either has been refused
+        setup.Google.Latency = TimeSpan.FromMilliseconds(400);
+        await setup.Service.CreateAsync([NewBooking("Field", 8, 10)]);
+        await setup.Service.CreateAsync([NewBooking("Field", 12, 14)]);
+        var messages = setup.Messages();
+        var handler = new CalendarBookingSync(await setup.Tenant.NewClientAsync(), setup.Calendar, NullLogger<CalendarBookingSync>.Instance);
+        using var metrics = new MetricsRecorder();
+
+        await Task.WhenAll(
+            messages.Select(message =>
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        await handler.HandleAsync(message, CancellationToken.None);
+                    }
+                    catch (OutboxPermanentFailureException)
+                    {
+                        // Refused, as it was
+                    }
+                })
+            )
+        );
+
+        await Assert.That(messages.Count).IsEqualTo(2);
+        await Assert.That(setup.GoogleCalls()).IsEqualTo(2);
+        await Assert.That(setup.Connection().Status).IsEqualTo(CalendarConnectionStatus.Failed);
+        await Assert.That(metrics.Sum("fbs.calendar.connections.failed")).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task A_calendar_that_google_refuses_is_counted_and_nothing_more_is_sent_or_counted_for_it()
+    {
+        var setup = await SetUpAsync();
+        setup.Google.ForbiddenCalendars.Add(CalendarId);
+        await setup.Service.CreateAsync([NewBooking("Field", 8, 10)]);
+        using var metrics = new MetricsRecorder();
+
+        await setup.DispatchAsync();
+        await setup.Service.CreateAsync([NewBooking("Field", 12, 14)]);
+        await setup.DispatchAsync();
+
+        await Assert.That(metrics.Sum("fbs.calendar.connections.failed")).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task A_problem_at_googles_end_is_not_counted_as_a_calendar_that_was_refused()
+    {
+        var setup = await SetUpAsync();
+        setup.Google.FailingCalendars.Add(CalendarId);
+        await setup.Service.CreateAsync([NewBooking("Field", 8, 10)]);
+        using var metrics = new MetricsRecorder();
+
+        await setup.DispatchAsync();
+
+        await Assert.That(metrics.Sum("fbs.calendar.connections.failed")).IsEqualTo(0);
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", CalendarOutbox.MessageType), ("outcome", "retry"))).IsEqualTo(1);
     }
 }

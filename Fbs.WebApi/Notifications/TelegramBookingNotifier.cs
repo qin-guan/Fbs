@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Outbox;
+using Fbs.WebApi.Telemetry;
 using SqlSugar;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -182,18 +184,31 @@ public sealed class TelegramBookingNotifier(
                 try
                 {
                     await throttle.WaitAsync(token);
-                    await bot.SendMessage(ChatIdOf(recipient.Chat!), recipient.Text, ParseMode.Html, cancellationToken: token);
+                    // Only Telegram's time, and not the time spent waiting for the throttle
+                    var started = Stopwatch.GetTimestamp();
+                    try
+                    {
+                        await bot.SendMessage(ChatIdOf(recipient.Chat!), recipient.Text, ParseMode.Html, cancellationToken: token);
+                    }
+                    finally
+                    {
+                        FbsMetrics.TelegramSendDuration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds);
+                    }
+
                     told.Enqueue(member.Id);
+                    FbsMetrics.TelegramMessages.Add(1, new KeyValuePair<string, object?>("result", "sent"));
                 }
                 catch (ApiRequestException e) when (e.ErrorCode is 400 or 403)
                 {
                     // Blocked the bot, or the chat is gone: nothing to try again
                     logger.LogWarning("Could not tell {Member} about {Change}: {Error}", member.Id, payload.Change, e.Message);
                     told.Enqueue(member.Id);
+                    FbsMetrics.TelegramMessages.Add(1, new KeyValuePair<string, object?>("result", "blocked"));
                 }
                 catch (Exception e) when (!token.IsCancellationRequested)
                 {
                     failures.Enqueue(e);
+                    FbsMetrics.TelegramMessages.Add(1, new KeyValuePair<string, object?>("result", "failed"));
                 }
             }
         );

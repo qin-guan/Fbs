@@ -19,6 +19,7 @@ using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Repository;
 using Fbs.WebApi.RateLimiting;
 using Fbs.WebApi.Repository.Database;
+using Fbs.WebApi.Telemetry;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
@@ -26,6 +27,7 @@ using Google.Apis.Sheets.v4;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Metrics;
 using Scalar.AspNetCore;
 using SqlSugar;
 using Telegram.Bot;
@@ -120,7 +122,14 @@ if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseC
 
     // A version that can't reach the database isn't ready to take over from the one that is running
     builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
+
+    // What is waiting to be sent, and how many organisations and people there are, looked at every so often for the metrics
+    builder.Services.Configure<DatabaseGaugesOptions>(builder.Configuration.GetSection("Metrics:DatabaseGauges"));
+    builder.Services.AddHostedService<DatabaseGaugesService>();
 }
+
+// What is counted and timed, which is sent wherever OTEL_EXPORTER_OTLP_ENDPOINT says once it is named here
+builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics.AddMeter(FbsMetrics.MeterName));
 
 builder.Services.AddSingleton<InstrumentationSource>();
 builder.Services.AddSingleton<BackgroundPublisher>();

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Outbox;
 using Fbs.WebApi.Tests.Data;
+using Fbs.WebApi.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -554,5 +555,117 @@ public class OutboxDispatcherTests
 
         await Assert.That(setup.Db.Queryable<OutboxMessage>().Any(m => m.Id == recent)).IsTrue();
         await Assert.That(setup.Db.Queryable<OutboxMessage>().Any(m => m.Id == old)).IsFalse();
+    }
+
+    [Test]
+    public async Task What_came_of_each_message_is_counted_by_its_type_and_how_long_it_took_is_timed()
+    {
+        var setup = await SetUpAsync();
+        var dispatcher = await setup.DispatcherAsync();
+        var slow = 0;
+        setup.Handler.Action = async message =>
+        {
+            await Task.Delay(30);
+            if (setup.Row(message.Id).Payload.Contains("fail"))
+            {
+                slow++;
+                throw new InvalidOperationException("Telegram is down");
+            }
+        };
+        using var metrics = new MetricsRecorder();
+
+        await setup.EnqueueAsync();
+        await dispatcher.ProcessDueAsync();
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", Type), ("outcome", "done"))).IsEqualTo(1);
+
+        // Fails, and is tried again, and is given up on after the third
+        var failing = await OutboxWriter.EnqueueAsync(setup.Db, setup.Tenant.TenantId, Type, new { Note = "fail" });
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            setup.MakeDue(failing);
+            await dispatcher.ProcessDueAsync();
+        }
+
+        await Assert.That(slow).IsEqualTo(3);
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", Type), ("outcome", "retry"))).IsEqualTo(2);
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", Type), ("outcome", "dead"))).IsEqualTo(1);
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", Type), ("outcome", "done"))).IsEqualTo(1);
+
+        // Every go is timed, whether or not it worked, and by type
+        await Assert.That(metrics.Recorded("fbs.outbox.handle.duration", ("type", Type))).IsEqualTo(4);
+        await Assert.That(metrics.Of("fbs.outbox.handle.duration", ("type", Type)).All(m => m.Value >= 0.03 && m.Value < 30)).IsTrue();
+    }
+
+    [Test]
+    public async Task Messages_given_up_on_at_once_are_counted_and_so_are_those_nothing_handles()
+    {
+        var setup = await SetUpAsync();
+        var dispatcher = await setup.DispatcherAsync();
+        setup.Handler.Action = _ => throw new OutboxPermanentFailureException("Makes no sense");
+        using var metrics = new MetricsRecorder();
+
+        await setup.EnqueueAsync();
+        await setup.EnqueueAsync(type: "test.other");
+        await dispatcher.ProcessDueAsync();
+
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", Type), ("outcome", "dead"))).IsEqualTo(1);
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", "test.other"), ("outcome", "dead"))).IsEqualTo(1);
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("outcome", "retry"))).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task A_message_given_up_on_because_its_dispatcher_kept_dying_is_counted_without_a_type()
+    {
+        var setup = await SetUpAsync();
+        var id = await setup.EnqueueAsync();
+        setup.Db.Updateable<OutboxMessage>()
+            .SetColumns(m => new OutboxMessage { LockedBy = Guid.NewGuid(), LockedUntil = DateTimeOffset.UtcNow.AddMinutes(-1), Attempts = 3 })
+            .Where(m => m.Id == id)
+            .ExecuteCommand();
+        var dispatcher = await setup.DispatcherAsync();
+        using var metrics = new MetricsRecorder();
+
+        await dispatcher.ProcessDueAsync();
+
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("outcome", "dead"))).IsEqualTo(1);
+        await Assert.That(metrics.Recorded("fbs.outbox.handle.duration")).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Messages_skipped_for_an_organisation_that_cannot_be_used_are_counted_by_type_and_a_dispatcher_that_has_nothing_to_skip_counts_nothing()
+    {
+        var setup = await SetUpAsync();
+        var onlyNow = new OnlyNowHandler();
+        var services = new ServiceCollection();
+        services.AddSingleton<IOutboxHandler>(setup.Handler);
+        services.AddSingleton<IOutboxHandler>(onlyNow);
+        var dispatcher = new OutboxDispatcher(
+            NullLogger<OutboxDispatcher>.Instance,
+            await setup.Tenant.NewClientAsync(),
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            new OutboxSignal(),
+            Microsoft.Extensions.Options.Options.Create(new OutboxOptions { TenantId = setup.Tenant.TenantId })
+        );
+        using var metrics = new MetricsRecorder();
+
+        await dispatcher.ProcessDueAsync();
+        await Assert.That(metrics.Sum("fbs.outbox.messages")).IsEqualTo(0);
+
+        await setup.EnqueueAsync(OnlyNowType);
+        await setup.EnqueueAsync(OnlyNowType);
+        var waiting = await setup.EnqueueAsync();
+        SetStatus(setup, TenantStatus.Suspended);
+        await dispatcher.ProcessDueAsync();
+        await dispatcher.ProcessDueAsync();
+
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", OnlyNowType), ("outcome", "skipped"))).IsEqualTo(2);
+        // What waits is not counted until it is handled, and is not timed
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", Type))).IsEqualTo(0);
+        await Assert.That(metrics.Recorded("fbs.outbox.handle.duration")).IsEqualTo(0);
+
+        SetStatus(setup, TenantStatus.Active);
+        await dispatcher.ProcessDueAsync();
+        await Assert.That(setup.Row(waiting).Status).IsEqualTo(OutboxStatus.Done);
+        await Assert.That(metrics.Sum("fbs.outbox.messages", ("type", Type), ("outcome", "done"))).IsEqualTo(1);
     }
 }
