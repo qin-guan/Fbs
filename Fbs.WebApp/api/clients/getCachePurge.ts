@@ -13,5 +13,5 @@ import { client, withUnwrap } from '../.kubb/client'
 export function getCachePurge<ThrowOnError extends boolean = true>(options: Options<GetCachePurgeOptions, ThrowOnError> = {}): Unwrappable<RequestResult<GetCachePurgeResponses, ThrowOnError>> {
   const { client: request = client, ...config } = options
 
-  return withUnwrap(request({ method: 'GET', url: '/Cache/Purge', ...config, throwOnError: config.throwOnError ?? true }) as Promise<RequestResult<GetCachePurgeResponses, ThrowOnError>>)
+  return withUnwrap(request({ method: 'GET', url: '/Cache/Purge', security: [{ type: 'http', scheme: 'bearer' }], ...config, throwOnError: config.throwOnError ?? true }) as Promise<RequestResult<GetCachePurgeResponses, ThrowOnError>>)
 }

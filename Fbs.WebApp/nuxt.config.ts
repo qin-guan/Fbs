@@ -1,3 +1,10 @@
+// How people sign in, decided when the app is built:
+// - `clerk` when NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY is set: accounts with Clerk, and organisations under /t/:slug
+// - `legacy` otherwise: the phone number and Telegram code, and the old pages, until the switch to Clerk
+// - `test` is for testing the pages in a browser without Clerk: always signed in, with a token that is never checked
+const clerkPublishableKey = process.env['NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY']
+const authMode = process.env['NUXT_PUBLIC_AUTH_MODE'] === 'test' ? 'test' : clerkPublishableKey ? 'clerk' : 'legacy'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: [
@@ -11,8 +18,13 @@ export default defineNuxtConfig({
     '@nuxt/scripts',
     '@nuxt/test-utils',
     '@vueuse/nuxt',
+    // Only when there is a key for it, so nothing changes for the old sign in until the switch
+    ...(authMode === 'clerk' ? ['@clerk/nuxt'] : []),
   ],
   ssr: false,
+
+  // There is no server to check a session on: the app is static, and the API checks the token
+  ...(authMode === 'clerk' ? { clerk: { skipServerMiddleware: true } } : {}),
   devtools: { enabled: false },
 
   app: {
@@ -55,6 +67,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       api: process.env['services__api__http__0'] || 'https://localhost:5204',
+      authMode,
     },
   },
   compatibilityDate: '2024-11-01',
