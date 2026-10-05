@@ -14,6 +14,23 @@ public interface IOutboxHandler
     /// try again later.
     /// </summary>
     Task HandleAsync(OutboxMessage message, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// What is done with a message of an organisation that isn't active, which is one that has been suspended, or is to be deleted:
+    /// nothing is sent for it, to anywhere. By default it waits, and is handled if the organisation is made active again, which is
+    /// right for what puts something in step (a calendar). Something that is only worth doing at the time, such as telling people,
+    /// is skipped.
+    /// </summary>
+    OutboxInactiveTenantPolicy WhenTenantInactive => OutboxInactiveTenantPolicy.Hold;
+}
+
+public enum OutboxInactiveTenantPolicy
+{
+    /// <summary>It waits, without being tried, until the organisation is active.</summary>
+    Hold = 0,
+
+    /// <summary>It is given up on, without being tried, and marked as skipped.</summary>
+    Skip = 1,
 }
 
 /// <summary>Thrown by a handler when trying again can't help, such as a message that makes no sense.</summary>
