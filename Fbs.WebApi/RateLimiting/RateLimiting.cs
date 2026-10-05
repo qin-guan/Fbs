@@ -21,12 +21,16 @@ public static class RateLimitPolicies
     /// <summary>Webhooks, which anyone can send to, so each address gets so many.</summary>
     public const string Webhook = "webhook";
 
+    /// <summary>Downloading a copy of somebody's, or an organisation's, data, which takes a lot of reading.</summary>
+    public const string Export = "export";
+
     public static readonly IReadOnlyDictionary<string, PolicyLimit> Defaults = new Dictionary<string, PolicyLimit>
     {
         [CreateOrganization] = new() { PermitLimit = 10, WindowSeconds = 3600 },
         [Join] = new() { PermitLimit = 30, WindowSeconds = 600 },
         [LinkTelegram] = new() { PermitLimit = 20, WindowSeconds = 600 },
         [Webhook] = new() { PermitLimit = 120, WindowSeconds = 60 },
+        [Export] = new() { PermitLimit = 5, WindowSeconds = 600 },
     };
 }
 
