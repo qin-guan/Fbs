@@ -10,7 +10,7 @@ namespace Fbs.WebApi.Endpoints.Org.Facilities.ById.Put;
 
 /// <summary>Replaces what a facility is called, how it is grouped and who can book it.</summary>
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request, FacilityResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request, FacilityResponse>
 {
     public override void Configure()
     {
@@ -57,6 +57,15 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
                 await sql.Insertable(unitIds.Select(unitId => new FacilityUnitAccess { Id = Guid.NewGuid(), TenantId = tenantId, FacilityId = id, UnitId = unitId }).ToList()).ExecuteCommandAsync(ct);
             }
 
+            await audit.WriteAsync(
+                tenantId,
+                tenantContext.Member.Id,
+                "facility.changed",
+                facility.Name == name ? $"Changed the facility {name}." : $"Changed the facility {facility.Name}, which is now {name}.",
+                "facility",
+                id,
+                ct
+            );
             tran.CommitTran();
             facility.Name = name;
             facility.Group = group;

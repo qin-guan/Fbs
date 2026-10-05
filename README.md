@@ -197,6 +197,16 @@ anything), and its Telegram link is removed. Bookings stay, with who made them s
 typed on a booking is part of the booking and stays. Being told twice, or about someone who never signed in, changes nothing. If it
 was the only admin of an organisation, the API logs a warning, and `promote-admin` makes another.
 
+### What admins have done
+
+`GET /t/{slug}/Audit` (admins only) says what has been done to an organisation, the latest first: its settings changed, units and facilities added, changed
+and deleted, invite links made and stopped, and it being suspended or made available again by whoever runs the system. Each says who did it, what
+was done in words, and what it was done to. `limit` (50, at most 200) and `before` (the `at` of the last one seen) page back through it. Nothing is written for
+a change that was refused or that changed nothing.
+
+An entry has no name of a person in it: who did it, and who it was done to, are kept as who they are in the organisation, and turned into names when it is
+read, so that when somebody's account is erased they are a former member here too, and what they did stays.
+
 ### Running the system: looking at and suspending organisations
 
 Anybody can make an organisation, so whoever runs the system can stop one being used. From the migrator, which is in the image:

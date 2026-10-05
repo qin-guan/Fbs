@@ -8,7 +8,7 @@ using DataUnit = Fbs.WebApi.Data.Entities.Unit;
 namespace Fbs.WebApi.Endpoints.Org.Units.Post;
 
 [RequiresClerk]
-public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas) : Endpoint<Request, UnitResponse>
+public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas, AuditLog audit) : Endpoint<Request, UnitResponse>
 {
     public override void Configure()
     {
@@ -39,6 +39,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQ
             return;
         }
 
+        await audit.WriteAsync(unit.TenantId, tenantContext.Member.Id, "unit.created", $"Added the unit {unit.Name}.", "unit", unit.Id, ct);
         await Send.ResponseAsync(UnitResponse.From(unit), StatusCodes.Status201Created, ct);
     }
 }
