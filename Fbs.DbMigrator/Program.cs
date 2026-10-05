@@ -4,6 +4,7 @@ using Fbs.WebApi.Claims;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Legacy;
 using Fbs.WebApi.Options;
+using Fbs.WebApi.Tenancy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -42,6 +43,7 @@ var app = ConsoleApp
             services.AddScoped<LegacyVerifier>();
             services.AddScoped<LegacyExporter>();
             services.AddScoped<MemberPromotions>();
+            services.AddScoped<TenantSuspensions>();
         }
     )
     .ConfigureLogging(logging =>
@@ -56,5 +58,7 @@ app.Add<ImportLegacyCommand>();
 app.Add<VerifyLegacyCommand>();
 app.Add<ExportLegacyCommand>();
 app.Add<PromoteAdminCommand>();
+app.Add<SuspendCommand>();
+app.Add<ListTenantsCommand>();
 
 await app.RunAsync(args);
