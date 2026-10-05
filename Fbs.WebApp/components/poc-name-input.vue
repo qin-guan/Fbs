@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// Free-text input for a POC's rank and name, with suggestions from the nominal roll.
+// Free-text input for a POC's rank and name, with suggestions from the nominal roll
+// and from custom POCs the user has used before.
 // Picking a suggestion emits `select` with the person's phone number so callers can fill it in.
 const model = defineModel<string | null | undefined>()
 
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 
 const { data: nominalRoll, isPending: nominalRollIsPending } = useNominalRollMapping()
 const nominalRollMiniSearch = useNominalRollMiniSearch()
+const { customPocs } = useCustomPocs()
 
 const open = ref(false)
 const highlighted = ref(-1)
@@ -22,16 +24,35 @@ const anchor = useTemplateRef<HTMLElement>('anchor')
 const listId = useId()
 
 const suggestions = computed(() => {
-  if (!nominalRoll.value) return []
-
   const query = model.value?.trim()
-  const phones = query
-    ? nominalRollMiniSearch.value?.search(query, { prefix: true }).map(e => e.id as string) ?? []
-    : Object.keys(nominalRoll.value)
+  const q = query?.toLowerCase() ?? ''
+  const rollPhones = new Set<string>()
 
-  return phones
-    .map(phone => ({ phone, name: nominalRoll.value?.[phone] ?? '' }))
-    .filter(option => option.name)
+  const rollOptions = (() => {
+    if (!nominalRoll.value) return []
+
+    const phones = query
+      ? nominalRollMiniSearch.value?.search(query, { prefix: true }).map(e => e.id as string) ?? []
+      : Object.keys(nominalRoll.value)
+
+    return phones
+      .map(phone => ({ phone, name: nominalRoll.value?.[phone] ?? '', saved: false }))
+      .filter((option) => {
+        if (!option.name) return false
+        rollPhones.add(option.phone)
+        return true
+      })
+  })()
+
+  const savedOptions = customPocs.value
+    .filter((poc) => {
+      if (rollPhones.has(poc.phone)) return false
+      if (!q) return true
+      return poc.name.toLowerCase().includes(q) || poc.phone.includes(query!)
+    })
+    .map(poc => ({ phone: poc.phone, name: poc.name, saved: true }))
+
+  return [...savedOptions, ...rollOptions]
 })
 
 watch(suggestions, () => {
@@ -141,7 +162,7 @@ function onInteractOutside(e: Event) {
         <li
           v-for="(option, index) in suggestions"
           :id="`${listId}-${index}`"
-          :key="option.phone"
+          :key="`${option.saved ? 'saved' : 'roll'}-${option.phone}`"
           role="option"
           :aria-selected="index === highlighted"
           class="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm"
@@ -151,7 +172,9 @@ function onInteractOutside(e: Event) {
           @pointermove="highlighted = index"
         >
           <span class="truncate">{{ option.name }}</span>
-          <span class="shrink-0 text-xs text-dimmed">{{ option.phone }}</span>
+          <span class="shrink-0 text-xs text-dimmed">
+            <template v-if="option.saved">Saved · </template>{{ option.phone }}
+          </span>
         </li>
         <li
           v-if="!suggestions.length"

@@ -14,6 +14,7 @@ const toast = useToast()
 const { df, tf } = useFormatter()
 const { data: booking, isPending: bookingIsPending } = useGetBookingById({ path: { id } })
 const { data: bookings } = useGetBooking()
+const { remember: rememberCustomPoc } = useCustomPocs()
 
 const { mutate: deleteMutate, isPending: deleteIsPending } = useDeleteBookingMutation()
 const { mutate: updateMutate, isPending: updateIsPending } = useUpdateBookingMutation()
@@ -213,6 +214,7 @@ function updateBooking() {
     },
   }, {
     async onSuccess() {
+      rememberCustomPoc({ name: updateValues.value.pocName, phone: '65' + updateValues.value.pocPhone })
       toast.add({
         title: 'Booking updated successfully.',
         color: 'success',

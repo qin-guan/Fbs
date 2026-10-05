@@ -66,7 +66,7 @@ builder
             if (!builder.Environment.IsProduction())
                 return;
 
-            options.Cookie.Domain = ".from.sg";
+            options.Cookie.Domain = ".temasek3.cc";
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         }
     )
@@ -225,8 +225,7 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins("https://*.3sib-fbs.pages.dev");
             policy.WithOrigins("https://3sib-fbs.pages.dev");
-            policy.WithOrigins("https://*.3sib-fbs.from.sg");
-            policy.WithOrigins("https://3sib-fbs.from.sg");
+            policy.WithOrigins("https://fbs.temasek3.cc");
         }
 
         policy
