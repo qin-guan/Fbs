@@ -54,14 +54,19 @@ export function fromLocalInput(value: string, timeZone: string): Date | undefine
   return toZoned(new CalendarDateTime(year, month, day, hour, minute), timeZone).toDate()
 }
 
-/** Forgets what was fetched of an organization's bookings, so lists and details are read again. */
-export function invalidateBookings(queryClient: QueryClient, slug: string) {
+/** Forgets what was fetched of one part of an organization, such as `Units`, so lists and details are read again. */
+export function invalidateUnder(queryClient: QueryClient, slug: string, ...parts: string[]) {
   return queryClient.invalidateQueries({
     predicate: (query) => {
       const key = query.queryKey[0] as { url?: string, params?: { slug?: string } } | undefined
-      return !!key?.url?.startsWith('/t/:slug/Bookings') && key.params?.slug === slug
+      return parts.some(part => key?.url === `/t/:slug/${part}` || key?.url?.startsWith(`/t/:slug/${part}/`)) && key?.params?.slug === slug
     },
   })
+}
+
+/** Forgets what was fetched of an organization's bookings, so lists and details are read again. */
+export function invalidateBookings(queryClient: QueryClient, slug: string) {
+  return invalidateUnder(queryClient, slug, 'Bookings')
 }
 
 export function useInvalidateBookings() {

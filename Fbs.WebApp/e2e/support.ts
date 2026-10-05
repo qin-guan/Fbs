@@ -21,6 +21,9 @@ export type Handler = (request: Request, url: URL) => Reply | Promise<Reply>
 /** `METHOD /path` (such as `GET /Me`) to how it is answered. Anything not in it is a 404. */
 export type Table = Record<string, Handler | undefined>
 
+/** For paths with an id in them: the first pattern that matches `METHOD /path` answers, and is given what the pattern captured. */
+export type Routes = [RegExp, (request: Request, url: URL, ...captured: string[]) => Reply | Promise<Reply>][]
+
 /** A call the app made to the API. */
 export interface Call {
   /** `METHOD /path`, as in a `Table` */
@@ -38,9 +41,23 @@ export const problem = (status: number, errors: { name: string, reason: string, 
   ({ status, contentType: 'application/problem+json', body: JSON.stringify({ title: 'x', status, errors }) })
 export const noContent = (): Reply => ({ status: 204, body: '' })
 
+/** How `table` answers the call `key`, or undefined when it doesn't. */
+function answer(table: Table | Routes, key: string, request: Request, url: URL) {
+  if (!Array.isArray(table)) {
+    return table[key]?.(request, url)
+  }
+
+  for (const [pattern, handler] of table) {
+    const match = pattern.exec(key)
+    if (match) {
+      return handler(request, url, ...match.slice(1))
+    }
+  }
+}
+
 export const test = nuxt.extend<{
   /** Answers the API's calls from `table` for the rest of the test, and gives back the list of calls made, which grows as the app makes them. */
-  api: (table: Table) => Promise<Call[]>
+  api: (table: Table | Routes) => Promise<Call[]>
 }>({
   api: async ({ page }, use) => {
     await use(async (table) => {
@@ -61,8 +78,7 @@ export const test = nuxt.extend<{
         const url = new URL(request.url())
         const key = `${request.method()} ${url.pathname}`
         calls.push({ key, auth: request.headers()['authorization'], body: request.postData() ? request.postDataJSON() : undefined, query: Object.fromEntries(url.searchParams) })
-        const handler = table[key]
-        const reply = handler ? await handler(request, url) : json({ title: 'not answered by the test' }, 404)
+        const reply = await answer(table, key, request, url) ?? json({ title: 'not answered by the test' }, 404)
         return route.fulfill({ ...reply, headers: cors })
       })
       return calls
