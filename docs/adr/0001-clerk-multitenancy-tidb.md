@@ -331,7 +331,8 @@ until the web app moves over.
 - [x] Clerk `user.deleted` webhook (Svix signature, erases the account, keeps bookings as a former member)
 - [x] Forwarded headers (private ranges only) and rate limits for the self-serve endpoints, per account and per address
 - [x] The web app has Clerk sign in behind a build flag (`legacy` until the switch), a client that sends the session token, the API client regenerated, and the pages for choosing, making, joining and claiming an organization, and for connecting Telegram
-- [ ] Bookings, and the admin screens, under `/t/:slug`
+- [x] Bookings under `/t/:slug`: the list and one booking (#247), making them in the organization's time zone, with a calendar and a builder for several at once (#249), and the timeline (#250)
+- [x] The admin screens: settings (#251), units and facilities (#252), people (#253), invite links (#254), and a checklist for a new organization (#255)
 
 ## Open items
 
