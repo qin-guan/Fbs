@@ -113,14 +113,15 @@ const noFacilities = computed(() => bookable.value !== undefined && bookable.val
     </template>
 
     <template #body>
+      <TenantSetupChecklist v-if="isAdmin" />
+
       <UAlert
-        v-if="noFacilities"
-        :title="isAdmin ? 'There are no facilities yet' : 'You can\'t book anything yet'"
-        :description="isAdmin ? 'Add the facilities people can book, then invite them.' : 'Ask an admin to add facilities, or to give your unit access to them.'"
+        v-if="noFacilities && !isAdmin"
+        title="You can't book anything yet"
+        description="Ask an admin to add facilities, or to give your unit access to them."
         color="warning"
         variant="subtle"
         icon="i-lucide-info"
-        :actions="isAdmin ? [{ label: 'Add facilities', to: path('admin', 'facilities'), color: 'neutral' as const, variant: 'subtle' as const }] : undefined"
       />
 
       <div class="flex flex-wrap items-center gap-2">
