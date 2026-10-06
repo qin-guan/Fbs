@@ -1,6 +1,9 @@
+using System.Text.Json.Serialization;
+
 namespace Fbs.WebApi.Endpoints.Org.Members.ById.Put;
 
 /// <summary>Whether somebody is in the organisation, which is all that is decided here about whether they can use it.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum MembershipState
 {
     /// <summary>In. They are active if they have signed in, and otherwise wait as unclaimed until they do.</summary>

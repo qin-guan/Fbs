@@ -1,7 +1,9 @@
+using System.Text.Json.Serialization;
 using Fbs.WebApi.Data.Entities;
 
 namespace Fbs.WebApi.Endpoints.Org.Invites;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum InviteStatus
 {
     Active = 1,

@@ -69,6 +69,35 @@ public abstract class BotTests(FbsApiFactory factory)
     }
 
     [Test]
+    public async Task A_start_command_as_telegram_sends_it_is_accepted()
+    {
+        // Telegram marks /start with an entity type of "bot_command". Binding has to accept that,
+        // or the webhook answers 400 and every later update waits behind it.
+        var update = new JsonObject
+        {
+            ["update_id"] = 2,
+            ["message"] = new JsonObject
+            {
+                ["message_id"] = 2,
+                ["date"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                ["chat"] = new JsonObject { ["id"] = OwnChatId, ["type"] = "private" },
+                ["from"] = new JsonObject { ["id"] = OwnChatId, ["is_bot"] = false, ["first_name"] = "Sender" },
+                ["text"] = "/start",
+                ["entities"] = new JsonArray
+                {
+                    new JsonObject { ["offset"] = 0, ["length"] = 6, ["type"] = "bot_command" },
+                },
+            },
+        };
+
+        var response = await PostAsync(update);
+
+        response.EnsureSuccessStatusCode();
+        var messages = await Factory.Telegram.WaitForMessagesAsync(1);
+        await Assert.That(messages[0].Text).Contains("Welcome");
+    }
+
+    [Test]
     public async Task Sharing_your_own_contact_links_the_chat()
     {
         var response = await PostAsync(ContactUpdate());

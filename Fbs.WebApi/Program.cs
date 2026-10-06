@@ -308,8 +308,9 @@ app.UseRateLimiter();
 
 app.UseFastEndpoints(config =>
 {
-    // Roles and statuses are said in words, so the app doesn't have to know what the numbers are
-    config.Serializer.Options.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    // Roles and statuses carry JsonStringEnumConverter on the enum. A converter registered here
+    // applies first and would also take Telegram's enums, so a /start update (entity type
+    // "bot_command") fails to bind and the webhook answers 400.
     config.Errors.UseProblemDetails(c =>
     {
         c.IndicateErrorCode = true;

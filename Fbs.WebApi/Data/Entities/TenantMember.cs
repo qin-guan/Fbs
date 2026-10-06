@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using SqlSugar;
 
 namespace Fbs.WebApi.Data.Entities;
@@ -44,12 +45,14 @@ public class TenantMember
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum MemberRole
 {
     Member = 1,
     Admin = 2,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum NotificationScope
 {
     None = 0,
@@ -57,6 +60,7 @@ public enum NotificationScope
     All = 2,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum MemberStatus
 {
     Active = 1,
