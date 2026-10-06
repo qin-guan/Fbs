@@ -236,7 +236,7 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins("https://*.3sib-fbs.pages.dev");
             policy.WithOrigins("https://3sib-fbs.pages.dev");
-            policy.WithOrigins("https://api.bookaspace.dev");
+            policy.WithOrigins("https://api.bookaspace.app");
         }
 
         policy
