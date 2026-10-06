@@ -26,7 +26,7 @@ const features = [
   },
   {
     title: 'Log in with Telegram',
-    description: 'No passwords. A one-time code is sent to your registered Telegram account.',
+    description: 'A one-time code is sent to your registered Telegram account. You do not set a password.',
     icon: 'i-simple-icons-telegram',
   },
 ]

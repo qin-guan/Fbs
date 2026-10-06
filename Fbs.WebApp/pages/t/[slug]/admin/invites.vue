@@ -210,7 +210,7 @@ async function confirmStop() {
 
           <UAlert
             v-if="made"
-            title="Here is the link"
+            title="Copy this link"
             color="success"
             variant="subtle"
             icon="i-lucide-check"

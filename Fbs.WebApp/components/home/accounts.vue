@@ -45,7 +45,7 @@ const features = [
     icon: 'i-lucide-calendar-check',
   },
   {
-    title: 'Made for your organization',
+    title: 'Your organization',
     description: 'Your units, your facilities and your people. Invite them with a link.',
     icon: 'i-lucide-users-round',
   },
