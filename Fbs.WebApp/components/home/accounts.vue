@@ -36,12 +36,12 @@ const links = [
 const features = [
   {
     title: 'See what\'s booked',
-    description: 'Every facility\'s schedule on a day or week timeline, grouped by the kind of facility.',
+    description: 'Each facility\'s schedule on a day or week timeline, grouped by the kind of facility.',
     icon: 'i-lucide-calendar-range',
   },
   {
     title: 'Book it together',
-    description: 'Book several slots at once, all or none, and tell the people who need to know.',
+    description: 'Book several slots at once. If one can\'t be booked, none of them are, and the people who need to know are told.',
     icon: 'i-lucide-calendar-check',
   },
   {

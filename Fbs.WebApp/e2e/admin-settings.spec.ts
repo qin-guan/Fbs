@@ -89,7 +89,7 @@ test.describe('claiming a place from before accounts', () => {
 
     await goto('/t/alpha/admin/settings', { waitUntil: 'hydration' })
 
-    await expect(page.getByText('Claiming a place from before accounts is off.')).toBeVisible()
+    await expect(page.getByText('People can no longer claim a place from before accounts.')).toBeVisible()
     await expect(page.getByRole('switch', { name: 'Stop people claiming their place from before' })).toHaveCount(0)
   })
 })

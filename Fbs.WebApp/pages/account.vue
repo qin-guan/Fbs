@@ -60,7 +60,7 @@ async function downloadMyData() {
 }
 
 const fields = computed(() => [
-  { label: 'Name', description: 'What your account is called', value: me.value?.name },
+  { label: 'Name', description: 'The name on your account', value: me.value?.name },
   { label: 'Email', description: 'The email you sign in with', value: me.value?.email },
 ])
 </script>
@@ -69,7 +69,7 @@ const fields = computed(() => [
   <div class="space-y-6">
     <UPageCard
       title="Your account"
-      description="You sign in with this, and it is in every organization you belong to."
+      description="You use this to sign in. It's the same account in every organization you belong to."
       variant="naked"
     />
 
@@ -97,7 +97,7 @@ const fields = computed(() => [
 
     <UPageCard
       title="Your data"
-      description="A copy of what is kept about you, as a file: your account, the organizations you are in, and what you booked."
+      description="A file of what we keep about you: your account, the organizations you belong to, and your bookings."
       variant="subtle"
       icon="i-lucide-download"
     >
@@ -113,7 +113,7 @@ const fields = computed(() => [
 
     <UPageCard
       title="Telegram"
-      description="Be told about bookings on Telegram, in every organization you belong to. It is only for notifications: it isn't how you sign in."
+      description="Get booking notices on Telegram, in every organization you belong to. This is only for notifications. You still sign in with your account."
       variant="subtle"
       icon="i-simple-icons-telegram"
     >
@@ -156,7 +156,7 @@ const fields = computed(() => [
           v-if="connecting"
           class="text-sm text-muted"
         >
-          Press Start in Telegram. This page notices by itself.
+          Press Start in Telegram. This page updates on its own.
         </p>
       </div>
     </UPageCard>

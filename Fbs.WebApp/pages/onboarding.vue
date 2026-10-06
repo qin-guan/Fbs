@@ -96,13 +96,13 @@ async function join() {
   <div class="space-y-6">
     <UPageCard
       title="Make an organization"
-      description="For your unit, club or team. You will be its admin, and can invite the others with a link."
+      description="For your unit, club, or team. You'll be its admin, and you can invite the others with a link."
       variant="subtle"
     >
       <UAlert
         v-if="limitReached"
         title="You have made as many organizations as you can"
-        description="Ask an admin of one of them to make you an admin, or join one with a link."
+        description="Ask an admin of one of them to make you an admin, or join with a link."
         color="warning"
         variant="subtle"
         icon="i-lucide-triangle-alert"
@@ -131,7 +131,7 @@ async function join() {
         <UFormField
           label="Address"
           name="slug"
-          :description="`Where it lives: /t/${state.slug || 'alpha-company'}`"
+          :description="`The address is /t/${state.slug || 'alpha-company'}`"
           required
         >
           <UInput
@@ -146,7 +146,7 @@ async function join() {
           <UFormField
             label="Time zone"
             name="timeZone"
-            description="Bookings are made, and shown, in this."
+            description="Bookings are made and shown in this time zone."
           >
             <USelectMenu
               v-model="state.timeZone"
@@ -158,7 +158,7 @@ async function join() {
           <UFormField
             label="Calling code"
             name="defaultCountryCode"
-            description="For phone numbers written without one."
+            description="Used when a phone number is entered without one."
           >
             <UInput
               v-model="state.defaultCountryCode"
@@ -184,7 +184,7 @@ async function join() {
 
     <UPageCard
       title="Join with a link"
-      description="Paste the link somebody sent you. An admin may have to let you in."
+      description="Paste the link someone sent you. An admin may have to let you in."
       variant="subtle"
     >
       <form

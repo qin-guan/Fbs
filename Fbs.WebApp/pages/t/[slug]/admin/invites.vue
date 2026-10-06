@@ -124,8 +124,8 @@ async function confirmStop() {
       <template #body>
         <div class="max-w-2xl space-y-6">
           <p class="text-sm text-muted">
-            Send a link to the people you want in. They sign in, or make an account, and use it.
-            {{ settings?.requireApproval ? 'They then wait for you to let them in.' : 'They are in at once.' }}
+            Send a link to the people you want to join. They sign in, or create an account, and open it.
+            {{ settings?.requireApproval ? 'They then wait for you to let them in.' : 'They join straight away.' }}
           </p>
 
           <UPageCard
@@ -219,7 +219,7 @@ async function confirmStop() {
             <template #description>
               <div class="space-y-3">
                 <p>
-                  It is shown only now, so copy it before you leave. If it is lost, make another and stop this one.
+                  This is the only time it's shown. Copy it before you leave. If you lose it, make a new one and stop this one.
                 </p>
                 <div class="flex gap-2">
                   <UInput
@@ -256,7 +256,7 @@ async function confirmStop() {
 
           <section class="space-y-2">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
-              Links that were made
+              Links you've made
             </h2>
 
             <div
@@ -273,7 +273,7 @@ async function confirmStop() {
               v-else-if="!invites?.length && !error"
               class="py-4 text-center text-muted"
             >
-              There are none yet.
+              No links yet.
             </p>
 
             <ul
@@ -318,7 +318,7 @@ async function confirmStop() {
         <UModal
           v-model:open="stoppingOpen"
           title="Stop this link?"
-          description="Nobody can join with it any more. People who already did stay in. This can't be undone, but you can make another."
+          description="Nobody can join with it after this. People who already joined stay. You can't undo it, but you can make another link."
         >
           <template #footer>
             <div class="flex gap-2">

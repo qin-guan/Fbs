@@ -202,7 +202,7 @@ async function submit() {
 
             <UFormField
               label="Address"
-              description="It can't be changed, as links to it would stop working."
+              description="This can't be changed. Links to the organization would stop working."
             >
               <UInput
                 :model-value="path()"
@@ -216,7 +216,7 @@ async function submit() {
               <UFormField
                 label="Time zone"
                 name="timeZone"
-                description="Bookings are made, and shown, in this. The ones that are made stay at the same moment."
+                description="Bookings are made and shown in this time zone. Existing bookings stay at the same moment."
               >
                 <USelectMenu
                   v-model="state.timeZone"
@@ -228,7 +228,7 @@ async function submit() {
               <UFormField
                 label="Calling code"
                 name="defaultCountryCode"
-                description="For phone numbers written without one."
+                description="Used when a phone number is entered without one."
               >
                 <UInput
                   v-model="state.defaultCountryCode"
@@ -250,7 +250,7 @@ async function submit() {
             <UFormField
               label="Shortest booking"
               name="slotMinutes"
-              description="Bookings start and end on this, such as on the hour or the half hour."
+              description="Bookings start and end on this interval, such as the hour or the half hour."
             >
               <USelect
                 v-model="state.slotMinutes"
@@ -263,7 +263,7 @@ async function submit() {
             <UFormField
               name="requireApproval"
               label="An admin lets people in"
-              description="People who join with a link wait until an admin lets them in. Otherwise they are in at once."
+              description="People who join with a link wait until you let them in. If this is off, they join straight away."
             >
               <USwitch
                 v-model="state.requireApproval"
@@ -275,7 +275,7 @@ async function submit() {
               v-if="settings?.legacyClaimEnabled"
               name="stopClaims"
               label="Stop people claiming their place from before"
-              description="People that were here before accounts can claim their place with the Telegram they had. Turn this off once they have. It can't be turned on again."
+              description="People who were here before accounts can claim their place with the Telegram they used. Turn this off once they have. You can't turn it back on."
             >
               <USwitch
                 v-model="state.stopClaims"
@@ -286,7 +286,7 @@ async function submit() {
               v-else
               class="text-sm text-muted"
             >
-              Claiming a place from before accounts is off.
+              People can no longer claim a place from before accounts.
             </p>
           </UPageCard>
 
@@ -317,7 +317,7 @@ async function submit() {
 
           <UPageCard
             title="A copy of the data"
-            description="Everything of this organization as a file: who is in it, with their phone numbers, every booking, and its history. Taking a copy is written in the history."
+            description="A file of this organization: who is in it, their phone numbers, every booking, and the history. Downloading a copy is recorded in the history."
             variant="subtle"
             icon="i-lucide-download"
           >
@@ -333,7 +333,7 @@ async function submit() {
 
           <UPageCard
             title="Delete this organization"
-            description="Nobody can use it from then, and its invite links stop working. It is deleted for good some days later, with everything of it, and until then any admin can restore it."
+            description="After you delete it, nobody can use it and its invite links stop working. It is deleted for good some days later, along with everything in it. Any admin can restore it until then."
             variant="subtle"
             icon="i-lucide-trash-2"
           >
@@ -350,7 +350,7 @@ async function submit() {
         <UModal
           v-model:open="deleting"
           title="Delete this organization?"
-          description="Nobody in it can use it from now. It is deleted for good after a while, and any admin can restore it until then."
+          description="Nobody can use it from now. It is deleted for good after a while. Any admin can restore it until then."
         >
           <template #body>
             <form
@@ -365,7 +365,7 @@ async function submit() {
                 icon="i-lucide-circle-alert"
               />
               <UFormField
-                :label="`Type ${slug} to say that you mean it`"
+                :label="`Type ${slug} to confirm`"
                 name="confirm"
               >
                 <UInput
