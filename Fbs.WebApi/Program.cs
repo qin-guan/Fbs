@@ -68,7 +68,7 @@ builder
             if (!builder.Environment.IsProduction())
                 return;
 
-            options.Cookie.Domain = ".temasek3.cc";
+            options.Cookie.Domain = ".bookaspace.app";
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         }
     )
@@ -236,7 +236,7 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins("https://*.3sib-fbs.pages.dev");
             policy.WithOrigins("https://3sib-fbs.pages.dev");
-            policy.WithOrigins("https://fbs.temasek3.cc");
+            policy.WithOrigins("https://api.bookaspace.dev");
         }
 
         policy
