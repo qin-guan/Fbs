@@ -140,8 +140,9 @@ Members book under `/t/{slug}` too:
   `conduct`, `description` and point of contact (`pocName`, `pocPhone`, written on the booking as they are). All of them, or
   none if any clashes (a 409 that says which slot, and with what). Times have to be in the future and on the organisation's
   slot length (15, 30 or 60 minutes) in its time zone, whichever offset they are sent in.
-- `GET /Bookings` lists those that share any time with a window, earliest first: `from` and `to` (from the start of today
-  for 31 days if left out; at most 93 days), `facilityId`, `bookedBy`, and `mine=true`. `GET /Bookings/{id}` reads one.
+- `GET /Bookings` lists bookings, earliest first, cancelled ones left out. With no `from` and no `to`, every one of
+  them. With a window (`from` and `to`; if only one is given the other is 31 days away; at most 93 days), those that
+  share any time with it. Also `facilityId`, `bookedBy`, and `mine=true`. `GET /Bookings/{id}` reads one.
 - `PUT /Bookings/{id}` changes what it says and, if both are given, its time; `DELETE /Bookings/{id}` cancels it, and the
   booking is kept. Their booker, anyone in the booker's unit, and admins can. A booking that is over can't be moved, and one
   that has started can only have its end changed. Whoever made a booking never changes.

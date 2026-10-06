@@ -313,6 +313,8 @@ async function submit() {
           v-if="settings"
           class="max-w-2xl space-y-6"
         >
+          <TenantCalendarConnection />
+
           <UPageCard
             title="A copy of the data"
             description="Everything of this organization as a file: who is in it, with their phone numbers, every booking, and its history. Taking a copy is written in the history."

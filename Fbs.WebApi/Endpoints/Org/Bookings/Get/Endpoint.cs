@@ -1,15 +1,15 @@
 using FastEndpoints;
 using Fbs.WebApi.Auth.Clerk;
 using Fbs.WebApi.Bookings;
-using Fbs.WebApi.Data;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
 
 namespace Fbs.WebApi.Endpoints.Org.Bookings.Get;
 
 /// <summary>
-/// The bookings that share any time with a window, earliest first. A window is at most <see cref="Endpoint.MaxDays"/>
-/// days, as an organisation can have thousands of bookings and nobody looks at all of them at once.
+/// The bookings of an organisation, earliest first, cancelled ones left out. With no <c>from</c> and no <c>to</c>,
+/// every one of them, which is what the list shows. With a window, those that share any time with it. A window is
+/// at most <see cref="MaxDays"/> days.
 /// </summary>
 [RequiresClerk]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantBookings bookings) : Endpoint<Request, List<BookingResponse>>
@@ -28,7 +28,17 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantB
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
         var tenant = tenantContext.Tenant;
-        var from = req.From ?? (req.To is { } to0 ? to0.AddDays(-DefaultDays) : StartOfToday(tenant));
+        Guid? bookedBy = req.Mine ? tenantContext.Member.Id : req.BookedBy;
+
+        // The list asks for everything. The timeline, and picking a time, ask for a window.
+        if (req.From is null && req.To is null)
+        {
+            var all = await bookings.ListAllAsync(tenant.Id, req.FacilityId, bookedBy, ct);
+            await Send.OkAsync(await BookingViews.ToResponsesAsync(sql, tenantContext, all, ct), ct);
+            return;
+        }
+
+        var from = req.From ?? req.To!.Value.AddDays(-DefaultDays);
         var to = req.To ?? from.AddDays(DefaultDays);
         if (to <= from)
         {
@@ -44,7 +54,6 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantB
             return;
         }
 
-        Guid? bookedBy = req.Mine ? tenantContext.Member.Id : req.BookedBy;
         var rows = await bookings.ListAsync(tenant.Id, from, to, req.FacilityId, bookedBy, MaxBookings + 1, ct);
         if (rows.Count > MaxBookings)
         {
@@ -54,21 +63,5 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantB
         }
 
         await Send.OkAsync(await BookingViews.ToResponsesAsync(sql, tenantContext, rows, ct), ct);
-    }
-
-    private static DateTimeOffset StartOfToday(Data.Entities.Tenant tenant)
-    {
-        var zone = TenantTimeZone.Of(tenant);
-        var now = DateTimeOffset.UtcNow;
-        try
-        {
-            var midnight = TimeZoneInfo.ConvertTime(now, zone).Date;
-            return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(midnight, zone), TimeSpan.Zero);
-        }
-        catch (ArgumentException)
-        {
-            // A zone whose day doesn't begin at midnight, such as when the clocks go forward then
-            return new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
-        }
     }
 }

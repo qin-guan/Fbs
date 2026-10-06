@@ -30,6 +30,7 @@ function organization({ role = 'Admin', tenantStatus = 'Active', exportLimited =
     }),
     'GET /t/alpha': usable(() => json(org(role))),
     'GET /t/alpha/Settings': usable(() => json(settings)),
+    'GET /t/alpha/Calendar': usable(() => json({ status: 'None', calendarId: null, lastError: null, verificationExpiresAt: null, serviceAccountEmail: null })),
     'GET /t/alpha/Bookings': usable(() => json([])),
     'GET /t/alpha/Facilities/Bookable': usable(() => json([])),
     'GET /t/alpha/Facilities': usable(() => json([])),

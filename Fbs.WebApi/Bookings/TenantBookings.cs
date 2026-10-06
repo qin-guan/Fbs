@@ -35,6 +35,16 @@ public sealed record TenantUpdateResult(DataBooking? Updated, Guid? ClashesWith,
 /// </remarks>
 public sealed class TenantBookings(ISqlSugarClient sql, OutboxSignal signal)
 {
+    /// <summary>Every booking that has not been cancelled, earliest first. This is what the list shows.</summary>
+    public Task<List<DataBooking>> ListAllAsync(Guid tenantId, Guid? facilityId, Guid? bookedByMemberId, CancellationToken ct) =>
+        sql.Queryable<DataBooking>()
+            .Where(b => b.TenantId == tenantId && b.CancelledAt == null)
+            .WhereIF(facilityId is not null, b => b.FacilityId == facilityId)
+            .WhereIF(bookedByMemberId is not null, b => b.BookedByMemberId == bookedByMemberId)
+            .OrderBy(b => b.StartUtc)
+            .OrderBy(b => b.Id)
+            .ToListAsync(ct);
+
     /// <summary>The bookings that share any time with the window, earliest first, cancelled ones left out.</summary>
     public async Task<List<DataBooking>> ListAsync(
         Guid tenantId,

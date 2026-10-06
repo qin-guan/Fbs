@@ -166,6 +166,7 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
     builder.Services.AddSingleton<TelegramThrottle>();
     builder.Services.AddScoped<IOutboxHandler, TelegramBookingNotifier>();
     builder.Services.AddScoped<IOutboxHandler, CalendarBookingSync>();
+    builder.Services.AddScoped<CalendarConnector>();
     builder.Services.Configure<CalendarSyncOptions>(builder.Configuration.GetSection("CalendarSync"));
     builder.Services.AddHostedService<CalendarReconciler>();
 

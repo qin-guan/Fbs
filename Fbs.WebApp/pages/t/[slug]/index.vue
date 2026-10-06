@@ -14,30 +14,16 @@ useHead({ title: 'Bookings' })
 type Booking = FbsWebApiEndpointsOrgBookingsBookingResponse
 
 const router = useRouter()
-const { slug, org, isAdmin, timeZone, path } = useTenant()
+const { slug, org, isAdmin, path } = useTenant()
 const { df, tf } = useTenantFormatter()
 
-// What is asked for is a window of time, as an organization can have thousands of bookings and nobody looks at all of them
-const ranges = [
-  { label: 'Next 7 days', value: 'week', from: 0, to: 7 },
-  { label: 'Next 31 days', value: 'month', from: 0, to: 31 },
-  { label: 'Next 3 months', value: 'quarter', from: 0, to: 93 },
-  { label: 'Last 31 days', value: 'past-month', from: -31, to: 1 },
-  { label: 'Last 3 months', value: 'past-quarter', from: -92, to: 1 },
-]
-const range = useRouteQuery<string>('range', 'month')
-const chosen = computed(() => ranges.find(r => r.value === range.value) ?? ranges[1]!)
+// Every booking of the organization, as the old list did. A window of days is what the timeline asks for.
 const mine = useRouteQuery<string, boolean>('mine', '', { transform: { get: v => v === '1', set: v => v ? '1' : '' } })
-
-const window = computed(() => ({
-  from: startOfToday(timeZone.value, chosen.value.from),
-  to: startOfToday(timeZone.value, chosen.value.to),
-}))
 const now = useNow({ interval: 60_000 })
 
 const { data: bookings, isPending, error } = useGetOrgBookings({
   path: computed(() => ({ slug: slug.value })),
-  query: computed(() => ({ from: window.value.from, to: window.value.to, mine: mine.value })),
+  query: computed(() => ({ mine: mine.value })),
 })
 const { data: bookable } = useGetOrgFacilitiesBookable({ path: computed(() => ({ slug: slug.value })) })
 
@@ -53,7 +39,7 @@ const rows = computed(() => {
     }
 
     return !words || [b.conduct, b.facilityName, b.description, b.pocName, b.pocPhone, b.bookedBy.displayName].some(v => (v ?? '').toLowerCase().includes(words))
-  })
+  }).sort((a, b) => b.startDateTime.getTime() - a.startDateTime.getTime())
 })
 
 function sized(column: TableColumn<Booking>, label: string): TableColumn<Booking> {
@@ -133,15 +119,6 @@ const noFacilities = computed(() => bookable.value !== undefined && bookable.val
           class="w-full sm:w-64"
         />
 
-        <USelect
-          v-model="range"
-          :items="ranges"
-          value-key="value"
-          icon="i-lucide-calendar-range"
-          aria-label="Which bookings"
-          class="w-44"
-        />
-
         <USelectMenu
           v-model="facilityFilter"
           :items="facilityOptions"
@@ -161,7 +138,7 @@ const noFacilities = computed(() => bookable.value !== undefined && bookable.val
       <UAlert
         v-if="error"
         title="Couldn't load the bookings"
-        :description="getErrorReasons(error)[0] ?? 'Try a shorter time, or try again.'"
+        :description="getErrorReasons(error)[0] ?? 'Try again.'"
         color="error"
         variant="subtle"
         icon="i-lucide-circle-alert"
@@ -172,7 +149,8 @@ const noFacilities = computed(() => bookable.value !== undefined && bookable.val
         :columns="columns"
         :loading="isPending"
         :get-row-id="(row: Booking) => row.id"
-        :empty="empty ? (mine ? 'You have no bookings in this time.' : `Nothing is booked in this time${org ? ` at ${org.name}` : ''}.`) : 'No bookings match.'"
+        :empty="empty ? (mine ? 'You have no bookings.' : `Nothing is booked${org ? ` at ${org.name}` : ''}.`) : 'No bookings match.'"
+        :virtualize="{ estimateSize: 68 }"
         class="flex-1 min-h-0 rounded-lg border border-default"
         :ui="{
           base: 'border-separate border-spacing-0',

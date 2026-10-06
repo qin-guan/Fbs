@@ -1,4 +1,4 @@
-import { CalendarDateTime, DateFormatter, fromDate, now, toCalendarDate, toZoned } from '@internationalized/date'
+import { CalendarDateTime, DateFormatter, fromDate, toZoned } from '@internationalized/date'
 import { useQueryClient, type QueryClient } from '@tanstack/vue-query'
 import { useGetOrg } from '~/api'
 
@@ -28,12 +28,6 @@ export function useTenantFormatter() {
     tf: computed(() => new DateFormatter('en-SG', { timeStyle: 'short', timeZone: timeZone.value })),
     dtf: computed(() => new DateFormatter('en-SG', { dateStyle: 'medium', timeStyle: 'short', timeZone: timeZone.value })),
   }
-}
-
-/** Midnight at the start of today in the time zone, or of a day some way from today. */
-export function startOfToday(timeZone: string, addDays = 0): Date {
-  const today = toCalendarDate(now(timeZone)).add({ days: addDays })
-  return toZoned(today, timeZone).toDate()
 }
 
 /** A time as `2026-10-05T09:00`, in the time zone: what a date and time input shows and gives back. */

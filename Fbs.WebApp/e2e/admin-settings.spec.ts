@@ -11,11 +11,13 @@ const org = (role = 'Admin') => ({
   me: { memberId: 'm1', displayName: 'CPT Sam', role, notificationScope: 'None', phone: null },
 })
 const settings = (extra = {}) => ({ name: 'Alpha Company', timeZone: 'Asia/Singapore', defaultCountryCode: '65', slotMinutes: 30, requireApproval: false, legacyClaimEnabled: true, ...extra })
+const calendar = (extra = {}) => ({ status: 'None', calendarId: null, lastError: null, verificationExpiresAt: null, serviceAccountEmail: 'sync@example.iam.gserviceaccount.com', ...extra })
 
 const table = (role = 'Admin', extra: Table = {}): Table => ({
   'GET /Me': () => json({ id: 'a', name: 'Sam', email: null, memberships: [{ tenantSlug: 'alpha', tenantName: 'Alpha Company', role, status: 'Active', displayName: 'CPT Sam' }] }),
   'GET /t/alpha': () => json(org(role)),
   'GET /t/alpha/Settings': () => json(settings()),
+  'GET /t/alpha/Calendar': () => json(calendar()),
   ...extra,
 })
 /** Saving answers with what was sent, and claiming as it was when it was left out */
@@ -108,6 +110,45 @@ test('what is wrong is said before anything is sent, and what the API says after
   await expect(page.getByText('The name has to be between 2 and 100 characters.')).toHaveCount(0)
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('That is not a time zone this server knows.')).toBeVisible()
+})
+
+test('a calendar is asked for with its id, and the code is then what is sent', async ({ page, goto, api }) => {
+  const calls = await api(table('Admin', {
+    'POST /t/alpha/Calendar': request => json(calendar({ status: 'Pending', calendarId: request.postDataJSON().calendarId, verificationExpiresAt: new Date(Date.now() + 15 * 60_000).toISOString() })),
+    'POST /t/alpha/Calendar/Confirm': () => json(calendar({ status: 'Active', calendarId: 'team@group.calendar.google.com' })),
+  }))
+  await goto('/t/alpha/admin/settings', { waitUntil: 'hydration' })
+
+  await expect(page.getByText('sync@example.iam.gserviceaccount.com')).toBeVisible()
+  await page.getByRole('button', { name: 'Connect the calendar' }).click()
+  await expect(page.getByText('The calendar id is the address of the calendar')).toBeVisible()
+  expect(calls.filter(c => c.key === 'POST /t/alpha/Calendar')).toHaveLength(0)
+
+  await page.getByLabel('Calendar id').fill('team@group.calendar.google.com')
+  await page.getByRole('button', { name: 'Connect the calendar' }).click()
+  await expect(page.getByText('Look on the calendar for the code', { exact: true }).first()).toBeVisible()
+  expect(calls.filter(c => c.key === 'POST /t/alpha/Calendar').at(-1)!.body).toEqual({ calendarId: 'team@group.calendar.google.com' })
+
+  await page.getByLabel('Code').fill('ab23cdef')
+  await page.getByRole('button', { name: 'Confirm the code' }).click()
+  await expect(page.getByText('The calendar is connected', { exact: true }).first()).toBeVisible()
+  expect(calls.filter(c => c.key === 'POST /t/alpha/Calendar/Confirm').at(-1)!.body).toEqual({ code: 'ab23cdef' })
+  await expect(page.getByRole('button', { name: 'Stop copying' })).toBeVisible()
+})
+
+test('copying to a calendar can be stopped', async ({ page, goto, api }) => {
+  const calls = await api(table('Admin', {
+    'GET /t/alpha/Calendar': () => json(calendar({ status: 'Active', calendarId: 'team@group.calendar.google.com' })),
+    'DELETE /t/alpha/Calendar': () => ({ status: 204, body: '' }),
+  }))
+  await goto('/t/alpha/admin/settings', { waitUntil: 'hydration' })
+
+  await expect(page.getByText('team@group.calendar.google.com')).toBeVisible()
+  await page.getByRole('button', { name: 'Stop copying' }).click()
+
+  await expect(page.getByText('Stopped copying to the calendar', { exact: true }).first()).toBeVisible()
+  expect(calls.map(c => c.key)).toContain('DELETE /t/alpha/Calendar')
+  await expect(page.getByRole('button', { name: 'Connect the calendar' })).toBeVisible()
 })
 
 test('a member is told it is for admins, and nothing of the settings is asked for', async ({ page, goto, api }) => {

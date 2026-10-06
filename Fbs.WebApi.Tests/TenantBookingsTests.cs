@@ -288,25 +288,43 @@ public class TenantBookingsTests
     }
 
     [Test]
-    public async Task With_no_window_it_is_from_the_start_of_today_and_a_window_that_is_too_large_or_backwards_is_refused()
+    public async Task With_no_window_every_booking_is_listed_and_a_window_that_is_too_large_or_backwards_is_refused()
     {
         var org = await Factory.CreateOrgAsync();
         var hall = org.AddFacility("Hall");
+        var past = Guid.NewGuid();
+        Factory.Db.Insertable(new DataBooking
+        {
+            Id = past,
+            TenantId = org.TenantId,
+            FacilityId = hall,
+            StartUtc = At(-20, 9).ToUniversalTime(),
+            EndUtc = At(-20, 10).ToUniversalTime(),
+            Conduct = "Past",
+            BookedByMemberId = Factory.Db.Queryable<TenantMember>().First(m => m.TenantId == org.TenantId).Id,
+        }).ExecuteCommand();
         var soon = await BookAsync(org.Admin, org.Slug, hall, At(5, 9), At(5, 10));
         var later = await BookAsync(org.Admin, org.Slug, hall, At(60, 9), At(60, 10));
+        var cancelled = await BookAsync(org.Admin, org.Slug, hall, At(6, 9), At(6, 10));
+        (await org.Admin.DeleteAsync($"/t/{org.Slug}/Bookings/{cancelled}")).EnsureSuccessStatusCode();
 
         var defaults = await org.Admin.GetFromJsonAsync<JsonElement>($"/t/{org.Slug}/Bookings");
+        var fromOnly = await org.Admin.GetFromJsonAsync<JsonElement>($"/t/{org.Slug}/Bookings?from={Uri.EscapeDataString(At(0, 0).ToString("O"))}");
         var tooLarge = await org.Admin.GetAsync($"/t/{org.Slug}/Bookings?from={Uri.EscapeDataString(At(0, 0).ToString("O"))}&to={Uri.EscapeDataString(At(94, 0).ToString("O"))}");
         var backwards = await org.Admin.GetAsync($"/t/{org.Slug}/Bookings?from={Uri.EscapeDataString(At(5, 0).ToString("O"))}&to={Uri.EscapeDataString(At(4, 0).ToString("O"))}");
         var justEnough = await org.Admin.GetAsync($"/t/{org.Slug}/Bookings?from={Uri.EscapeDataString(At(0, 0).ToString("O"))}&to={Uri.EscapeDataString(At(93, 0).ToString("O"))}");
 
-        await Assert.That(defaults.EnumerateArray().Select(b => b.GetProperty("id").GetGuid())).IsEquivalentTo([soon]);
+        var ids = defaults.EnumerateArray().Select(b => b.GetProperty("id").GetGuid()).ToList();
+        await Assert.That(ids).IsEquivalentTo([past, soon, later]);
+        await Assert.That(ids[0]).IsEqualTo(past);
+        await Assert.That(ids[1]).IsEqualTo(soon);
+        await Assert.That(ids[2]).IsEqualTo(later);
+        await Assert.That(fromOnly.EnumerateArray().Select(b => b.GetProperty("id").GetGuid())).IsEquivalentTo([soon]);
         await Assert.That(tooLarge).HasStatus(HttpStatusCode.BadRequest);
         await Assert.That(await tooLarge.Content.ReadAsStringAsync()).Contains("window-too-large");
         await Assert.That(backwards).HasStatus(HttpStatusCode.BadRequest);
         await Assert.That(justEnough).HasStatus(HttpStatusCode.OK);
-        await Assert.That((await justEnough.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength()).IsEqualTo(2);
-        await Assert.That(later).IsNotEqualTo(Guid.Empty);
+        await Assert.That((await justEnough.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray().Select(b => b.GetProperty("id").GetGuid())).IsEquivalentTo([soon, later]);
     }
 
     [Test]

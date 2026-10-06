@@ -4,11 +4,17 @@ namespace Fbs.WebApi.Endpoints.Org.Bookings.Get;
 
 public class Request
 {
-    /// <summary>The start of the window. The start of today, in the organisation's time zone, if left out.</summary>
+    /// <summary>
+    /// The start of a window. Left out together with <see cref="To"/>, every booking is listed. Left out on its own,
+    /// the window starts <see cref="Endpoint.DefaultDays"/> days before <see cref="To"/>.
+    /// </summary>
     [QueryParam]
     public DateTimeOffset? From { get; set; }
 
-    /// <summary>The end of the window. <see cref="Endpoint.DefaultDays"/> days after <see cref="From"/> if left out.</summary>
+    /// <summary>
+    /// The end of a window. Left out together with <see cref="From"/>, every booking is listed. Left out on its own,
+    /// the window ends <see cref="Endpoint.DefaultDays"/> days after <see cref="From"/>.
+    /// </summary>
     [QueryParam]
     public DateTimeOffset? To { get; set; }
 

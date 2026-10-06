@@ -41,7 +41,7 @@ const table = (extra: Table = {}): Table => ({
 })
 
 test.describe('the list', () => {
-  test('shows what is booked in the next 31 days, and who booked it', async ({ page, goto, api }) => {
+  test('shows every booking, and who booked it', async ({ page, goto, api }) => {
     const calls = await api(table())
 
     await goto('/t/alpha', { waitUntil: 'hydration' })
@@ -50,9 +50,11 @@ test.describe('the list', () => {
     await expect(page.getByText('Circuit')).toHaveCount(1)
     await expect(page.getByText('Briefing')).toHaveCount(1)
     await expect(page.getByText('SGT Other').first()).toBeVisible()
+    await expect(page.getByLabel('Which bookings')).toHaveCount(0)
     await expect(page).toHaveTitle(/Alpha Company/)
     const asked = calls.filter(c => c.key === 'GET /t/alpha/Bookings').at(-1)!.query
-    expect((new Date(asked.to!).getTime() - new Date(asked.from!).getTime()) / 86_400_000).toBe(31)
+    expect(asked.from).toBeUndefined()
+    expect(asked.to).toBeUndefined()
     expect(asked.mine).toBe('false')
   })
 
@@ -87,7 +89,7 @@ test.describe('the list', () => {
     await goto('/t/alpha', { waitUntil: 'hydration' })
 
     await expect(page.getByText('You can\'t book anything yet')).toBeVisible()
-    await expect(page.getByText('Nothing is booked in this time')).toBeVisible()
+    await expect(page.getByText('Nothing is booked')).toBeVisible()
   })
 })
 
