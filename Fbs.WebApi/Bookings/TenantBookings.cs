@@ -182,7 +182,7 @@ public sealed class TenantBookings(ISqlSugarClient sql, OutboxSignal signal)
         var newStart = start?.ToUniversalTime() ?? row.StartUtc;
         var newEnd = end?.ToUniversalTime() ?? row.EndUtc;
 
-        // Whether the time moved is worked out here rather than trusted, as it can have moved since the caller looked
+        // Work out here whether the time moved. The caller's copy can be stale.
         var timeChanged = row.StartUtc != newStart || row.EndUtc != newEnd;
         if (timeChanged)
         {

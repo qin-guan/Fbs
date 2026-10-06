@@ -81,8 +81,8 @@ public sealed class CalendarBookingService(
     {
         try
         {
-            // Inserts use the request's token rather than the loop's, so when one fails the others
-            // finish instead of being cut off part way, leaving nothing half done to roll back
+            // Each insert uses the request's cancellation token, not the loop's. One failure must not
+            // cancel the others halfway. A finished insert is not rolled back.
             await Parallel.ForEachAsync(
                 bookings,
                 new ParallelOptions

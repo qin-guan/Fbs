@@ -25,7 +25,7 @@ function validate(): FormError[] {
   const errors: FormError[] = []
 
   if (otp.value.length !== 6) {
-    errors.push({ name: 'otp', message: 'OTP must be 6 digits.' })
+    errors.push({ name: 'otp', message: 'The code needs 6 digits.' })
   }
 
   return errors
@@ -33,7 +33,7 @@ function validate(): FormError[] {
 
 function onFormError() {
   toast.add({
-    title: 'Form is invalid.',
+    title: 'The code needs 6 digits.',
     color: 'error',
     icon: 'i-lucide-circle-x',
     duration: 3000,
@@ -46,8 +46,7 @@ function onFormSubmit() {
       const e = getProblemDetails(error)
       for (const error of e?.errors ?? []) {
         toast.add({
-          title: 'Error',
-          description: error.reason ?? undefined,
+          title: error.reason ?? 'Couldn\'t check the code',
           color: 'error',
           icon: 'i-lucide-circle-x',
           duration: 3000,
@@ -57,8 +56,7 @@ function onFormSubmit() {
       // The API rejects a wrong or expired OTP with a bare 401
       if (!e?.errors?.length) {
         toast.add({
-          title: 'Error',
-          description: 'The OTP is invalid or has expired.',
+          title: 'The OTP is invalid or has expired.',
           color: 'error',
           icon: 'i-lucide-circle-x',
           duration: 3000,

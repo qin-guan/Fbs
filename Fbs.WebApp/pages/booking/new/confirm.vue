@@ -109,14 +109,14 @@ function validate(values: typeof state): FormError[] {
   }
 
   if (!values.pocName) {
-    errors.push({ name: 'pocName', message: 'POC Rank and Name is required.' })
+    errors.push({ name: 'pocName', message: 'A point of contact is needed.' })
   }
 
   if (!values.pocPhone) {
-    errors.push({ name: 'pocPhone', message: 'POC Phone is required.' })
+    errors.push({ name: 'pocPhone', message: 'Their phone number is needed.' })
   }
   else if (values.pocPhone.length !== 8) {
-    errors.push({ name: 'pocPhone', message: 'POC Phone is not valid.' })
+    errors.push({ name: 'pocPhone', message: 'Use 8 digits.' })
   }
 
   return errors
@@ -170,7 +170,7 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
       // The batch is all or nothing, so nothing was booked
       const count = Object.keys(slotErrors).length
       errorToastId = toast.add({
-        title: submitted.length > 1 && count ? 'Nothing was booked' : 'Error creating booking',
+        title: submitted.length > 1 && count ? 'Nothing was booked' : 'Couldn\'t make the booking',
         description: submitted.length > 1 && count
           ? `${count} ${count === 1 ? 'slot' : 'slots'} can't be booked. Remove ${count === 1 ? 'it' : 'them'} and try again.`
           : Object.values(slotErrors)[0] ?? otherErrors[0],
@@ -188,8 +188,8 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
       const first = result?.[0]
       if (result?.length === 1 && first?.id) {
         toast.add({
-          title: 'Booking created successfully',
-          description: `Booking for ${first.facilityName} has been created.`,
+          title: 'Booking created',
+          description: `${first.facilityName} is booked.`,
           color: 'success',
           icon: 'i-lucide-circle-check',
         })

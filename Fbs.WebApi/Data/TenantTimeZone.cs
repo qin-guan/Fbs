@@ -6,7 +6,7 @@ public static class TenantTimeZone
 {
     /// <summary>
     /// The tenant's time zone, or UTC when the host doesn't know it, as with a minimal image with no time zone
-    /// data, so a missing zone shows times that are right but in UTC rather than stopping everything.
+    /// data. A missing zone still shows the right moments, in UTC, and does not stop the request.
     /// </summary>
     public static TimeZoneInfo Of(Tenant tenant)
     {

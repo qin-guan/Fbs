@@ -174,8 +174,7 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         var start = updated.StartDateTime?.ToUniversalTime() ?? row.StartUtc;
         var end = updated.EndDateTime?.ToUniversalTime() ?? row.EndUtc;
 
-        // Whether the time moved is worked out here rather than trusted, as it can have moved since the
-        // caller looked
+        // Work out here whether the time moved. The caller's copy can be stale.
         var moved = row.FacilityId != facility.Id || row.StartUtc != start || row.EndUtc != end;
         if (checkForClash || moved)
         {

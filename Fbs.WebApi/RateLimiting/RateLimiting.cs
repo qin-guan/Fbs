@@ -108,7 +108,7 @@ public static class RateLimitingExtensions
                 );
             };
 
-            // Read when the first request is made rather than here, so that what is configured for a test is what is used
+            // Read on the first request, not while the policies are registered, so a test's configuration is the one that is used.
             foreach (var (name, defaults) in RateLimitPolicies.Defaults)
             {
                 var byIpAddress = name == RateLimitPolicies.Webhook;

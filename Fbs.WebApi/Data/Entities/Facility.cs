@@ -17,6 +17,6 @@ public class Facility
     [SugarColumn(Length = 100, IsNullable = true)]
     public string? Group { get; set; }
 
-    /// <summary>Whether every unit can book it, rather than only the ones in <see cref="FacilityUnitAccess"/>.</summary>
+    /// <summary>Whether every unit can book it. When false, only the units in <see cref="FacilityUnitAccess"/> can.</summary>
     public bool AvailableToAll { get; set; }
 }

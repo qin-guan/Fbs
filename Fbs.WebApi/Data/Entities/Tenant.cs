@@ -50,7 +50,7 @@ public class Tenant
     /// </summary>
     public bool LegacyClaimEnabled { get; set; }
 
-    /// <summary>Who made it, if it was made by someone signing up rather than carried over from before.</summary>
+    /// <summary>Who made it, when someone signed up and created it. Empty when it was carried over from before.</summary>
     [SugarColumn(IsNullable = true)]
     public Guid? CreatedByUserId { get; set; }
 

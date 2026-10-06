@@ -20,10 +20,10 @@ namespace Fbs.WebApi.CalendarSync;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The event is what the booking is now, not what it was when the message was written, so it doesn't
-/// matter if messages are retried or handled out of order. The event's ID is the booking's ID without
-/// dashes, as it was when bookings were kept in the calendar, so the events already there are updated
-/// rather than added a second time.
+/// The event is the booking as it is now, not as it was when the message was written, so a retry or a
+/// message handled out of order still writes the current booking. The event's ID is the booking's ID without
+/// dashes, the same ID used when bookings were kept in the calendar, so an event already there is updated
+/// and not inserted again.
 /// </para>
 /// <para>
 /// Nothing is read back: changes made to the event in the calendar are replaced by the next change to the
@@ -199,8 +199,8 @@ public sealed class CalendarBookingSync(ISqlSugarClient sql, CalendarService cal
     }
 
     /// <summary>
-    /// What Google refuses for good, like a calendar that isn't shared with us, rather than what is worth
-    /// trying again, like being told to slow down or a problem at their end.
+    /// A Google refusal that will not change on another try, such as a calendar that is not shared with us.
+    /// Rate limits and errors on Google's side are worth trying again.
     /// </summary>
     private static bool IsPermanent(GoogleApiException e)
     {

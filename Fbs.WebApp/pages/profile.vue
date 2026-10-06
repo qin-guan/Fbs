@@ -8,10 +8,10 @@ definePageMeta({
 const { data: me } = useGetAuthMe()
 
 const fields = computed(() => [
-  { label: 'Rank / Name', description: 'Your rank and name', value: me.value?.name },
-  { label: 'Phone', description: 'Your phone number (intl.)', value: me.value?.phone },
-  { label: 'Telegram ID', description: 'Your internal Telegram ID', value: me.value?.telegramChatId },
-  { label: 'Notification group', description: 'Subscribed notification group', value: me.value?.notificationGroup },
+  { label: 'Rank / Name', description: 'As the booking bot has it', value: me.value?.name },
+  { label: 'Phone', description: 'With the country code', value: me.value?.phone },
+  { label: 'Telegram ID', description: 'The internal Telegram id', value: me.value?.telegramChatId },
+  { label: 'Notification group', description: 'The group your notifications go to', value: me.value?.notificationGroup },
 ])
 </script>
 

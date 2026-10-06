@@ -130,7 +130,7 @@ async function stop() {
 <template>
   <UPageCard
     title="Google Calendar"
-    description="Bookings are copied to a Google Calendar. What is changed there is not read back."
+    description="Bookings are copied to a Google Calendar. Edits on that calendar are not copied back."
     variant="subtle"
     icon="i-lucide-calendar"
   >

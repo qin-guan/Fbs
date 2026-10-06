@@ -176,7 +176,7 @@ function onSelect(_: Event, row: { original: Booking }) {
           ref="keywordSearchInput"
           v-model="globalFilter"
           icon="i-lucide-search"
-          placeholder="Keyword Search"
+          placeholder="Keyword search"
           aria-label="Keyword search"
           class="w-full sm:w-72"
         >
@@ -258,7 +258,7 @@ function onSelect(_: Event, row: { original: Booking }) {
         :column-sizing-options="{ enableColumnResizing: true, columnResizeMode: 'onChange' }"
         :get-row-id="(row: Booking) => row.id ?? ''"
         :virtualize="{ estimateSize: 53 }"
-        empty="No bookings found."
+        empty="No bookings."
         class="flex-1 min-h-0 rounded-lg border border-default"
         :ui="{
           base: 'border-separate border-spacing-0',

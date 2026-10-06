@@ -296,7 +296,7 @@ public sealed class CalendarConnector(
         && calendarId.All(c => !char.IsWhiteSpace(c) && c is not '/' and not '?' and not '#')
         && !calendarId.Equals("primary", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>What Google refuses for good, rather than a rate limit or a problem at their end.</summary>
+    /// <summary>A Google refusal that will not change on another try. Rate limits and errors on Google's side are left out.</summary>
     private static bool IsPermanent(GoogleApiException e)
     {
         var reason = e.Error?.Errors?.FirstOrDefault()?.Reason;

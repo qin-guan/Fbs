@@ -24,7 +24,7 @@ public class Booking
     [SugarColumn(Length = 2000, IsNullable = true)]
     public string? Description { get; set; }
 
-    /// <summary>The point of contact for the booking, as written when it was made rather than looked up.</summary>
+    /// <summary>The point of contact's name, copied onto the booking when it was made. It is not looked up again.</summary>
     [SugarColumn(Length = 200, IsNullable = true)]
     public string? PocName { get; set; }
 

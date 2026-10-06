@@ -7,8 +7,8 @@ namespace Fbs.WebApi.Tenancy;
 
 /// <summary>
 /// Finds the organisation in the address, and the member of it who is making the request, before anything else
-/// in the endpoint runs. The endpoint is then only reached by an active member, and takes the organisation
-/// from <see cref="ITenantContext"/> rather than from anything the caller sends.
+/// in the endpoint runs. The endpoint is then only reached by an active member. It takes the organisation
+/// from <see cref="ITenantContext"/>, and does not take it from anything the caller sends.
 /// </summary>
 /// <remarks>
 /// An endpoint for an organisation has <c>/t/{slug}</c> at the start of its route and adds this in

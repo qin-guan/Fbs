@@ -10,8 +10,8 @@ public enum BookingChange
 }
 
 /// <summary>
-/// What the outbox message that tells people about a booking change holds. Bookings made together are one
-/// message, so each person hears about them once rather than once for each.
+/// The outbox message that tells people about a booking change. Bookings made together share one
+/// message, so each person is told once for the batch.
 /// </summary>
 public sealed class TelegramBookingPayload
 {

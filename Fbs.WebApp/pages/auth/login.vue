@@ -31,10 +31,10 @@ function validate(values: typeof state): FormError[] {
   const digits = values.phone.replace(/\D/g, '')
 
   if (!digits) {
-    errors.push({ name: 'phone', message: 'Phone number is required.' })
+    errors.push({ name: 'phone', message: 'Enter a phone number.' })
   }
   else if (digits.length !== 8) {
-    errors.push({ name: 'phone', message: 'Phone number must be 8 digits.' })
+    errors.push({ name: 'phone', message: 'Use 8 digits.' })
   }
 
   return errors
@@ -42,7 +42,7 @@ function validate(values: typeof state): FormError[] {
 
 function onFormError() {
   toast.add({
-    title: 'Form is invalid.',
+    title: 'Check the phone number.',
     color: 'error',
     icon: 'i-lucide-circle-x',
     duration: 3000,
@@ -63,8 +63,7 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
         }
 
         toast.add({
-          title: 'Error',
-          description: error.reason ?? undefined,
+          title: error.reason ?? 'Couldn\'t send the code',
           color: 'error',
           icon: 'i-lucide-circle-x',
           duration: 3000,
@@ -74,10 +73,9 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
       // The API answers with a bare 401 when an OTP was requested less than a minute ago
       if (!e?.errors?.length) {
         toast.add({
-          title: 'Error',
-          description: error.status === 401
-            ? 'Please wait a minute before requesting another OTP.'
-            : 'Something went wrong. Please try again.',
+          title: error.status === 401
+            ? 'Wait a minute before asking for another OTP.'
+            : 'Something went wrong. Try again.',
           color: 'error',
           icon: 'i-lucide-circle-x',
           duration: 3000,

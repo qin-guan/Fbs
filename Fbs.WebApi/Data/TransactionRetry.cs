@@ -6,11 +6,11 @@ namespace Fbs.WebApi.Data;
 /// Runs a transaction again when the database gave up on it for a reason that another go will get past.
 /// </summary>
 /// <remarks>
-/// With pessimistic locking a transaction can be turned away when a lot of others are after the same rows: TiDB
-/// stops trying to lock them after a number of attempts ("pessimistic lock retry limit reached"), and a deadlock or a
-/// wait that is too long is ended by the database rather than left. None of these has changed anything, as the
-/// transaction is rolled back, so what is run has to be the whole of it, from getting the locks, and to have no
-/// effect outside the database until it has committed.
+/// With pessimistic locking, a transaction can be rejected when many others want the same rows. TiDB
+/// stops trying to lock them after a number of attempts ("pessimistic lock retry limit reached"). A deadlock or a
+/// wait that runs too long is ended by the database. The transaction is rolled back, so none of these has changed
+/// anything. The work has to be the whole transaction, from taking the locks, and it must not do anything outside
+/// the database until the transaction has committed.
 /// </remarks>
 public static class TransactionRetry
 {
@@ -56,7 +56,7 @@ public static class TransactionRetry
             }
             catch (Exception e) when (n >= Attempts && IsTransient(e))
             {
-                // It has been tried as often as it is, and this is somebody who gets an error
+                // The retries are used up, so the caller gets the error.
                 FbsMetrics.TransactionsGivenUp.Add(1, new KeyValuePair<string, object?>("reason", ReasonOf(e)));
                 throw;
             }

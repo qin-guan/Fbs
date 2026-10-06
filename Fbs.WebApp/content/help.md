@@ -48,8 +48,7 @@ Nothing is booked. The slots in your list are booked all at once, so remove the 
 
 ## What is the difference between Eiger and Temasek Square
 
-- **Eiger** refers to the running route around the parade square
-- **Temasek Square** refers to the inner parade square area
+Eiger is the running route around the parade square. Temasek Square is the inner parade square area.
 
 ---
 

@@ -8,7 +8,7 @@
 
 #### What's new
 
-- **Timeline** shows every upcoming booking by facility, so you can see what's free at a glance. Filter it to just the facilities you care about
+- Timeline shows every upcoming booking by facility. You can filter it to the facilities you need
 
 ### 28/09/2026
 

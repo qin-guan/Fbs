@@ -3,8 +3,8 @@ namespace Fbs.WebApi.Middleware;
 /// <summary>
 /// With <c>Maintenance:ReadOnly=true</c>, everything can be read and nothing can be changed, so the data can
 /// be moved without anything being made in the old place after it was copied. Changes are refused with a 503
-/// that says to try again, which is also what makes Telegram deliver the updates it sends to the bot later,
-/// rather than lose them.
+/// that says to try again. Telegram keeps the updates it sent to the bot and delivers them later. A response
+/// Telegram treats as final would drop them.
 /// </summary>
 public class ReadOnlyMiddleware(IConfiguration configuration) : IMiddleware
 {

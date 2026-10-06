@@ -272,7 +272,7 @@ function confirmSelection(fromDialog: boolean) {
   if (showEigerConfirmation && !fromDialog) {
     confirmation.value = {
       visible: true,
-      message: 'Eiger refers to the running route. Temasek Square refers to the center parade square area. Did you select the correct facility?',
+      message: 'Eiger is the running route. Temasek Square is the center parade square area. Did you select the correct facility?',
     }
     return
   }

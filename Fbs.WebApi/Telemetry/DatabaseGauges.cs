@@ -29,10 +29,10 @@ public sealed record DatabaseSnapshot(
 }
 
 /// <summary>
-/// The gauges: how much is waiting to be sent and for how long, how many messages have been given up on, and how many
-/// organisations, people and calendars there are in each state. They are read from the database now and then rather than
-/// when they are asked for, so being scraped is never a query, and are the same whichever instance is asked, so with more than one,
-/// take the largest of them and not the sum.
+/// Gauges for the backlog waiting to be sent (how much, and for how long), how many messages have been given up on,
+/// and how many organisations, people and calendars are in each state. A background read fills them, so a scrape
+/// does not query the database. Every instance reports the same numbers. With more than one, take the largest.
+/// Adding them counts each row once per instance.
 /// </summary>
 public static class DatabaseGauges
 {

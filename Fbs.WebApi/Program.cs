@@ -116,8 +116,8 @@ builder
 // Storage:Provider says Database
 if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseConnectionString)
 {
-    // Singleton on purpose: a scope per request is what SqlSugarScope already does. Hosted services are
-    // started on this context, so they go through SqlSugarContext rather than using it directly
+    // Singleton on purpose: SqlSugarScope already scopes a client per request. Hosted services are
+    // started on this context, so they go through SqlSugarContext. Using this client directly would share it.
     builder.Services.AddSingleton<ISqlSugarClient>(_ =>
         SqlSugarClientFactory.Create(databaseConnectionString)
     );
@@ -125,12 +125,12 @@ if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseC
     // A version that can't reach the database isn't ready to take over from the one that is running
     builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
 
-    // What is waiting to be sent, and how many organisations and people there are, looked at every so often for the metrics
+    // How many messages are waiting to be sent, and how many organisations and people there are. Sampled on a timer for the metrics.
     builder.Services.Configure<DatabaseGaugesOptions>(builder.Configuration.GetSection("Metrics:DatabaseGauges"));
     builder.Services.AddHostedService<DatabaseGaugesService>();
 }
 
-// What is counted and timed, which is sent wherever OTEL_EXPORTER_OTLP_ENDPOINT says once it is named here
+// Counters and timers from FbsMetrics. Exported wherever OTEL_EXPORTER_OTLP_ENDPOINT points, once the meter is named here.
 builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics.AddMeter(FbsMetrics.MeterName));
 
 builder.Services.AddSingleton<InstrumentationSource>();
@@ -156,8 +156,8 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
     builder.Services.AddScoped<IOtpRepository, DatabaseOtpRepository>();
     builder.Services.AddScoped<IBookingService, DatabaseBookingService>();
 
-    // What is to be done once a change is saved, such as telling people about it. It is written in the same
-    // transaction as the change, so the events the endpoints publish are no longer wanted
+    // Work that runs after a change is saved, such as telling people about it. It is written in the same
+    // transaction as the change, so the events the endpoints publish are turned off.
     builder.Services.Configure<EventOptions>(options => options.Enabled = false);
     builder.Services.Configure<OutboxOptions>(builder.Configuration.GetSection("Outbox"));
     builder.Services.AddSingleton<OutboxSignal>();
@@ -199,7 +199,7 @@ else
     builder.Services.AddHostedService<CacheRefreshService>();
 }
 
-// What is for people signed in with Clerk isn't there unless that is on, as it needs accounts to be
+// Endpoints for people signed in with Clerk are registered only when Clerk is on. They need accounts.
 var clerkEnabled = ClerkAuthentication.IsEnabled(builder.Configuration);
 builder.Services.AddFastEndpoints(options =>
     options.Filter = type => clerkEnabled || !Attribute.IsDefined(type, typeof(RequiresClerkAttribute))
@@ -291,7 +291,7 @@ await using (var scope = app.Services.CreateAsyncScope())
     );
 }
 
-// First, so everything after it sees the address of the client rather than of the proxy
+// First. Later middleware should see the client's address. Before this, the address is the proxy's.
 app.UseForwardedHeaders();
 
 app.UseMiddleware<TraceIdMiddleware>();
@@ -304,7 +304,7 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// After authorization, which is what says who somebody is, as some limits are for a person rather than an address
+// After authorization. Some limits follow the person authorization identified, and some follow the address.
 app.UseRateLimiter();
 
 app.UseFastEndpoints(config =>

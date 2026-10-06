@@ -5,10 +5,10 @@ namespace Fbs.WebApi.Data;
 /// </summary>
 /// <remarks>
 /// <see cref="SqlSugar.SqlSugarScope"/> keeps one client per async context. Hosted services are started on the
-/// host's context, and the first use of the client — schema validation, or a service that queries before it
-/// awaits — publishes that client to every service started after it. The outbox, the calendar check and the
+/// host's context, and the first use of the client (schema validation, or a service that queries before it
+/// awaits) publishes that client to every service started after it. The outbox, the calendar check and the
 /// gauges then open one <c>MySqlConnection</c> together, which throws "Cannot Open when State is Connecting".
-/// A request does not: it has a context of its own, so long as nothing has published a client onto the host's.
+/// A request does not. It has a context of its own, as long as nothing has published a client onto the host's.
 /// </remarks>
 public static class SqlSugarContext
 {

@@ -195,7 +195,7 @@ function deleteBooking() {
       await navigateTo('/booking')
     },
     onError(error) {
-      showError('Failed to cancel booking.', error)
+      showError('Couldn\'t cancel the booking.', error)
     },
   })
 }
@@ -216,14 +216,14 @@ function updateBooking() {
     async onSuccess() {
       rememberCustomPoc({ name: updateValues.value.pocName, phone: '65' + updateValues.value.pocPhone })
       toast.add({
-        title: 'Booking updated successfully.',
+        title: 'Booking updated.',
         color: 'success',
         icon: 'i-lucide-circle-check',
         duration: 3000,
       })
     },
     onError(error) {
-      showError('Failed to update booking.', error)
+      showError('Couldn\'t update the booking.', error)
     },
   })
 }

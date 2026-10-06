@@ -3,10 +3,10 @@ using System.Diagnostics.Metrics;
 namespace Fbs.WebApi.Telemetry;
 
 /// <summary>
-/// What is counted and timed, for whoever looks after the system: is it up and quick, is the database coping, is what is
-/// sent getting there, are people using it, and is anybody trying to get in that shouldn't. They are exported by the
-/// OpenTelemetry setup in <c>Fbs.ServiceDefaults</c> when <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set, and the README says which to
-/// watch. The requests themselves, the runtime and the HTTP clients are counted by the instrumentation of those.
+/// Counters and timers for running the service: whether it is up and fast, whether the database is keeping up,
+/// whether outbound work arrives, whether people are using it, and why a sign-in was refused. OpenTelemetry in
+/// <c>Fbs.ServiceDefaults</c> exports them when <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set, and the README says which to
+/// watch. Requests, the runtime and the HTTP clients are counted by their own instrumentation.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -29,17 +29,17 @@ public static class FbsMetrics
 
     // The database
 
-    /// <summary>A transaction the database turned away and was run again, by why. Going up a lot is the database being fought over.</summary>
+    /// <summary>A transaction the database rejected and that was run again, labelled by the reason. A large increase means transactions are contending for the same rows.</summary>
     public static readonly Counter<long> TransactionRetries = Meter.CreateCounter<long>("fbs.db.transaction.retries", "{retry}", "Transactions run again after the database turned them away");
 
-    /// <summary>A transaction that was turned away as many times as it is tried, and so failed. Anything but 0 is somebody who got an error.</summary>
+    /// <summary>A transaction the database kept rejecting until the retries ran out. Above zero, a caller got an error.</summary>
     public static readonly Counter<long> TransactionsGivenUp = Meter.CreateCounter<long>("fbs.db.transaction.given_up", "{transaction}", "Transactions that failed after being run again as often as they are");
 
     public static readonly Histogram<double> QueryDuration = Meter.CreateHistogram("fbs.db.query.duration", "s", "How long a database statement took", tags: null, SecondsAdvice);
 
     public static readonly Counter<long> QueryErrors = Meter.CreateCounter<long>("fbs.db.query.errors", "{error}", "Database statements that failed");
 
-    // Bookings, which is what it is for
+    // Bookings
 
     public static readonly Counter<long> BookingsMade = Meter.CreateCounter<long>("fbs.bookings.made", "{booking}", "Bookings made, one for each slot");
 
@@ -50,12 +50,12 @@ public static class FbsMetrics
     /// <summary>Requests to book or move something that were refused because somebody else has it.</summary>
     public static readonly Counter<long> BookingClashes = Meter.CreateCounter<long>("fbs.bookings.clashes", "{request}", "Requests refused because the time is taken");
 
-    /// <summary>An organisation asking for more than it can have or make, by which limit. Somebody hitting a limit is somebody to talk to, or to stop.</summary>
+    /// <summary>An organisation past a limit on what it can hold or create, labelled by which limit.</summary>
     public static readonly Counter<long> QuotaRefusals = Meter.CreateCounter<long>("fbs.quota.refusals", "{request}", "Requests refused because the organisation is at a limit");
 
-    // What is sent
+    // Outbound
 
-    /// <summary>What the outbox did with a message, by its type and what came of it: <c>done</c>, <c>retry</c>, <c>dead</c> or <c>skipped</c>.</summary>
+    /// <summary>How the outbox handled a message, by type and outcome: <c>done</c>, <c>retry</c>, <c>dead</c> or <c>skipped</c>.</summary>
     public static readonly Counter<long> OutboxMessages = Meter.CreateCounter<long>("fbs.outbox.messages", "{message}", "Outbox messages handled, by type and outcome");
 
     public static readonly Histogram<double> OutboxHandleDuration = Meter.CreateHistogram("fbs.outbox.handle.duration", "s", "How long an outbox message took to handle", tags: null, SecondsAdvice);
@@ -68,17 +68,17 @@ public static class FbsMetrics
     /// <summary>An organisation's calendar that was refused by Google and so stopped being sent to, until somebody puts it right.</summary>
     public static readonly Counter<long> CalendarsFailed = Meter.CreateCounter<long>("fbs.calendar.connections.failed", "{connection}", "Calendars that Google refused, and were stopped");
 
-    // Who is at the door
+    // Sign-in
 
-    /// <summary>Session tokens that were refused, by why: <c>expired</c>, <c>signature</c>, <c>unknown_key</c>, <c>issuer</c>, <c>azp</c>, <c>subject</c> or <c>invalid</c>.</summary>
+    /// <summary>Session tokens that were refused, by reason: <c>expired</c>, <c>signature</c>, <c>unknown_key</c>, <c>issuer</c>, <c>azp</c>, <c>subject</c> or <c>invalid</c>.</summary>
     public static readonly Counter<long> AuthFailures = Meter.CreateCounter<long>("fbs.auth.failures", "{token}", "Session tokens refused, by why");
 
-    /// <summary>Webhooks from Clerk, by their type and: <c>accepted</c>, <c>invalid_signature</c> or <c>not_configured</c>.</summary>
+    /// <summary>Webhooks from Clerk, by type and result: <c>accepted</c>, <c>invalid_signature</c> or <c>not_configured</c>.</summary>
     public static readonly Counter<long> Webhooks = Meter.CreateCounter<long>("fbs.webhooks.received", "{webhook}", "Webhooks received, by type and result");
 
     public static readonly Counter<long> RateLimitRejections = Meter.CreateCounter<long>("fbs.rate_limit.rejections", "{request}", "Requests refused for being too many, by which limit");
 
-    // Whether it is being used
+    // Usage
 
     public static readonly Counter<long> TenantsCreated = Meter.CreateCounter<long>("fbs.tenants.created", "{tenant}", "Organisations made");
 
@@ -87,8 +87,8 @@ public static class FbsMetrics
     public static readonly Counter<long> AccountsErased = Meter.CreateCounter<long>("fbs.accounts.erased", "{account}", "Accounts erased because Clerk said they were deleted");
 
     /// <summary>
-    /// Joining with a link, by what came of it: <c>joined</c>, <c>waiting</c> (for an admin), <c>already_in</c>, <c>full</c> (the
-    /// organisation is at its limit of people), <c>unusable</c> (ended, revoked or used up) or <c>not_found</c> (no such link, which lots of are somebody guessing).
+    /// Joining with a link, by outcome: <c>joined</c>, <c>waiting</c> (for an admin), <c>already_in</c>, <c>full</c> (the
+    /// organisation is at its limit of people), <c>unusable</c> (ended, revoked or used up) or <c>not_found</c> (no such link; many of these are guessed).
     /// </summary>
     public static readonly Counter<long> InvitesUsed = Meter.CreateCounter<long>("fbs.invites.used", "{use}", "Invite links used, by outcome");
 
