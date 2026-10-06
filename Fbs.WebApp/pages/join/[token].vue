@@ -64,7 +64,7 @@ async function join() {
     <UAlert
       v-if="full"
       title="This organization is full"
-      description="It has as many people as it can have. Ask an admin to make room, then try the link again."
+      description="It already has as many people as it can take. Ask an admin to make room, then try the link again."
       color="warning"
       variant="subtle"
       icon="i-lucide-users-round"
@@ -73,7 +73,7 @@ async function join() {
     <UPageCard
       v-if="outcome"
       :title="`You asked to join ${outcome.name}`"
-      description="An admin has to let you in. You will be able to use it as soon as they do, and you can come back to this page any time."
+      description="An admin has to let you in. You can use it as soon as they do, and you can come back to this page any time."
       variant="subtle"
       icon="i-lucide-hourglass"
     >
@@ -104,7 +104,7 @@ async function join() {
     <UPageCard
       v-else-if="error || !invite"
       title="This link doesn't work"
-      description="It may have run out, been used up or been stopped. Ask whoever sent it for a new one."
+      description="It may have expired, been used up, or been stopped. Ask the person who sent it for a new one."
       variant="subtle"
       icon="i-lucide-link-2-off"
     >
@@ -129,7 +129,7 @@ async function join() {
       >
         <UFormField
           label="Your name"
-          description="What the others see, such as your rank and name."
+          description="How you appear to other people, such as your rank and name."
         >
           <UInput
             v-model="displayName"

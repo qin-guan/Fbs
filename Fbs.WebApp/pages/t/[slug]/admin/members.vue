@@ -48,7 +48,7 @@ const statusColor = { Active: 'success', Pending: 'warning', Unclaimed: 'neutral
 const statusHint: Record<Member['status'], string> = {
   Active: 'Signed in',
   Pending: 'Waiting to be let in',
-  Unclaimed: 'Added by phone number, and belongs once they sign in',
+  Unclaimed: 'Added by phone number. They join once they sign in',
   Removed: 'Removed',
 }
 
@@ -148,7 +148,7 @@ function validate(values: typeof state): FormError[] {
   }
 
   if (phoneRequired.value && !values.phone.trim()) {
-    errors.push({ name: 'phone', message: 'A phone number is needed, as it is how they are found when they sign in.' })
+    errors.push({ name: 'phone', message: 'A phone number is needed. That\'s how they\'re found when they sign in.' })
   }
 
   return errors
@@ -221,7 +221,7 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
           <UAlert
             v-if="waitingCount"
             :title="waitingCount === 1 ? 'Somebody is waiting to be let in' : `${waitingCount} people are waiting to be let in`"
-            description="They joined with a link. Until you let them in, they can't see or book anything."
+            description="They used an invite link. They can't see or book anything until you let them in."
             color="warning"
             variant="subtle"
             icon="i-lucide-hourglass"
@@ -264,7 +264,7 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
             v-else-if="!matching.length && !error"
             class="py-6 text-center text-muted"
           >
-            {{ search.trim() ? 'Nobody matches.' : 'There is nobody yet. Send an invite link, or add somebody by their phone number.' }}
+            {{ search.trim() ? 'Nobody matches.' : 'There is nobody yet. Send an invite link, or add someone by their phone number.' }}
           </p>
 
           <ul
@@ -305,7 +305,7 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
                   />
                 </p>
                 <p class="truncate text-sm text-muted">
-                  {{ [member.phone, unitName(member.unitId)].filter(Boolean).join(' · ') || 'No phone number, no unit' }}
+                  {{ [member.phone, unitName(member.unitId)].filter(Boolean).join(' · ') || 'No phone or unit' }}
                 </p>
               </div>
 
@@ -363,8 +363,8 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
 
         <UModal
           v-model:open="editing"
-          :title="editingMember ? `Change ${editingMember.displayName}` : 'Add somebody'"
-          :description="editingMember ? undefined : 'They are found by their phone number when they sign in, and are in from then. To have them join themselves, send an invite link instead.'"
+          :title="editingMember ? `Change ${editingMember.displayName}` : 'Add someone'"
+          :description="editingMember ? undefined : 'When they sign in with this phone number, they\'re added straight away. To let them join on their own, send an invite link.'"
         >
           <template #body>
             <UForm
@@ -398,7 +398,7 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
                 label="Phone number"
                 name="phone"
                 :required="phoneRequired"
-                description="With a + and the country code, or in the organization's country."
+                description="Include + and the country code, or use a local number for this organization's country."
               >
                 <UInput
                   v-model="state.phone"
@@ -437,7 +437,7 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
               <UFormField
                 label="Tell them about"
                 name="notificationScope"
-                description="On Telegram, once they have linked it."
+                description="Sent on Telegram after they connect it."
               >
                 <USelect
                   v-model="state.notificationScope"
@@ -468,7 +468,7 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
         <UModal
           v-model:open="removingOpen"
           :title="removing?.status === 'Pending' ? `Turn ${removing.displayName} away?` : `Remove ${removing?.displayName ?? 'them'}?`"
-          :description="removing?.status === 'Pending' ? 'They are told nothing, and can ask again with a link.' : 'They can\'t use the organization any more. What they booked stays as it is, and they can be let back in.'"
+          :description="removing?.status === 'Pending' ? 'They aren\'t notified, and they can ask again with a link.' : 'They can\'t use the organization after this. Their bookings stay, and you can let them back in.'"
         >
           <template #body>
             <UAlert

@@ -122,7 +122,7 @@ async function confirmDelete() {
       <template #body>
         <div class="max-w-2xl space-y-6">
           <p class="text-sm text-muted">
-            Units are the groups people belong to, such as a platoon or a team. What somebody can book, and whose bookings they can change, goes by their unit.
+            People belong to a unit, such as a platoon or a team. Their unit decides what they can book, and whose bookings they can change.
           </p>
 
           <UAlert
@@ -177,7 +177,7 @@ async function confirmDelete() {
             v-else-if="!sorted.length && !error"
             class="text-center text-muted"
           >
-            There are no units yet. An organization can do without them: everybody is then in none, and only admins can book what is not for everyone.
+            There are no units yet. You don't have to add any. Without them, nobody is assigned to a unit, and only admins can book facilities that aren't open to everyone.
           </p>
 
           <ul
@@ -246,7 +246,7 @@ async function confirmDelete() {
         <UModal
           v-model:open="deletingOpen"
           :title="`Delete ${deleting?.name ?? 'the unit'}?`"
-          description="It can be deleted when nobody is in it and nothing was booked for it."
+          description="You can delete it when it has no people and no bookings."
         >
           <template #body>
             <UAlert

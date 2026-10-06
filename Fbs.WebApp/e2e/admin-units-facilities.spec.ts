@@ -294,7 +294,7 @@ test.describe('facilities', () => {
   test('with none, and no units to give one to, says so', async ({ page, goto, api }) => {
     await api(organization().routes)
     await goto('/t/alpha/admin/facilities', { waitUntil: 'hydration' })
-    await expect(page.getByText('Nothing can be booked until there is a facility.')).toBeVisible()
+    await expect(page.getByText('Add a facility before anyone can book.')).toBeVisible()
 
     await page.getByRole('button', { name: 'Add the first' }).click()
     await page.getByRole('dialog').getByRole('switch', { name: 'Everyone can book it' }).click()

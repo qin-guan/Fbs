@@ -19,7 +19,7 @@ const steps = computed(() => [
   {
     id: 'facilities',
     title: 'Add what people can book',
-    description: 'The hall, the field, a room: each is a facility, and can be for everyone or for some units.',
+    description: 'Add each place people can book, such as a hall, a field, or a room. It can be open to everyone or only to some units.',
     done: (facilities.value?.length ?? 0) > 0,
     to: path('admin', 'facilities'),
     action: 'Add facilities',
@@ -27,7 +27,7 @@ const steps = computed(() => [
   {
     id: 'units',
     title: 'Add your units',
-    description: 'Optional. Groups such as a platoon or a team, to give facilities to, and whose bookings are shared.',
+    description: 'Optional. A platoon, a team, or another group. You can limit a facility to a unit, and people in a unit can change each other\'s bookings.',
     done: (units.value?.length ?? 0) > 0,
     to: path('admin', 'units'),
     action: 'Add units',
@@ -36,7 +36,7 @@ const steps = computed(() => [
   {
     id: 'people',
     title: 'Invite people',
-    description: 'Send a link to those who should book. You can also add somebody by their phone number.',
+    description: 'Send a link to the people who should book. You can also add someone by their phone number.',
     done: (invites.value?.length ?? 0) > 0 || (members.value?.length ?? 0) > 1,
     to: path('admin', 'invites'),
     action: 'Make a link',
@@ -60,7 +60,7 @@ function hide() {
   >
     <UPageCard
       title="Set up your organization"
-      description="These are the few things to do before people can book."
+      description="A few things to finish before people can book."
       variant="subtle"
     >
       <ol class="space-y-3">

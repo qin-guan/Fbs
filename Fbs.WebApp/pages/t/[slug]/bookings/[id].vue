@@ -279,7 +279,7 @@ const details = computed(() => {
               <div class="grid gap-4 sm:grid-cols-2">
                 <UFormField
                   label="Starts"
-                  :description="isOver ? 'It is over, so its time can\'t be changed.' : hasStarted ? 'It has started, so only its end can change.' : undefined"
+                  :description="isOver ? 'This booking is over, so the time can\'t be changed.' : hasStarted ? 'This booking has started. You can only change when it ends.' : undefined"
                 >
                   <UInput
                     v-model="form.start"
@@ -343,7 +343,7 @@ const details = computed(() => {
       <UModal
         v-model:open="cancelling"
         title="Cancel this booking?"
-        description="It is kept, but the time is free for somebody else, and the people who were told about it are told."
+        description="The booking stays on record, but the time is free for someone else. The people who were notified are told it's cancelled."
       >
         <template #footer>
           <div class="flex gap-2">

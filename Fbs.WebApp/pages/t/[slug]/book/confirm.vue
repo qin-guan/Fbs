@@ -190,7 +190,7 @@ const describe = (slot: { start: Date, end: Date }) => describeSlot(slot, df.val
         <UPageCard
           v-if="created.length"
           :title="`${created.length} bookings created`"
-          description="The people who need to know are told, once for the lot."
+          description="The people who need to know get one message for all of these bookings."
           icon="i-lucide-circle-check"
           variant="subtle"
           :ui="{ leadingIcon: 'text-success' }"
@@ -297,7 +297,7 @@ const describe = (slot: { start: Date, end: Date }) => describeSlot(slot, df.val
                 : `${problemCount} ${problemCount === 1 ? 'slot' : 'slots'} can't be booked.`"
               :description="slots.length === 1
                 ? 'Remove it and pick another time.'
-                : 'Bookings are made all at once, so remove the slots that clash to continue.'"
+                : 'These bookings are made together. Remove the slots that clash, then try again.'"
               :actions="[{ label: problemCount === 1 ? 'Remove it' : 'Remove them', color: 'error', variant: 'outline', onClick: removeProblemSlots }]"
             />
           </UPageCard>

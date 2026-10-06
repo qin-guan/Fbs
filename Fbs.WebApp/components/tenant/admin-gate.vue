@@ -15,7 +15,7 @@ const { isAdmin, path } = useTenant()
       variant="subtle"
       icon="i-lucide-shield-alert"
       title="Only admins can do this"
-      description="Ask one of the admins of this organization to make the change, or to make you one."
+      description="Ask an admin of this organization to make the change, or to make you an admin."
     >
       <UButton
         :to="path()"

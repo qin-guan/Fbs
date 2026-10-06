@@ -65,7 +65,7 @@ const iconOf = (entry: Entry) => icons[entry.action.split('.')[0] ?? ''] ?? 'i-l
       <template #body>
         <div class="max-w-3xl space-y-4">
           <p class="text-sm text-muted">
-            What has been done to this organization, the latest first: its settings, units, facilities, invite links and people. What people booked is in the bookings.
+            Changes to this organization, newest first: settings, units, facilities, invite links, and people. Bookings are listed on the bookings page.
           </p>
 
           <UAlert

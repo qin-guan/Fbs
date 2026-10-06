@@ -85,8 +85,8 @@ test.describe('what was made', () => {
 
     await goto('/t/alpha/admin/invites', { waitUntil: 'hydration' })
 
-    await expect(page.getByText('There are none yet.')).toBeVisible()
-    await expect(page.getByText('They are in at once.')).toHaveCount(1)
+    await expect(page.getByText('No links yet.')).toBeVisible()
+    await expect(page.getByText('They join straight away.')).toHaveCount(1)
   })
 })
 

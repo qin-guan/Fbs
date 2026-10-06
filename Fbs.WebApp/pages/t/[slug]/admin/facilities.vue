@@ -181,7 +181,7 @@ async function confirmDelete() {
       <template #body>
         <div class="max-w-3xl space-y-6">
           <p class="text-sm text-muted">
-            What people can book. A facility is for everyone, or for the units it is given to; admins can book any.
+            Places people can book. Open a facility to everyone, or only to the units you choose. Admins can book any facility.
           </p>
 
           <UAlert
@@ -211,7 +211,7 @@ async function confirmDelete() {
               name="i-lucide-building-2"
               class="size-8"
             />
-            <p>Nothing can be booked until there is a facility.</p>
+            <p>Add a facility before anyone can book.</p>
             <UButton
               label="Add the first"
               icon="i-lucide-plus"
@@ -238,7 +238,7 @@ async function confirmDelete() {
                     {{ facility.name }}
                   </p>
                   <p class="truncate text-sm text-muted">
-                    Can be booked by: {{ whoCanBook(facility) }}
+                    Who can book it: {{ whoCanBook(facility) }}
                   </p>
                 </div>
                 <UButton
@@ -297,7 +297,7 @@ async function confirmDelete() {
               <UFormField
                 label="Group"
                 name="group"
-                description="What kind it is, to have them together in the lists. Leave it empty for none."
+                description="Groups facilities in the lists, such as Indoor. Leave it blank if you don't want a group."
               >
                 <UInput
                   v-model="state.group"
@@ -317,7 +317,7 @@ async function confirmDelete() {
               <UFormField
                 name="availableToAll"
                 label="Everyone can book it"
-                description="If not, only people in the units you pick can, and admins."
+                description="Turn this off to limit it to the units you pick. Admins can still book it."
               >
                 <USwitch
                   v-model="state.availableToAll"
@@ -329,7 +329,7 @@ async function confirmDelete() {
                 v-if="!state.availableToAll"
                 label="Units that can book it"
                 name="unitIds"
-                :description="unitItems.length ? undefined : 'There are no units yet, so only admins can book it. Add units first to give it to them.'"
+                :description="unitItems.length ? undefined : 'There are no units yet, so only admins can book it. Add units first if you want to assign this facility.'"
               >
                 <USelectMenu
                   v-model="state.unitIds"
@@ -363,7 +363,7 @@ async function confirmDelete() {
         <UModal
           v-model:open="deletingOpen"
           :title="`Delete ${deleting?.name ?? 'the facility'}?`"
-          description="It can be deleted when nothing has been booked on it. Otherwise it stays, so what was booked is kept."
+          description="You can delete it only if nothing has been booked on it. If it has bookings, it stays so those bookings are kept."
         >
           <template #body>
             <UAlert
