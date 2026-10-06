@@ -29,7 +29,7 @@ const signedIn = computed(() => accounts ? isLoaded.value && isSignedIn.value ==
             name="i-lucide-calendar-check"
             class="size-6 text-primary"
           />
-          <span>{{ accounts ? 'Facility Booking' : '3SIB Facility Bookings' }}</span>
+          <span>Book A Space</span>
         </NuxtLink>
 
         <div class="flex items-center gap-1.5">

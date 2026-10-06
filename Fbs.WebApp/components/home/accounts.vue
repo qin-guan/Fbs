@@ -67,7 +67,7 @@ const features = [
 
     <template v-else>
       <UPageHero
-        title="Facility Booking"
+        title="Book A Space"
         description="Check what is free and book it for your conduct, from your phone. For units, clubs and anyone else who shares facilities."
         :links="signedIn ? [{ label: 'Try again', to: '/', trailingIcon: 'i-lucide-arrow-right' }] : links"
         :ui="{ container: 'py-16 sm:py-24 lg:py-28' }"

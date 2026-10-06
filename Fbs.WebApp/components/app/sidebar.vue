@@ -96,7 +96,7 @@ const links = computed<NavigationMenuItem[][]>(() => [
         >
         <template v-if="!collapsed">
           <span class="truncate text-sm font-semibold text-highlighted">
-            3SIB Facility Booking
+            Book A Space
           </span>
           <UBadge
             label="Beta"

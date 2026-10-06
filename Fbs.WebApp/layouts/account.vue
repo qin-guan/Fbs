@@ -10,7 +10,7 @@
             name="i-lucide-calendar-check"
             class="size-6 text-primary"
           />
-          <span>Facility Booking</span>
+          <span>Book A Space</span>
         </NuxtLink>
 
         <div class="flex items-center gap-1.5">

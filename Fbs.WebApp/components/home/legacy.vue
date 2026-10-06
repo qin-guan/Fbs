@@ -35,7 +35,7 @@ const features = [
 <template>
   <div class="w-full">
     <UPageHero
-      title="3SIB Facility Booking"
+      title="Book A Space"
       description="Check facility availability and book it for your conduct, all from your phone."
       :links="links"
       :ui="{ container: 'py-16 sm:py-24 lg:py-28' }"
