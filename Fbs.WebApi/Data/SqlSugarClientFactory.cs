@@ -8,11 +8,15 @@ namespace Fbs.WebApi.Data;
 /// Creates the SqlSugar client used by the API and the database migrator.
 /// </summary>
 /// <remarks>
+/// The client is a singleton <see cref="SqlSugar.SqlSugarScope"/>, which is safe across requests. Hosted
+/// services are not requests: they must go through <see cref="SqlSugarContext"/> or they share one connection.
+/// <para>
 /// Adapted from GeeksHacking/portal. MySQL and TiDB <c>datetime</c> columns do not store an offset.
 /// Out of the box SqlSugar writes the wall-clock part of whatever offset a <see cref="DateTimeOffset"/>
 /// carries and reads values back in the server's local time zone, so the stored instant would depend
 /// on the caller and on the <c>TZ</c> of the host. Every <see cref="DateTimeOffset"/> is therefore
 /// converted to UTC before it is written, and every stored value is read back as UTC.
+/// </para>
 /// </remarks>
 public static class SqlSugarClientFactory
 {

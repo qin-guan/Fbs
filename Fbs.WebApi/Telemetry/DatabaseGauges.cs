@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Microsoft.Extensions.Options;
 using SqlSugar;
@@ -128,7 +129,11 @@ public sealed class DatabaseGaugesOptions
 /// <summary>Keeps <see cref="DatabaseGauges"/> up to date.</summary>
 public sealed class DatabaseGaugesService(ILogger<DatabaseGaugesService> logger, ISqlSugarClient sql, IOptions<DatabaseGaugesOptions> options) : BackgroundService
 {
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    // Its own client. On the host's, this is the one the outbox and the calendar check then open as well.
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        SqlSugarContext.RunIsolatedAsync(() => RefreshLoopAsync(stoppingToken));
+
+    private async Task RefreshLoopAsync(CancellationToken stoppingToken)
     {
         var interval = options.Value.Interval;
         if (interval <= TimeSpan.Zero)

@@ -1,3 +1,4 @@
+using Fbs.WebApi.Data;
 using Microsoft.Extensions.Options;
 
 namespace Fbs.WebApi.Legacy;
@@ -12,7 +13,11 @@ public sealed class SheetsReferenceSyncService(
     /// <summary>What it last warned about, so a sheet that stays wrong is said so once and not every few minutes.</summary>
     private string _lastWarnings = string.Empty;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    // Its own client. The sync is resolved from a scope, but the client is the singleton, keyed by this context.
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        SqlSugarContext.RunIsolatedAsync(() => SyncLoopAsync(stoppingToken));
+
+    private async Task SyncLoopAsync(CancellationToken stoppingToken)
     {
         try
         {

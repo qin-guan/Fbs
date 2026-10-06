@@ -116,6 +116,8 @@ builder
 // Storage:Provider says Database
 if (builder.Configuration.GetConnectionString("db") is { Length: > 0 } databaseConnectionString)
 {
+    // Singleton on purpose: a scope per request is what SqlSugarScope already does. Hosted services are
+    // started on this context, so they go through SqlSugarContext rather than using it directly
     builder.Services.AddSingleton<ISqlSugarClient>(_ =>
         SqlSugarClientFactory.Create(databaseConnectionString)
     );
@@ -261,7 +263,8 @@ if (
     && app.Configuration.GetValue("Startup:ValidateDatabaseSchema", true)
 )
 {
-    var problems = SchemaValidator.FindProblems(database);
+    // Off this context, so the client it opens is not the one every hosted service would otherwise inherit
+    var problems = await SqlSugarContext.RunIsolatedAsync(() => SchemaValidator.FindProblems(database));
     if (problems.Count > 0)
     {
         app.Logger.LogCritical(

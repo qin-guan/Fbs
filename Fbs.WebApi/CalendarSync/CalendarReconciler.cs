@@ -1,3 +1,4 @@
+using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Outbox;
 using Microsoft.Extensions.Options;
@@ -26,7 +27,11 @@ public sealed class CalendarReconciler(
     IOptions<CalendarSyncOptions> options
 ) : BackgroundService
 {
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    // Its own client. On the host's, this opens the connection the outbox and the gauges are already opening.
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        SqlSugarContext.RunIsolatedAsync(() => CheckAsync(stoppingToken));
+
+    private async Task CheckAsync(CancellationToken stoppingToken)
     {
         try
         {

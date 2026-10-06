@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Telemetry;
 using Microsoft.Extensions.Options;
@@ -49,7 +50,11 @@ public sealed class OutboxDispatcher(
 
     private DateTimeOffset _lastPurge = DateTimeOffset.MinValue;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    // Its own client. On the host's, claiming a message opens the connection the gauges are already opening.
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        SqlSugarContext.RunIsolatedAsync(() => DispatchAsync(stoppingToken));
+
+    private async Task DispatchAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
