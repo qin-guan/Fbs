@@ -77,7 +77,7 @@ function add() {
   <USlideover
     v-model:open="open"
     title="Book multiple facilities or days"
-    description="Every booking uses the same conduct and point of contact, which you'll enter next."
+    description="One conduct and one point of contact for the lot. You fill those in next."
     :ui="{ content: 'max-w-lg', body: 'space-y-6' }"
   >
     <template #body>
@@ -170,7 +170,7 @@ function add() {
           v-if="!preview.length"
           class="text-sm text-muted"
         >
-          Choose at least one facility and day to see the bookings that will be made.
+          Pick a facility and a day to see what would be booked.
         </p>
 
         <BookingSlotList

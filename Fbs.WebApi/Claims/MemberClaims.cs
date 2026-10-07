@@ -153,7 +153,7 @@ public sealed class MemberClaims(ISqlSugarClient sql, TelegramBotClient bot, IOp
                 .Where(m => m.Id == place.Id)
                 .ExecuteCommandAsync(ct);
             await sql.Updateable<MemberClaimToken>().SetColumns(t => new MemberClaimToken { UsedAt = now }).Where(t => t.Id == claimId).ExecuteCommandAsync(ct);
-            await new AuditLog(sql).WriteAsync(tenantId, place.Id, "member.claimed", "Took over their place from before accounts.", "member", place.Id, ct);
+            await new AuditLog(sql).WriteAsync(tenantId, place.Id, "member.claimed", "Took over their place from the previous version.", "member", place.Id, ct);
             tran.CommitTran();
             FbsMetrics.PlacesClaimed.Add(1);
 

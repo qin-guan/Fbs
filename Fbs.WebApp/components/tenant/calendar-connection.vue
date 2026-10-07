@@ -130,7 +130,7 @@ async function stop() {
 <template>
   <UPageCard
     title="Google Calendar"
-    description="Bookings are copied to a Google Calendar. Edits on that calendar are not copied back."
+    description="Bookings are copied onto a Google Calendar, and edits there are not brought back."
     variant="subtle"
     icon="i-lucide-calendar"
   >
@@ -196,8 +196,7 @@ async function stop() {
         @submit="submitCode"
       >
         <p class="text-sm">
-          An event whose name starts with Fbs was added to <span class="font-medium">{{ calendar.calendarId }}</span>.
-          Open that calendar, read the code in the event's name, and type it here.
+          An event whose name starts with Fbs is on <span class="font-medium">{{ calendar.calendarId }}</span>, and the code is in that name.
           <template v-if="until(calendar.verificationExpiresAt)">
             It works until {{ until(calendar.verificationExpiresAt) }}.
           </template>

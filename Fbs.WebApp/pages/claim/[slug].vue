@@ -66,7 +66,7 @@ watch(me, async (value) => {
     <UPageCard
       v-else
       :title="`Take over your place in ${claim.organizationName}`"
-      description="You were in the old version with your phone number. To show it's you, open a link in the same Telegram chat as before, the one where the bot sent your login codes."
+      description="Your old place was tied to a phone number. Open the link from the same Telegram chat the bot used for login codes."
       variant="subtle"
       icon="i-lucide-user-check"
     >
@@ -88,7 +88,7 @@ watch(me, async (value) => {
             icon="i-simple-icons-telegram"
           />
           <p class="text-sm text-muted">
-            The link works once, for ten minutes. This page continues on its own once the bot has given you your place.
+            The link works once, for ten minutes. After the bot gives you your place, this page moves on.
           </p>
           <p class="text-sm text-muted">
             If the bot says the chat isn't linked to anyone, you opened it from a different Telegram account than before.

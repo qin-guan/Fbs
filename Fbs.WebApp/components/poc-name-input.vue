@@ -180,7 +180,7 @@ function onInteractOutside(e: Event) {
           v-if="!suggestions.length"
           class="px-2 py-1.5 text-sm text-muted"
         >
-          No matches in the nominal roll. You can still enter a name.
+          Nothing in the nominal roll matches. A name you type still counts.
         </li>
       </ul>
     </template>

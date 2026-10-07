@@ -181,7 +181,7 @@ async function confirmDelete() {
       <template #body>
         <div class="max-w-3xl space-y-6">
           <p class="text-sm text-muted">
-            Places people can book. Open a facility to everyone, or only to the units you choose. Admins can book any facility.
+            Leave a facility open to everyone, or keep it to units you name. Admins can book the restricted ones too.
           </p>
 
           <UAlert
@@ -297,7 +297,7 @@ async function confirmDelete() {
               <UFormField
                 label="Group"
                 name="group"
-                description="Groups facilities in the lists, such as Indoor. Leave it blank if you don't want a group."
+                description="Shows as a heading in the lists, Indoor for example. Leave it blank and it sits under Other."
               >
                 <UInput
                   v-model="state.group"
@@ -317,7 +317,7 @@ async function confirmDelete() {
               <UFormField
                 name="availableToAll"
                 label="Everyone can book it"
-                description="Turn this off to limit it to the units you pick. Admins can still book it."
+                description="Off keeps it to the units you pick. Admins can still book it."
               >
                 <USwitch
                   v-model="state.availableToAll"
@@ -329,7 +329,7 @@ async function confirmDelete() {
                 v-if="!state.availableToAll"
                 label="Units that can book it"
                 name="unitIds"
-                :description="unitItems.length ? undefined : 'There are no units yet, so only admins can book it. Add units first if you want to assign this facility.'"
+                :description="unitItems.length ? undefined : 'There are no units yet, so only admins can book it. Add units first if someone else should have it.'"
               >
                 <USelectMenu
                   v-model="state.unitIds"
@@ -363,7 +363,7 @@ async function confirmDelete() {
         <UModal
           v-model:open="deletingOpen"
           :title="`Delete ${deleting?.name ?? 'the facility'}?`"
-          description="You can delete it only if nothing has been booked on it. If it has bookings, it stays so those bookings are kept."
+          description="If anything has been booked on it, it stays, bookings included. With none, you can delete it."
         >
           <template #body>
             <UAlert

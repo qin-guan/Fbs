@@ -190,7 +190,7 @@ const describe = (slot: { start: Date, end: Date }) => describeSlot(slot, df.val
         <UPageCard
           v-if="created.length"
           :title="`${created.length} bookings created`"
-          description="The people who need to know get one message for all of these bookings."
+          description="People who get booking notices receive one message for the whole batch."
           icon="i-lucide-circle-check"
           variant="subtle"
           :ui="{ leadingIcon: 'text-success' }"
@@ -242,7 +242,7 @@ const describe = (slot: { start: Date, end: Date }) => describeSlot(slot, df.val
           variant="subtle"
           icon="i-lucide-circle-alert"
           title="No time slot selected"
-          description="Pick a facility and time slot on the timeline first."
+          description="Nothing's selected yet. Pick a facility and a time back on the timeline."
           :actions="[{ label: 'Back to new booking', to: path('book'), color: 'error', variant: 'outline' }]"
         />
 
@@ -297,7 +297,7 @@ const describe = (slot: { start: Date, end: Date }) => describeSlot(slot, df.val
                 : `${problemCount} ${problemCount === 1 ? 'slot' : 'slots'} can't be booked.`"
               :description="slots.length === 1
                 ? 'Remove it and pick another time.'
-                : 'These bookings are made together. Remove the slots that clash, then try again.'"
+                : 'They go in as one batch, so take out the clashes and try again.'"
               :actions="[{ label: problemCount === 1 ? 'Remove it' : 'Remove them', color: 'error', variant: 'outline', onClick: removeProblemSlots }]"
             />
           </UPageCard>

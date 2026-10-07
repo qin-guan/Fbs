@@ -72,12 +72,12 @@ test('what was changed is sent, and claiming is left out when it is not turned o
   await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled()
 })
 
-test.describe('claiming a place from before accounts', () => {
+test.describe('claiming a place from the previous version', () => {
   test('turning it off is sent', async ({ page, goto, api }) => {
     const calls = await api(table('Admin', saving))
     await goto('/t/alpha/admin/settings', { waitUntil: 'hydration' })
 
-    await page.getByRole('switch', { name: 'Stop people claiming their place from before' }).click()
+    await page.getByRole('switch', { name: 'Stop claims from the previous version' }).click()
     await page.getByRole('button', { name: 'Save' }).click()
 
     await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible()
@@ -89,8 +89,8 @@ test.describe('claiming a place from before accounts', () => {
 
     await goto('/t/alpha/admin/settings', { waitUntil: 'hydration' })
 
-    await expect(page.getByText('People can no longer claim a place from before accounts.')).toBeVisible()
-    await expect(page.getByRole('switch', { name: 'Stop people claiming their place from before' })).toHaveCount(0)
+    await expect(page.getByText('People can no longer claim a place from the previous version.')).toBeVisible()
+    await expect(page.getByRole('switch', { name: 'Stop claims from the previous version' })).toHaveCount(0)
   })
 })
 

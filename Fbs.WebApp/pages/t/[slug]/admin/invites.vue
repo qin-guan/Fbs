@@ -124,8 +124,12 @@ async function confirmStop() {
       <template #body>
         <div class="max-w-2xl space-y-6">
           <p class="text-sm text-muted">
-            Send a link to the people you want to join. They sign in, or create an account, and open it.
-            {{ settings?.requireApproval ? 'They then wait for you to let them in.' : 'They join straight away.' }}
+            <template v-if="settings?.requireApproval">
+              Send the link to whoever should join. Making an account when they open it is fine, and with approval on they wait until you let them in.
+            </template>
+            <template v-else>
+              Send the link to whoever should join. They can make an account when they arrive, and opening the link adds them.
+            </template>
           </p>
 
           <UPageCard
@@ -219,7 +223,7 @@ async function confirmStop() {
             <template #description>
               <div class="space-y-3">
                 <p>
-                  This is the only time it's shown. Copy it before you leave. If you lose it, make a new one and stop this one.
+                  Copy it now. It isn't shown again, and a lost one means making another link and stopping this one.
                 </p>
                 <div class="flex gap-2">
                   <UInput
@@ -318,7 +322,7 @@ async function confirmStop() {
         <UModal
           v-model:open="stoppingOpen"
           title="Stop this link?"
-          description="Nobody can join with it after this. People who already joined stay. You can't undo it, but you can make another link."
+          description="Joins through this link stop. People already in stay, and the link can't be turned back on, so a replacement is a new one."
         >
           <template #footer>
             <div class="flex gap-2">

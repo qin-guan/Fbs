@@ -343,7 +343,7 @@ const details = computed(() => {
       <UModal
         v-model:open="cancelling"
         title="Cancel this booking?"
-        description="The booking stays on record, but the time is free for someone else. The people who were notified are told it's cancelled."
+        description="The record stays and the time opens up. Anyone already notified is told it's cancelled."
       >
         <template #footer>
           <div class="flex gap-2">

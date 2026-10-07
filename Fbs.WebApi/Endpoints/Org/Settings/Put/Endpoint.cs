@@ -52,7 +52,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLo
             (countryCode != before.DefaultCountryCode, "calling code"),
             (req.SlotMinutes != before.SlotMinutes, "shortest booking"),
             (req.RequireApproval != before.RequireApproval, "whether people who join wait to be let in"),
-            (claimEnabled != before.LegacyClaimEnabled, "claiming places from before accounts"),
+            (claimEnabled != before.LegacyClaimEnabled, "claiming places from the previous version"),
         }
             .Where(c => c.Changed)
             .Select(c => c.What)

@@ -104,7 +104,7 @@ const noFacilities = computed(() => bookable.value !== undefined && bookable.val
       <UAlert
         v-if="noFacilities && !isAdmin"
         title="You can't book anything yet"
-        description="Ask an admin to add facilities, or to give your unit access to them."
+        description="An admin has to add facilities, or open some up for your unit."
         color="warning"
         variant="subtle"
         icon="i-lucide-info"

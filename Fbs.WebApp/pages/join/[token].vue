@@ -64,7 +64,7 @@ async function join() {
     <UAlert
       v-if="full"
       title="This organization is full"
-      description="It already has as many people as it can take. Ask an admin to make room, then try the link again."
+      description="It's at the people limit. An admin has to free a place before this link will work."
       color="warning"
       variant="subtle"
       icon="i-lucide-users-round"
@@ -73,7 +73,7 @@ async function join() {
     <UPageCard
       v-if="outcome"
       :title="`You asked to join ${outcome.name}`"
-      description="An admin has to let you in. You can use it as soon as they do, and you can come back to this page any time."
+      description="An admin has to let you in before you can use it. Leaving and coming back to this page is fine."
       variant="subtle"
       icon="i-lucide-hourglass"
     >
@@ -104,7 +104,7 @@ async function join() {
     <UPageCard
       v-else-if="error || !invite"
       title="This link doesn't work"
-      description="It may have expired, been used up, or been stopped. Ask the person who sent it for a new one."
+      description="It expired, ran out of uses, or somebody stopped it. Ask whoever sent it for another."
       variant="subtle"
       icon="i-lucide-link-2-off"
     >
@@ -119,7 +119,7 @@ async function join() {
     <UPageCard
       v-else
       :title="`Join ${invite.organizationName}`"
-      :description="invite.requiresApproval ? 'An admin will let you in after you ask.' : 'You will be in as soon as you join.'"
+      :description="invite.requiresApproval ? 'After you ask, an admin lets you in.' : 'This adds you to the organization.'"
       variant="subtle"
       icon="i-lucide-user-plus"
     >
@@ -129,7 +129,7 @@ async function join() {
       >
         <UFormField
           label="Your name"
-          description="How you appear to other people, such as your rank and name."
+          description="What other people see. Rank and name, for instance."
         >
           <UInput
             v-model="displayName"

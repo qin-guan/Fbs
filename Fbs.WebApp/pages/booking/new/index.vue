@@ -53,14 +53,14 @@ onMounted(() => {
     $driver.setConfig({
       showProgress: true,
       steps: [
-        { element: '#facility-type', popover: { title: 'Facility type', description: 'Facilities are grouped into different types. Select one to view its schedule.' } },
-        { element: '.vuecal__header', popover: { title: 'Date and time', description: 'Toggle the schedule for different date and times here.' } },
-        { element: '.vuecal__schedule--cell', popover: { title: 'Schedule', description: 'The facility schedule will show up here.' } },
-        { element: '.vuecal__time-column', popover: { title: 'Scroll', description: `If you're using a mobile device, use this area to scroll the timeline view.` } },
+        { element: '#facility-type', popover: { title: 'Facility type', description: 'Facilities are grouped. Pick a type and its schedule shows.' } },
+        { element: '.vuecal__header', popover: { title: 'Date and time', description: 'Change the day and the time from here.' } },
+        { element: '.vuecal__schedule--cell', popover: { title: 'Schedule', description: 'Bookings show up in this grid.' } },
+        { element: '.vuecal__time-column', popover: { title: 'Scroll', description: 'On a phone, scroll the timeline from this column.' } },
         {
           element: '#confirm-selection', popover: {
             title: 'Confirm selection',
-            description: 'Once you have selected a time slot, click this button to confirm your booking.',
+            description: 'After a slot is selected, this confirms the booking.',
             onNextClick() {
               onboarded.value = true
               $driver.moveNext()

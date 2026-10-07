@@ -77,7 +77,7 @@ test.describe('what was made', () => {
     await expect(page.getByRole('button', { name: /^Stop the link made/ })).toHaveCount(1)
     await expect(item(page, 'Active').getByRole('button', { name: /^Stop/ })).toHaveCount(1)
     // That people wait to be let in is said, as it is set
-    await expect(page.getByText('They then wait for you to let them in.')).toHaveCount(1)
+    await expect(page.getByText('they wait until you let them in')).toHaveCount(1)
   })
 
   test('none is said, and that people are in at once, as it is set', async ({ page, goto, api }) => {
@@ -86,7 +86,7 @@ test.describe('what was made', () => {
     await goto('/t/alpha/admin/invites', { waitUntil: 'hydration' })
 
     await expect(page.getByText('No links yet.')).toBeVisible()
-    await expect(page.getByText('They join straight away.')).toHaveCount(1)
+    await expect(page.getByText('opening the link adds them')).toHaveCount(1)
   })
 })
 

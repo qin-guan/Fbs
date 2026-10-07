@@ -96,13 +96,13 @@ async function join() {
   <div class="space-y-6">
     <UPageCard
       title="Make an organization"
-      description="For your unit, club, or team. You'll be its admin, and you can invite the others with a link."
+      description="A unit, a club, a team. You start as the admin, and everyone else comes in from a link."
       variant="subtle"
     >
       <UAlert
         v-if="limitReached"
         title="You have made as many organizations as you can"
-        description="Ask an admin of one of them to make you an admin, or join with a link."
+        description="An admin in one of them can make you an admin there. Joining somewhere else takes a link."
         color="warning"
         variant="subtle"
         icon="i-lucide-triangle-alert"
@@ -146,7 +146,7 @@ async function join() {
           <UFormField
             label="Time zone"
             name="timeZone"
-            description="Bookings are made and shown in this time zone."
+            description="Booking times are shown in this."
           >
             <USelectMenu
               v-model="state.timeZone"
@@ -158,7 +158,7 @@ async function join() {
           <UFormField
             label="Calling code"
             name="defaultCountryCode"
-            description="Used when a phone number is entered without one."
+            description="Filled in when a number has no country code."
           >
             <UInput
               v-model="state.defaultCountryCode"
@@ -184,7 +184,7 @@ async function join() {
 
     <UPageCard
       title="Join with a link"
-      description="Paste the link someone sent you. An admin may have to let you in."
+      description="Paste the link you were sent. Their settings may still make an admin let you in."
       variant="subtle"
     >
       <form

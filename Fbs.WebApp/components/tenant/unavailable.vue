@@ -37,7 +37,7 @@ async function restoreIt() {
 const shown = computed(() => {
   switch (code.value) {
     case 'pending':
-      return { icon: 'i-lucide-hourglass', title: 'Waiting for an admin', description: 'An admin has to let you in first. You will be able to use it as soon as they do.' }
+      return { icon: 'i-lucide-hourglass', title: 'Waiting for an admin', description: 'An admin has to let you in before you can use it.' }
     case 'pending-deletion':
       return {
         icon: 'i-lucide-trash-2',

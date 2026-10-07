@@ -327,7 +327,7 @@ function onViewChange({ start, end, id }: { start: Date, end: Date, id: string }
       <UAlert
         v-if="!facilitiesIsPending && !facilities?.length"
         title="There is nothing you can book yet"
-        description="Ask an admin to add facilities, or to give your unit access to them."
+        description="An admin has to add facilities, or open some up for your unit."
         color="warning"
         variant="subtle"
         icon="i-lucide-info"

@@ -16,17 +16,17 @@ const links = computed(() => me.value?.phone
 const features = [
   {
     title: 'See what\'s booked',
-    description: 'Every facility\'s schedule on a day or week timeline, grouped by facility type.',
+    description: 'The day or the week, every facility, grouped by type.',
     icon: 'i-lucide-calendar-range',
   },
   {
     title: 'Drag to book',
-    description: 'Click and drag on an open slot, adjust the time, then confirm your conduct details.',
+    description: 'Drag an open stretch, set the time, and fill in the conduct.',
     icon: 'i-lucide-mouse-pointer-click',
   },
   {
     title: 'Log in with Telegram',
-    description: 'A one-time code is sent to your registered Telegram account. You do not set a password.',
+    description: 'A one-time code to the Telegram account you\'re registered with. There\'s no password.',
     icon: 'i-simple-icons-telegram',
   },
 ]

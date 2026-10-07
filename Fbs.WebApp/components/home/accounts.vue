@@ -36,17 +36,17 @@ const links = [
 const features = [
   {
     title: 'See what\'s booked',
-    description: 'Each facility\'s schedule on a day or week timeline, grouped by the kind of facility.',
+    description: 'Day or week, one row per facility, grouped by kind.',
     icon: 'i-lucide-calendar-range',
   },
   {
     title: 'Book it together',
-    description: 'Book several slots at once. If one can\'t be booked, none of them are, and the people who need to know are told.',
+    description: 'Several slots in one go. If one is refused, the batch is dropped and a notice goes out.',
     icon: 'i-lucide-calendar-check',
   },
   {
     title: 'Your organization',
-    description: 'Your units, your facilities and your people. Invite them with a link.',
+    description: 'Units, facilities, and the people in them. New people come in by link.',
     icon: 'i-lucide-users-round',
   },
 ]
@@ -68,7 +68,7 @@ const features = [
     <template v-else>
       <UPageHero
         title="Book A Space"
-        description="Check what is free and book it for your conduct, from your phone. For units, clubs and anyone else who shares facilities."
+        description="From a phone, units, clubs, and other groups that share facilities can check what's free and book it for a conduct."
         :links="signedIn ? [{ label: 'Try again', to: '/', trailingIcon: 'i-lucide-arrow-right' }] : links"
         :ui="{ container: 'py-16 sm:py-24 lg:py-28' }"
       >

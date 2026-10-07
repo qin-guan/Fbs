@@ -26,10 +26,10 @@ onMounted(() => {
     $driver.setConfig({
       showProgress: true,
       steps: [
-        { element: '#poc-rank-and-name', popover: { title: 'Autocomplete', description: 'Choose from the list of existing POCs, or enter your own!' } },
+        { element: '#poc-rank-and-name', popover: { title: 'Autocomplete', description: 'Pick a point of contact from the list, or type one.' } },
         {
           element: '#crumbs', popover: {
-            title: 'Going back', description: 'Click to go back to the previous page!', onNextClick() {
+            title: 'Going back', description: 'Back to the previous page.', onNextClick() {
               onboarded.value = true
               $driver.moveNext()
             },
@@ -233,7 +233,7 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
         <UPageCard
           v-if="created.length"
           :title="`${created.length} bookings created`"
-          description="A Telegram message is sent for each booking, as usual."
+          description="Each of these sends its own Telegram message."
           icon="i-lucide-circle-check"
           variant="subtle"
           :ui="{ leadingIcon: 'text-success' }"
@@ -288,7 +288,7 @@ function onFormSubmit({ data }: FormSubmitEvent<typeof state>) {
           variant="subtle"
           icon="i-lucide-circle-alert"
           title="No time slot selected"
-          description="Pick a facility and time slot on the timeline first."
+          description="Nothing's selected yet. Pick a facility and a time back on the timeline."
           :actions="[{ label: 'Back to new booking', to: `/booking/new${originalQuery}`, color: 'error', variant: 'outline' }]"
         />
 

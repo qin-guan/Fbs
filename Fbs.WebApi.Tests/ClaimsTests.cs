@@ -95,7 +95,7 @@ public class ClaimsTests
         var written = Factory.Db.Queryable<AuditEntry>().Where(e => e.TenantId == Factory.TenantId && e.Action == "member.claimed").ToList().Single();
         await Assert.That(written.ActorMemberId).IsEqualTo(after.Id);
         await Assert.That(written.TargetId).IsEqualTo(after.Id);
-        await Assert.That(written.Summary).IsEqualTo("Took over their place from before accounts.");
+        await Assert.That(written.Summary).IsEqualTo("Took over their place from the previous version.");
     }
 
     [Test]

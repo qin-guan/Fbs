@@ -28,7 +28,7 @@ function remember(place: { tenantSlug: string, status: string, tenantStatus: str
   <div class="space-y-6">
     <UPageCard
       title="Your organizations"
-      description="Choose where you're booking, or make or join another organization."
+      description="Open the organization you're booking in. Making one, or joining with a link, is on this page too."
       variant="naked"
     />
 
@@ -89,7 +89,7 @@ function remember(place: { tenantSlug: string, status: string, tenantStatus: str
       <UAlert
         v-else
         title="You aren't in an organization yet"
-        description="Make one for your unit or club, or join one with a link someone sent you."
+        description="Start one for your unit or club, or open a link from someone who's already in one."
         color="neutral"
         variant="subtle"
         icon="i-lucide-info"

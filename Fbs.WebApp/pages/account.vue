@@ -69,7 +69,7 @@ const fields = computed(() => [
   <div class="space-y-6">
     <UPageCard
       title="Your account"
-      description="You use this to sign in. It's the same account in every organization you belong to."
+      description="What you sign in with. One account covers every organization you belong to."
       variant="naked"
     />
 
@@ -97,7 +97,7 @@ const fields = computed(() => [
 
     <UPageCard
       title="Your data"
-      description="A file of what we keep about you: your account, the organizations you belong to, and your bookings."
+      description="Your account, the organizations you belong to, and your bookings."
       variant="subtle"
       icon="i-lucide-download"
     >
@@ -113,7 +113,7 @@ const fields = computed(() => [
 
     <UPageCard
       title="Telegram"
-      description="Get booking notices on Telegram, in every organization you belong to. This is only for notifications. You still sign in with your account."
+      description="Booking notices for every organization you're in. Sign-in stays on the account, not Telegram."
       variant="subtle"
       icon="i-simple-icons-telegram"
     >
@@ -156,7 +156,7 @@ const fields = computed(() => [
           v-if="connecting"
           class="text-sm text-muted"
         >
-          Press Start in Telegram. This page updates on its own.
+          Press Start in Telegram. The connection shows up here once the bot answers.
         </p>
       </div>
     </UPageCard>
