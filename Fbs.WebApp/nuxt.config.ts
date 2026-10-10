@@ -1,9 +1,14 @@
 // How people sign in, decided when the app is built:
-// - `clerk` when NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY is set: accounts with Clerk, and organisations under /t/:slug
-// - `legacy` otherwise: the phone number and Telegram code, and the old pages, until the switch to Clerk
-// - `test` is for testing the pages in a browser without Clerk: always signed in, with a token that is never checked
+// - `workos` when NUXT_PUBLIC_WORKOS_CLIENT_ID is set: accounts with WorkOS (AuthKit), and organisations under /t/:slug. It comes
+//   before Clerk, so a build with both is a WorkOS one, and building without it again goes back to Clerk
+// - `clerk` when NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY is set: accounts with Clerk, until everybody has moved to WorkOS
+// - `legacy` otherwise: the phone number and Telegram code, and the old pages, until the switch to accounts
+// - `test` is for testing the pages in a browser without either: always signed in, with a token that is never checked
+const workOSClientId = process.env['NUXT_PUBLIC_WORKOS_CLIENT_ID']
 const clerkPublishableKey = process.env['NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY']
-const authMode = process.env['NUXT_PUBLIC_AUTH_MODE'] === 'test' ? 'test' : clerkPublishableKey ? 'clerk' : 'legacy'
+const authMode = process.env['NUXT_PUBLIC_AUTH_MODE'] === 'test'
+  ? 'test'
+  : workOSClientId ? 'workos' : clerkPublishableKey ? 'clerk' : 'legacy'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -86,6 +91,10 @@ export default defineNuxtConfig({
     public: {
       api: process.env['services__api__http__0'] || 'https://localhost:5204',
       authMode,
+      // The WorkOS client, and the custom authentication domain (such as auth.example.com) that keeps the session in a cookie
+      // in production. Without one, AuthKit keeps it in the browser's storage, which is only for development
+      workosClientId: workOSClientId || '',
+      workosApiHostname: process.env['NUXT_PUBLIC_WORKOS_API_HOSTNAME'] || '',
     },
   },
   compatibilityDate: '2024-11-01',

@@ -8,6 +8,7 @@ definePageMeta({
 useHead({ title: 'Sign in' })
 
 const mode = useAuthMode()
+const { goingTo, failed, retry } = useHostedSignIn('sign-in')
 </script>
 
 <template>
@@ -18,6 +19,13 @@ const mode = useAuthMode()
       path="/sign-in"
       sign-up-url="/sign-up"
       fallback-redirect-url="/"
+    />
+    <AccountHostedSignIn
+      v-else-if="mode === 'workos'"
+      :going-to="goingTo"
+      :failed="failed"
+      label="Taking you to sign in"
+      @retry="retry"
     />
     <UAlert
       v-else

@@ -10,6 +10,7 @@ This is decided when the app is **built**, from the environment (see `nuxt.confi
 | Build | Set | Sign in | Pages |
 |---|---|---|---|
 | `legacy` | nothing | phone number and a code on Telegram | the old pages: `/booking`, `/profile` and so on |
+| `workos` | `NUXT_PUBLIC_WORKOS_CLIENT_ID`, and `NUXT_PUBLIC_WORKOS_API_HOSTNAME` in production | WorkOS (AuthKit), on its own pages, which come back to `/callback`, with the access token sent to the API as a bearer | as `clerk` |
 | `clerk` | `NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk, with the token sent to the API as a bearer | pages for accounts and organizations: `/sign-in`, `/orgs`, `/onboarding`, `/join/:token`, `/claim/:slug`, `/account`, `/t/:slug/...` |
 | `test` | `NUXT_PUBLIC_AUTH_MODE=test` | none: always signed in, with a token the API would refuse | as `clerk`, for `pnpm test:e2e` |
 
@@ -20,6 +21,14 @@ if they have none. Everything that belongs to an organization is under `/t/:slug
 `@clerk/nuxt` is only added to a build with a key, and the app reads what Clerk says through `composables/session.ts` and `plugins/clerk-session.client.ts`, so
 nothing else in the app, or in the download for the old pages, depends on it. Clerk's session token needs `email` and `name` as custom claims (see the
 [Cutover 2 runbook](../docs/runbooks/cutover-2-accounts.md)).
+
+A WorkOS build is one with `NUXT_PUBLIC_WORKOS_CLIENT_ID`, even if it has Clerk's key too, so building without it again is going back to Clerk. AuthKit
+(`@workos-inc/authkit-js`) is loaded by `plugins/workos-session.client.ts` only in that build, and the rest of the app goes through
+`composables/session.ts` as it does for Clerk. `/sign-in` and `/sign-up` send people to WorkOS's pages (email and password, or Google), which come
+back to `/callback`, and then on to where they were going, if it is a page of this app (`lib/return-to.ts`). The menu with their name and signing out
+is the app's own (`components/account/menu.vue`). In production AuthKit needs a custom authentication domain (`NUXT_PUBLIC_WORKOS_API_HOSTNAME`, such as
+`auth.example.com`) to keep the session in a cookie; without one it keeps it in the browser's storage, which is only for `localhost`. Moving from Clerk is
+in the [Cutover 3 runbook](../docs/runbooks/cutover-3-workos.md).
 
 ## Pages of an organization
 

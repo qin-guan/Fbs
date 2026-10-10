@@ -1,8 +1,8 @@
 // What can be reached depends on how the build signs people in (see nuxt.config.ts): the old phone number pages until the
-// switch to Clerk, and only the pages for accounts and organisations after it.
-const accountsOnly = ['/sign-in', '/sign-up', '/orgs', '/onboarding', '/account', '/join', '/claim', '/t']
+// switch to accounts, and only the pages for accounts and organisations after it. /callback is where WorkOS comes back to.
+const accountsOnly = ['/sign-in', '/sign-up', '/callback', '/orgs', '/onboarding', '/account', '/join', '/claim', '/t']
 const legacyOnly = ['/auth', '/booking', '/profile', '/faqs', '/changelog']
-const withoutSignIn = ['/sign-in', '/sign-up']
+const withoutSignIn = ['/sign-in', '/sign-up', '/callback']
 
 const isUnder = (path: string, prefixes: string[]) => prefixes.some(prefix => path === prefix || path.startsWith(`${prefix}/`))
 

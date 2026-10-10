@@ -15,7 +15,7 @@ export default defineConfig<ConfigOptions>({
   webServer: {
     command: 'nuxt build && node .output/server/index.mjs',
     url: `http://localhost:${port}`,
-    env: { NUXT_PUBLIC_AUTH_MODE: 'test', NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY: '', PORT: String(port) },
+    env: { NUXT_PUBLIC_AUTH_MODE: 'test', NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY: '', NUXT_PUBLIC_WORKOS_CLIENT_ID: '', PORT: String(port) },
     timeout: 5 * 60_000,
   },
   use: {
