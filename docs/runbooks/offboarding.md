@@ -40,7 +40,7 @@ For a request to have an organisation's data erased before the days are up (a re
 
 It exits with 1 if there is no such organisation, or it isn't to be deleted, or (without `--early`) it isn't due yet.
 
-There is no purge of one person apart from their Clerk account being deleted, which erases their name, email and chat but keeps the bookings they
+There is no purge of one person apart from their account being deleted in Clerk or WorkOS, which erases their name, email and chat but keeps the bookings they
 made as a former member's (see the README).
 
 ## Things to know

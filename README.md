@@ -54,8 +54,8 @@ Or, with the [Aspire CLI](https://aspire.dev):
 aspire run;
 ```
 
-The web app is built to sign people in with a phone number and a code on Telegram (what is deployed until the switch to accounts), or with Clerk, which
-gives it the pages for accounts and organizations, `/t/{slug}`, for bookings, the timeline, and the admins of an organization. Which is decided when it
+The web app is built to sign people in with a phone number and a code on Telegram (what is deployed until the switch to accounts), or with an account
+from WorkOS or Clerk, which gives it the pages for accounts and organizations, `/t/{slug}`, for bookings, the timeline, and the admins of an organization. Which is decided when it
 is built: see [`Fbs.WebApp/README.md`](Fbs.WebApp/README.md), which also says how its pages are checked in a browser.
 
 ## Database
@@ -103,6 +103,26 @@ Whoever signs in gets an account (`UserAccount`), made the first time they are s
 (add `email` and `name` as custom claims in Clerk's session token settings), kept up to date from it, and belonging to no
 organisation until they are a member of one. `GET /Me` says who is signed in and which organisations they belong to. Enums are
 written in words in JSON.
+
+### Signing in with WorkOS
+
+Accounts are moving from Clerk to WorkOS (AuthKit), with nobody signing up again: see [ADR 0002](docs/adr/0002-clerk-to-workos.md) and
+[Cutover 3](docs/runbooks/cutover-3-workos.md). With `WorkOS:ClientId` set, the API accepts WorkOS access tokens as bearer tokens too, and
+with both it and `Clerk:Issuer` set it accepts either, each checked by its own provider (the token's issuer says which), so people can move
+without anybody being locked out. Endpoints ask for the `Account` scheme and never for one provider, so which is on is only configuration.
+
+A token has to be signed with WorkOS's keys (`https://api.workos.com/sso/jwks/{ClientId}`, or `WorkOS:JwksUrl`), RS256, unexpired, for
+someone, and issued by `https://api.workos.com/user_management/{ClientId}` (or `WorkOS:Issuer`, as with a custom authentication domain), which
+is what makes it one for this app; an `aud`, if it has one, has to be the client ID. Its `email`, `given_name` and `family_name` come from a
+JWT template in WorkOS, as does `clerk_user_id`, the WorkOS user's external ID: `import-clerk-users` sets it to their Clerk user ID, so the
+first time somebody moved from Clerk signs in with WorkOS, they are the account they had. An account has a `ClerkUserId`, a `WorkOSUserId`,
+or both once it has moved.
+
+```powershell
+$env:WorkOS__ApiKey = "sk_live_...";
+dotnet run --project ./Fbs.DbMigrator -- import-clerk-users --export users.csv --dry-run;   # what would be done
+dotnet run --project ./Fbs.DbMigrator -- import-clerk-users --export users.csv;             # make them WorkOS users, with their passwords, and join their accounts
+```
 
 ### Organisations
 
@@ -190,9 +210,11 @@ let anyone link their chat to another person's number, so the chat is not truste
 `Tenant.LegacyClaimEnabled` is on for organisations the importer made, and can be turned off but not back on. See
 [Cutover 2](docs/runbooks/cutover-2-accounts.md).
 
-When somebody deletes their Clerk account, Clerk tells `POST /webhooks/clerk` (subscribe it to `user.deleted`, and set the
-endpoint's signing secret as `Clerk:WebhookSecret`, the `whsec_...` value). Webhooks are signed with Svix: one without a valid signature
-over its ID, time and body, or older than five minutes, is a 401, and none are accepted without the secret (503). The account is
+When somebody deletes their account, Clerk tells `POST /webhooks/clerk` (subscribe it to `user.deleted`, and set the
+endpoint's signing secret as `Clerk:WebhookSecret`, the `whsec_...` value), and WorkOS tells `POST /webhooks/workos` (subscribe it to
+`user.deleted`, and set its secret as `WorkOS:WebhookSecret`; it is signed in the `WorkOS-Signature` header). A user deleted in Clerk
+whose account has moved to WorkOS is left as it is, so emptying Clerk after the move erases nobody. Clerk's are signed with Svix, over its ID,
+time and body, and WorkOS's over its time and body: one without a valid signature, or older than five minutes, is a 401, and none are accepted without the secret (503). The account is
 erased: its name and email are cleared, its places are made former members (no name, phone or chat, not an admin, not told
 anything), and its Telegram link is removed. Bookings stay, with who made them shown as "Former member". The point of contact
 typed on a booking is part of the booking and stays. Being told twice, or about someone who never signed in, changes nothing. If it
@@ -362,12 +384,13 @@ which organisation it is, look in the audit log, at the `OutboxMessage` table, o
 | `fbs.bookings.made`, `.changed`, `.cancelled` | | Bookings, one for each slot |
 | `fbs.bookings.clashes` | | Requests to book or move refused because somebody else has the time |
 | `fbs.quota.refusals` | `limit` | An organisation at a limit: `unit-limit`, `facility-limit`, `member-limit` or `booking-limit` |
-| `fbs.auth.failures` | `reason` | Session tokens that were sent and refused: `expired`, `not_yet_valid`, `signature`, `unknown_key`, `issuer`, `azp`, `subject` or `invalid`. Having none isn't a failure |
-| `fbs.webhooks.received` | `type`, `result` | Clerk's webhooks: `accepted`, `invalid_signature` or `not_configured`. A type that isn't one of Clerk's is `other`, and one that wasn't signed is `unknown` |
+| `fbs.auth.failures` | `provider`, `reason` | Session tokens that were sent and refused, by `clerk` or `workos`: `expired`, `not_yet_valid`, `signature`, `unknown_key`, `issuer`, `azp` (Clerk), `audience` (WorkOS), `subject` or `invalid`. Having none isn't a failure |
+| `fbs.webhooks.received` | `provider`, `type`, `result` | Clerk's and WorkOS's webhooks: `accepted`, `invalid_signature` or `not_configured`. A type that isn't one of theirs is `other`, and one that wasn't signed is `unknown` |
+| `fbs.accounts.moved` | `when` | Accounts joined from Clerk to WorkOS: by `import-clerk-users` (`import`), or the first time they signed in with WorkOS (`sign_in`) |
 | `fbs.rate_limit.rejections` | `policy` | Requests refused for being too many, by which limit |
 | `fbs.tenants` (gauge) | `status` | Organisations: `Active`, `Suspended`, `PendingDeletion` |
 | `fbs.members` (gauge) | `status` | People in organisations, by status |
-| `fbs.tenants.created`, `fbs.accounts.created`, `fbs.accounts.erased` | | Organisations made, people who signed in for the first time, and accounts erased after Clerk said they were deleted |
+| `fbs.tenants.created`, `fbs.accounts.created`, `fbs.accounts.erased` | | Organisations made, people who signed in for the first time, and accounts erased after Clerk or WorkOS said they were deleted |
 | `fbs.invites.used` | `outcome` | Joining with a link: `joined`, `waiting` (for an admin), `already_in`, `full`, `unusable` (ended, revoked or used up) or `not_found` |
 | `fbs.claims.completed`, `fbs.telegram.linked` | | People who took over their place from before accounts, and Telegram chats connected to an account |
 
@@ -380,7 +403,9 @@ What is worth being told about:
 - **`fbs.calendar.connections{status="Failed"}` going up**: an organisation's calendar was refused, and stays that way until somebody puts it right.
 - **`fbs.telegram.messages{result="failed"}` as a share of what is sent**. `blocked` is people who left, and isn't a problem.
 - **`fbs.auth.failures{reason="unknown_key"}` or `{reason="azp"}`**: Clerk's keys aren't being fetched, or the web app is at an address `Clerk:AuthorizedParties` doesn't have. `expired` is
-  normal, as people leave tabs open. **`fbs.webhooks.received{result="invalid_signature"}`** is the wrong `Clerk:WebhookSecret`, or someone trying.
+  normal, as people leave tabs open. **`fbs.webhooks.received{result="invalid_signature"}`** is the wrong `Clerk:WebhookSecret` or `WorkOS:WebhookSecret`, or someone trying.
+- **`fbs.auth.failures{provider="workos", reason="issuer"}` or `{reason="audience"}`** after moving to WorkOS: `WorkOS:ClientId` or `WorkOS:Issuer` isn't what the tokens say. And
+  **`fbs.accounts.created`** jumping as people move is people being made new accounts instead of joined to theirs: check the JWT template has `clerk_user_id`.
 - **`fbs.rate_limit.rejections` and `fbs.quota.refusals`** suddenly high: somebody is trying to fill the system, or a limit is too low for what people do.
 - For whether it is being used: the rate of **`fbs.bookings.made`**, **`fbs.tenants.created`** and **`fbs.accounts.created`**, and **`fbs.tenants{status="Suspended"}`**.
 
@@ -420,7 +445,7 @@ two proxies in front, such as Cloudflare and then Coolify's.
 
 Some things are limited, so that being reachable by anyone doesn't make them a way to fill the database or to guess: making an
 organisation (10 an hour, for each person), looking at and using links to join or to claim a place (30 in 10 minutes, for each person), making links for
-connecting Telegram (20 in 10 minutes, for each person), downloading a copy of data (5 in 10 minutes, for each person) and Clerk's webhooks (120 a minute, for each address). More than that is a 429 with `Retry-After`.
+connecting Telegram (20 in 10 minutes, for each person), downloading a copy of data (5 in 10 minutes, for each person) and Clerk's and WorkOS's webhooks (120 a minute, for each address). More than that is a 429 with `Retry-After`.
 Change one with `RateLimits__Limits__join__PermitLimit` and `RateLimits__Limits__join__WindowSeconds` (the names are
 `create-organization`, `join`, `link-telegram`, `export` and `webhook`), or turn them all off with `RateLimits__Enabled=false`. People at one address, such as a whole unit
 on one network, are not one person: what is for a person is counted for their account.

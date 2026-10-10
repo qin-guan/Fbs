@@ -2,6 +2,8 @@
 
 - Status: Accepted (roadmap in progress, see [Delivery](#delivery))
 - Scope: `Fbs.WebApi`, `Fbs.WebApp`, `Fbs.AppHost`, deployment
+- Amended by: [ADR 0002](0002-clerk-to-workos.md), which moves sign-in from Clerk to WorkOS. What is said here about Clerk being only for login,
+  and everything else being ours, is what makes that possible
 
 ## Context
 
