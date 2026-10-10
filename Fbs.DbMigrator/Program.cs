@@ -1,5 +1,6 @@
 using ConsoleAppFramework;
 using Fbs.DbMigrator.Commands;
+using Fbs.WebApi.Auth.WorkOS;
 using Fbs.WebApi.Claims;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Legacy;
@@ -45,6 +46,21 @@ var app = ConsoleApp
             services.AddScoped<MemberPromotions>();
             services.AddScoped<TenantSuspensions>();
             services.AddScoped<TenantPurges>();
+
+            // Only used by import-clerk-users, which is why nothing else needs WorkOS__ApiKey set
+            services.AddHttpClient<WorkOSUsers>(http =>
+            {
+                var apiKey = configuration["WorkOS:ApiKey"];
+                if (string.IsNullOrWhiteSpace(apiKey))
+                {
+                    throw new InvalidOperationException("WorkOS:ApiKey is required to move users to WorkOS: the API key of the environment, sk_ and then letters and digits.");
+                }
+
+                http.BaseAddress = new Uri($"{(configuration["WorkOS:ApiBaseUrl"] ?? WorkOSOptions.DefaultApiBaseUrl).TrimEnd('/')}/");
+                http.DefaultRequestHeaders.Authorization = new("Bearer", apiKey);
+                http.Timeout = TimeSpan.FromSeconds(30);
+            });
+            services.AddScoped<ClerkUserImporter>();
         }
     )
     .ConfigureLogging(logging =>
@@ -62,5 +78,6 @@ app.Add<PromoteAdminCommand>();
 app.Add<SuspendCommand>();
 app.Add<ListTenantsCommand>();
 app.Add<PurgeTenantsCommand>();
+app.Add<ImportClerkUsersCommand>();
 
 await app.RunAsync(args);
