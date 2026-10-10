@@ -1,7 +1,7 @@
 using FastEndpoints;
 using Fbs.WebApi.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Claims;
 
 namespace Fbs.WebApi.Endpoints.Claims.BySlug.Get;
@@ -10,13 +10,13 @@ namespace Fbs.WebApi.Endpoints.Claims.BySlug.Get;
 /// Whether the signed-in user can claim an imported member in this organisation (see <see cref="MemberClaims"/>). Any reason
 /// they can't (no such organisation, claiming turned off, already a member) is the same 404.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, MemberClaims claims) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
         Get("/Claims/{slug}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         Options(x => x.RequireRateLimiting(RateLimitPolicies.Join));
     }
 

@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
 using DataUnit = Fbs.WebApi.Data.Entities.Unit;
@@ -7,13 +7,13 @@ using DataUnit = Fbs.WebApi.Data.Entities.Unit;
 namespace Fbs.WebApi.Endpoints.Org.Units.Get;
 
 /// <summary>The units of the organisation, which every member can see, as they are what people are asked to pick from.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : EndpointWithoutRequest<List<UnitResponse>>
 {
     public override void Configure()
     {
         Get("/t/{slug}/Units");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
     }
 

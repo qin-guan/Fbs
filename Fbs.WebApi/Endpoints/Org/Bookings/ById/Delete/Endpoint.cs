@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
@@ -8,13 +8,13 @@ using SqlSugar;
 namespace Fbs.WebApi.Endpoints.Org.Bookings.ById.Delete;
 
 /// <summary>Cancels a booking, which is kept. Its own booker, anyone in their unit and admins can.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantBookings bookings) : Endpoint<Request>
 {
     public override void Configure()
     {
         Delete("/t/{slug}/Bookings/{id}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
     }
 

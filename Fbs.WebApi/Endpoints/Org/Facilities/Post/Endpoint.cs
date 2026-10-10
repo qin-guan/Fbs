@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
@@ -8,13 +8,13 @@ using DataFacility = Fbs.WebApi.Data.Entities.Facility;
 
 namespace Fbs.WebApi.Endpoints.Org.Facilities.Post;
 
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas, AuditLog audit) : Endpoint<Request, FacilityResponse>
 {
     public override void Configure()
     {
         Post("/t/{slug}/Facilities");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

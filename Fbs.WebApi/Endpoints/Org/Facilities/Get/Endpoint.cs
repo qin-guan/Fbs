@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
@@ -8,13 +8,13 @@ using DataFacility = Fbs.WebApi.Data.Entities.Facility;
 namespace Fbs.WebApi.Endpoints.Org.Facilities.Get;
 
 /// <summary>Every facility of the organisation and who can book it, for its admins to manage.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : EndpointWithoutRequest<List<FacilityResponse>>
 {
     public override void Configure()
     {
         Get("/t/{slug}/Facilities");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

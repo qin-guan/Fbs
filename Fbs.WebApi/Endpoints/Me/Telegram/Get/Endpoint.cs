@@ -1,16 +1,16 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.TelegramLinks;
 
 namespace Fbs.WebApi.Endpoints.Me.Telegram.Get;
 
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, TelegramLinker linker) : EndpointWithoutRequest<Response>
 {
     public override void Configure()
     {
         Get("/Me/Telegram");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
     }
 
     public override async Task HandleAsync(CancellationToken ct)

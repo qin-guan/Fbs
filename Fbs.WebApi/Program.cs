@@ -4,7 +4,9 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using Fbs.WebApi;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth.WorkOS;
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.CalendarSync;
 using Fbs.WebApi.Data;
@@ -170,11 +172,12 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
     builder.Services.Configure<CalendarSyncOptions>(builder.Configuration.GetSection("CalendarSync"));
     builder.Services.AddHostedService<CalendarReconciler>();
 
-    // Signing in with Clerk, alongside the Telegram code and cookie that are still what the app uses. Whoever
-    // signs in becomes an account, which belongs to no organisation until they are a member of one
-    if (ClerkAuthentication.IsEnabled(builder.Configuration))
+    // Signing in with an account from Clerk or WorkOS, or both while people move from one to the other, alongside the
+    // Telegram code and cookie that the old app uses. Whoever signs in becomes an account, which belongs to no
+    // organisation until they are a member of one
+    if (AccountAuthentication.IsEnabled(builder.Configuration))
     {
-        builder.Services.AddClerkAuthentication(builder.Configuration);
+        builder.Services.AddAccountAuthentication(builder.Configuration);
     }
 
     // Until there are screens to manage people and facilities in, the sheets can stay where they are edited
@@ -190,19 +193,25 @@ if (string.Equals(builder.Configuration["Storage:Provider"], "Database", StringC
 }
 else
 {
-    if (ClerkAuthentication.IsEnabled(builder.Configuration))
+    if (AccountAuthentication.IsEnabled(builder.Configuration))
     {
-        throw new InvalidOperationException("Clerk needs Storage:Provider=Database: accounts and organisations are kept in it.");
+        throw new InvalidOperationException("Clerk and WorkOS need Storage:Provider=Database: accounts and organisations are kept in it.");
     }
 
     builder.Services.AddGoogleStorage();
     builder.Services.AddHostedService<CacheRefreshService>();
 }
 
-// Endpoints for people signed in with Clerk are registered only when Clerk is on. They need accounts.
+// Endpoints for people signed in with an account are registered only when Clerk or WorkOS is on, as they need accounts, and
+// each one's webhook only when it is on
+var accountsEnabled = AccountAuthentication.IsEnabled(builder.Configuration);
 var clerkEnabled = ClerkAuthentication.IsEnabled(builder.Configuration);
+var workOSEnabled = WorkOSAuthentication.IsEnabled(builder.Configuration);
 builder.Services.AddFastEndpoints(options =>
-    options.Filter = type => clerkEnabled || !Attribute.IsDefined(type, typeof(RequiresClerkAttribute))
+    options.Filter = type =>
+        (accountsEnabled || !Attribute.IsDefined(type, typeof(RequiresAccountsAttribute)))
+        && (clerkEnabled || !Attribute.IsDefined(type, typeof(RequiresClerkAttribute)))
+        && (workOSEnabled || !Attribute.IsDefined(type, typeof(RequiresWorkOSAttribute)))
 );
 builder.Services.SwaggerDocument(options =>
 {

@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Tenancy;
 
 namespace Fbs.WebApi.Endpoints.Tenants.Deletion.Post;
@@ -8,13 +8,13 @@ namespace Fbs.WebApi.Endpoints.Tenants.Deletion.Post;
 /// An admin asks for their organisation to be deleted: nobody can use it from then, and it is deleted for good after
 /// <c>Limits:DeletionGraceDays</c>, unless an admin restores it.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, TenantDeletions deletions) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
         Post("/Tenants/{slug}/Deletion");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
     }
 
     public override async Task HandleAsync(Request req, CancellationToken ct)

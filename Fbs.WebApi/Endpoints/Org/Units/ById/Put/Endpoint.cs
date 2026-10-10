@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
@@ -7,13 +7,13 @@ using DataUnit = Fbs.WebApi.Data.Entities.Unit;
 
 namespace Fbs.WebApi.Endpoints.Org.Units.ById.Put;
 
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request, UnitResponse>
 {
     public override void Configure()
     {
         Put("/t/{slug}/Units/{id}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

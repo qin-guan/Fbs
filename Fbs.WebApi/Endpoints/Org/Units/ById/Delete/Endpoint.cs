@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
@@ -12,13 +12,13 @@ namespace Fbs.WebApi.Endpoints.Org.Units.ById.Delete;
 /// Takes a unit away, unless people are in it or bookings were made for it, as those would lose theirs. Members who
 /// have left don't count: they lose it, and the facilities it could book are no longer available to it.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request>
 {
     public override void Configure()
     {
         Delete("/t/{slug}/Units/{id}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

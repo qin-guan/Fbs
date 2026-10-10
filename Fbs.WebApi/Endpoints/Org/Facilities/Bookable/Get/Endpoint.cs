@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
@@ -9,13 +9,13 @@ using DataFacility = Fbs.WebApi.Data.Entities.Facility;
 namespace Fbs.WebApi.Endpoints.Org.Facilities.Bookable.Get;
 
 /// <summary>The facilities the caller can book, which is what they are asked to pick from.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : EndpointWithoutRequest<List<Response>>
 {
     public override void Configure()
     {
         Get("/t/{slug}/Facilities/Bookable");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
     }
 

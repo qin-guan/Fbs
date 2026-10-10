@@ -1,11 +1,12 @@
+using System.Linq.Expressions;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Telemetry;
 using SqlSugar;
 
-namespace Fbs.WebApi.Auth.Clerk;
+namespace Fbs.WebApi.Auth;
 
 /// <summary>
-/// What happens when Clerk says somebody deleted their account: they are taken out of everything, and what they made stays,
+/// What happens when Clerk or WorkOS says somebody deleted their account: they are taken out of everything, and what they made stays,
 /// without them in it. Bookings are kept with who made them, but as a former member, and who they are is no longer kept.
 /// </summary>
 /// <remarks>
@@ -16,15 +17,36 @@ public sealed class AccountErasure(ISqlSugarClient sql, ILogger<AccountErasure> 
 {
     public const string FormerMemberName = "Former member";
 
+    /// <summary>
+    /// Clerk said the user was deleted. Once somebody has moved to WorkOS, Clerk no longer says who they are, so a user deleted there
+    /// is Clerk being tidied up, not them leaving, and their account is left as it is: otherwise emptying Clerk after the move would
+    /// erase everybody.
+    /// </summary>
+    /// <returns>Whether there was an account to erase: false if they never signed in here, it was done already, or they have moved to WorkOS.</returns>
+    public async Task<bool> EraseClerkUserAsync(string clerkUserId, CancellationToken ct)
+    {
+        var moved = await sql.Queryable<UserAccount>().AnyAsync(a => a.ClerkUserId == clerkUserId && a.WorkOSUserId != null && a.DeletedAt == null, ct);
+        if (moved)
+        {
+            logger.LogWarning("Clerk said a user was deleted whose account has moved to WorkOS, so it was left as it is. Delete them in WorkOS to erase it.");
+            return false;
+        }
+
+        return await EraseAsync(a => a.ClerkUserId == clerkUserId && a.WorkOSUserId == null, ct);
+    }
+
+    /// <summary>WorkOS said the user was deleted.</summary>
     /// <returns>Whether there was an account to erase: false if they never signed in here, or it was done already.</returns>
-    public async Task<bool> EraseAsync(string clerkUserId, CancellationToken ct)
+    public Task<bool> EraseWorkOSUserAsync(string workOSUserId, CancellationToken ct) => EraseAsync(a => a.WorkOSUserId == workOSUserId, ct);
+
+    private async Task<bool> EraseAsync(Expression<Func<UserAccount, bool>> which, CancellationToken ct)
     {
         var now = DateTimeOffset.UtcNow;
         List<Guid> tenantIds;
 
         using (var tran = sql.Ado.UseTran())
         {
-            var account = await sql.Queryable<UserAccount>().Where(a => a.ClerkUserId == clerkUserId).TranLock(DbLockType.Wait).FirstAsync(ct);
+            var account = await sql.Queryable<UserAccount>().Where(which).TranLock(DbLockType.Wait).FirstAsync(ct);
             if (account is null || account.DeletedAt is not null)
             {
                 return false;

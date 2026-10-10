@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
@@ -11,13 +11,13 @@ namespace Fbs.WebApi.Endpoints.Org.Members.Post;
 /// Adds someone by phone number who hasn't signed in, such as a person carried over from before. They belong to the
 /// organisation from the moment they sign in and claim it, which is what an account still to be matched is for.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas, AuditLog audit) : Endpoint<Request, MemberResponse>
 {
     public override void Configure()
     {
         Post("/t/{slug}/Members");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

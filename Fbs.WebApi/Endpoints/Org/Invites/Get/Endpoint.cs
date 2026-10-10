@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
@@ -7,13 +7,13 @@ using SqlSugar;
 namespace Fbs.WebApi.Endpoints.Org.Invites.Get;
 
 /// <summary>The invite links the organisation has made, the latest 100, and whether each still works. The links themselves aren't kept, only shown when made.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : EndpointWithoutRequest<List<InviteResponse>>
 {
     public override void Configure()
     {
         Get("/t/{slug}/Invites");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

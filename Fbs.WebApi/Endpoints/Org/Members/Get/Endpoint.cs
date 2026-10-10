@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
@@ -7,13 +7,13 @@ using SqlSugar;
 namespace Fbs.WebApi.Endpoints.Org.Members.Get;
 
 /// <summary>Everyone in the organisation, for its admins to manage, including those waiting to be let in.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request, List<MemberResponse>>
 {
     public override void Configure()
     {
         Get("/t/{slug}/Members");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

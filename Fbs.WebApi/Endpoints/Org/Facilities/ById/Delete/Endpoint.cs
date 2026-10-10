@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
@@ -9,13 +9,13 @@ using DataFacility = Fbs.WebApi.Data.Entities.Facility;
 namespace Fbs.WebApi.Endpoints.Org.Facilities.ById.Delete;
 
 /// <summary>Takes a facility away, unless anything was ever booked on it, as its bookings would have nothing to be for.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request>
 {
     public override void Configure()
     {
         Delete("/t/{slug}/Facilities/{id}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

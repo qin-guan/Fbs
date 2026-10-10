@@ -1,10 +1,10 @@
-using System.Text;
 using System.Text.Json;
 using FastEndpoints;
+using Fbs.WebApi.Auth;
+using Fbs.WebApi.Auth.Clerk;
 using Fbs.WebApi.RateLimiting;
 using Fbs.WebApi.Telemetry;
 using Microsoft.AspNetCore.RateLimiting;
-using Fbs.WebApi.Auth.Clerk;
 using Microsoft.Extensions.Options;
 
 namespace Fbs.WebApi.Endpoints.Webhooks.Clerk.Post;
@@ -15,14 +15,12 @@ namespace Fbs.WebApi.Endpoints.Webhooks.Clerk.Post;
 /// </summary>
 /// <remarks>
 /// Webhooks can be late, twice, or out of order, so what is done for one has to be fine if it is done again, and nothing depends on
-/// it having arrived: sessions are what say who somebody is, and this only tidies up after an account is deleted.
+/// it having arrived: sessions are what say who somebody is, and this only tidies up after an account is deleted. Once somebody has
+/// moved to WorkOS, a user deleted in Clerk leaves their account as it is (see <see cref="AccountErasure.EraseClerkUserAsync"/>).
 /// </remarks>
 [RequiresClerk]
 public class Endpoint(IOptions<ClerkOptions> options, AccountErasure erasure, ILogger<Endpoint> logger) : EndpointWithoutRequest
 {
-    /// <summary>What Clerk sends for an account is small, so anything larger isn't from Clerk.</summary>
-    private const int MaxBodyBytes = 256 * 1024;
-
     public override void Configure()
     {
         Post("/webhooks/clerk");
@@ -43,13 +41,7 @@ public class Endpoint(IOptions<ClerkOptions> options, AccountErasure erasure, IL
             return;
         }
 
-        if (HttpContext.Request.ContentLength is > MaxBodyBytes)
-        {
-            await Send.ResponseAsync(null, StatusCodes.Status413PayloadTooLarge, ct);
-            return;
-        }
-
-        var body = await ReadBodyAsync(ct);
+        var body = await WebhookBody.ReadAsync(HttpContext.Request, ct);
         if (body is null)
         {
             await Send.ResponseAsync(null, StatusCodes.Status413PayloadTooLarge, ct);
@@ -72,7 +64,7 @@ public class Endpoint(IOptions<ClerkOptions> options, AccountErasure erasure, IL
             CountWebhook(root.TryGetProperty("type", out var kind) ? kind.GetString() : null, "accepted");
             if (root.TryGetProperty("type", out var type) && type.GetString() == "user.deleted" && root.TryGetProperty("data", out var data) && data.TryGetProperty("id", out var id) && id.GetString() is { Length: > 0 } clerkUserId)
             {
-                var erased = await erasure.EraseAsync(clerkUserId, ct);
+                var erased = await erasure.EraseClerkUserAsync(clerkUserId, ct);
                 logger.LogInformation("Clerk user was deleted, and {Result}.", erased ? "their account was erased" : "there was nothing to erase");
             }
         }
@@ -87,23 +79,10 @@ public class Endpoint(IOptions<ClerkOptions> options, AccountErasure erasure, IL
 
     /// <summary>The type is only one of those Clerk has, and anything else is "other", so what is sent can't make up lines to count.</summary>
     private static void CountWebhook(string? type, string result) =>
-        FbsMetrics.Webhooks.Add(1, new KeyValuePair<string, object?>("type", type is "user.created" or "user.updated" or "user.deleted" or "session.created" or "session.ended" or "session.removed" or "session.revoked" or "unknown" ? type : "other"), new KeyValuePair<string, object?>("result", result));
-
-    private async Task<string?> ReadBodyAsync(CancellationToken ct)
-    {
-        using var buffer = new MemoryStream();
-        var chunk = new byte[8192];
-        int read;
-        while ((read = await HttpContext.Request.Body.ReadAsync(chunk, ct)) > 0)
-        {
-            if (buffer.Length + read > MaxBodyBytes)
-            {
-                return null;
-            }
-
-            buffer.Write(chunk, 0, read);
-        }
-
-        return Encoding.UTF8.GetString(buffer.ToArray());
-    }
+        FbsMetrics.Webhooks.Add(
+            1,
+            new KeyValuePair<string, object?>("provider", "clerk"),
+            new KeyValuePair<string, object?>("type", type is "user.created" or "user.updated" or "user.deleted" or "session.created" or "session.ended" or "session.removed" or "session.revoked" or "unknown" ? type : "other"),
+            new KeyValuePair<string, object?>("result", result)
+        );
 }

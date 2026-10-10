@@ -1,18 +1,18 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.CalendarSync;
 using Fbs.WebApi.Tenancy;
 
 namespace Fbs.WebApi.Endpoints.Org.Calendar.Get;
 
 /// <summary>The organization's Google Calendar, if it has one, and the account a calendar has to be shared with.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, CalendarConnector calendars) : EndpointWithoutRequest<Response>
 {
     public override void Configure()
     {
         Get("/t/{slug}/Calendar");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

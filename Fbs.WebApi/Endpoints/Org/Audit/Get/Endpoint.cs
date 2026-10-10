@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
@@ -7,7 +7,7 @@ using SqlSugar;
 namespace Fbs.WebApi.Endpoints.Org.Audit.Get;
 
 /// <summary>What has been done to the organisation, the latest first, for its admins. People are named as they are now: somebody whose account was erased is a former member.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpoint<Request, List<Response>>
 {
     public const int DefaultLimit = 50;
@@ -16,7 +16,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql) : Endpo
     public override void Configure()
     {
         Get("/t/{slug}/Audit");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

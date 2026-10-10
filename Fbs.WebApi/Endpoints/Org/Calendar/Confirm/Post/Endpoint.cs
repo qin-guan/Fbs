@@ -1,18 +1,18 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.CalendarSync;
 using Fbs.WebApi.Tenancy;
 
 namespace Fbs.WebApi.Endpoints.Org.Calendar.Confirm.Post;
 
 /// <summary>Starts copying, once the code written into the calendar is given back.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, CalendarConnector calendars) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
         Post("/t/{slug}/Calendar/Confirm");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

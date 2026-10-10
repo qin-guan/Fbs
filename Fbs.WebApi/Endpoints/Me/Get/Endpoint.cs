@@ -1,18 +1,18 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using SqlSugar;
 
 namespace Fbs.WebApi.Endpoints.Me.Get;
 
 /// <summary>Who is signed in, and which organisations they are in: what the app needs to decide where to take them.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql) : EndpointWithoutRequest<Response>
 {
     public override void Configure()
     {
         Get("/Me");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
     }
 
     public override async Task HandleAsync(CancellationToken ct)

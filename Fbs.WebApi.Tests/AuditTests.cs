@@ -3,7 +3,7 @@ extern alias Migrator;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
 using Fbs.WebApi.Tests.Data;
@@ -197,7 +197,7 @@ public class AuditTests
 
         var accountId = await Factory.AccountIdOfAsync(org.Admin);
         var clerkUserId = Factory.Db.Queryable<UserAccount>().First(a => a.Id == accountId).ClerkUserId;
-        await new AccountErasure(Factory.Db, NullLogger<AccountErasure>.Instance).EraseAsync(clerkUserId, CancellationToken.None);
+        await new AccountErasure(Factory.Db, NullLogger<AccountErasure>.Instance).EraseClerkUserAsync(clerkUserId!, CancellationToken.None);
 
         var entries = await AuditOf(other, org.Slug);
         await Assert.That(entries.Count).IsEqualTo(2);

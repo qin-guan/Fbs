@@ -1,7 +1,7 @@
 using FastEndpoints;
 using Fbs.WebApi.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Claims;
 
 namespace Fbs.WebApi.Endpoints.Claims.BySlug.Start.Post;
@@ -10,13 +10,13 @@ namespace Fbs.WebApi.Endpoints.Claims.BySlug.Start.Post;
 /// Makes the Telegram link the user opens to claim their imported member (see <see cref="MemberClaims"/>). It works once, for 10
 /// minutes, and replaces any link they had for this organisation. 404 when <c>GET /Claims/{slug}</c> would be.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, MemberClaims claims) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
         Post("/Claims/{slug}/Start");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         Options(x => x.RequireRateLimiting(RateLimitPolicies.Join));
     }
 

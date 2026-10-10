@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
@@ -14,13 +14,13 @@ namespace Fbs.WebApi.Endpoints.Me.Export.Get;
 /// Everything that is kept about the person signed in, to keep: who they are here, the organisations they are in, and what they
 /// booked. A copy of it, as a file to download, is theirs to ask for. It is limited, as it takes some finding.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql) : EndpointWithoutRequest<Response>
 {
     public override void Configure()
     {
         Get("/Me/Export");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         Options(x => x.RequireRateLimiting(RateLimitPolicies.Export));
     }
 

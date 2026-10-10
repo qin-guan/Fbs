@@ -1,16 +1,16 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Tenancy;
 
 namespace Fbs.WebApi.Endpoints.Org.Settings.Get;
 
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext) : EndpointWithoutRequest<Response>
 {
     public override void Configure()
     {
         Get("/t/{slug}/Settings");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

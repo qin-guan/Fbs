@@ -1,7 +1,7 @@
 using FastEndpoints;
 using Fbs.WebApi.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.TelegramLinks;
 
 namespace Fbs.WebApi.Endpoints.Me.Telegram.Link.Post;
@@ -10,13 +10,13 @@ namespace Fbs.WebApi.Endpoints.Me.Telegram.Link.Post;
 /// Makes the link for connecting Telegram to the signed in account. It works once, for ten minutes, and a new one
 /// replaces it. The chat that is connected already stays until the new one is opened.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, TelegramLinker linker) : EndpointWithoutRequest<Response>
 {
     public override void Configure()
     {
         Post("/Me/Telegram/Link");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         Options(x => x.RequireRateLimiting(RateLimitPolicies.LinkTelegram));
     }
 

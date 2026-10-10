@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
@@ -12,13 +12,13 @@ namespace Fbs.WebApi.Endpoints.Org.Members.ById.Put;
 /// are let in or removed, which is also how someone waiting for approval is approved or turned away.
 /// </summary>
 /// <remarks>The organisation always keeps an admin: the change that would take the last one is refused.</remarks>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantQuotas quotas, AuditLog audit) : Endpoint<Request, MemberResponse>
 {
     public override void Configure()
     {
         Put("/t/{slug}/Members/{id}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

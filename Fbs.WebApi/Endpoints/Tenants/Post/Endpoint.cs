@@ -2,7 +2,7 @@ using FastEndpoints;
 using Fbs.WebApi.RateLimiting;
 using Fbs.WebApi.Telemetry;
 using Microsoft.AspNetCore.RateLimiting;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
 using Microsoft.Extensions.Options;
@@ -11,13 +11,13 @@ using SqlSugar;
 namespace Fbs.WebApi.Endpoints.Tenants.Post;
 
 /// <summary>Anyone signed in can make an organisation, and becomes its admin.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, IOptions<TenantLimits> limits, AuditLog audit) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
         Post("/Tenants");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         Options(x => x.RequireRateLimiting(RateLimitPolicies.CreateOrganization));
     }
 

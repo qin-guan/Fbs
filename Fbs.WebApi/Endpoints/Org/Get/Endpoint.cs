@@ -1,17 +1,17 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Tenancy;
 
 namespace Fbs.WebApi.Endpoints.Org.Get;
 
 /// <summary>The organisation, and who the caller is in it.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext) : EndpointWithoutRequest<Response>
 {
     public override void Configure()
     {
         Get("/t/{slug}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
     }
 

@@ -2,7 +2,7 @@ using FastEndpoints;
 using Fbs.WebApi.RateLimiting;
 using Fbs.WebApi.Telemetry;
 using Microsoft.AspNetCore.RateLimiting;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Endpoints.Org.Invites;
@@ -15,13 +15,13 @@ namespace Fbs.WebApi.Endpoints.Invites.ByToken.Accept.Post;
 /// Joins with a link. Somebody who is in already, or waiting, is told how things stand and nothing is used; somebody an
 /// admin has removed can't join again with a link, only be let back in by an admin.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, TenantQuotas quotas, AuditLog audit) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
         Post("/Invites/{token}/Accept");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         Options(x => x.RequireRateLimiting(RateLimitPolicies.Join));
     }
 

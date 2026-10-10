@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
@@ -9,13 +9,13 @@ using DataFacility = Fbs.WebApi.Data.Entities.Facility;
 namespace Fbs.WebApi.Endpoints.Org.Facilities.ById.Put;
 
 /// <summary>Replaces what a facility is called, how it is grouped and who can book it.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : Endpoint<Request, FacilityResponse>
 {
     public override void Configure()
     {
         Put("/t/{slug}/Facilities/{id}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

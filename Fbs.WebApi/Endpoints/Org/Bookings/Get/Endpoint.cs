@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
@@ -11,7 +11,7 @@ namespace Fbs.WebApi.Endpoints.Org.Bookings.Get;
 /// every one of them, which is what the list shows. With a window, those that share any time with it. A window is
 /// at most <see cref="MaxDays"/> days.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantBookings bookings) : Endpoint<Request, List<BookingResponse>>
 {
     public const int DefaultDays = 31;
@@ -21,7 +21,7 @@ public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantB
     public override void Configure()
     {
         Get("/t/{slug}/Bookings");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
     }
 

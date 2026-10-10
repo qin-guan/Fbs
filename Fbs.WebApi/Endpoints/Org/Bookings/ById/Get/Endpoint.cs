@@ -1,18 +1,18 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
 
 namespace Fbs.WebApi.Endpoints.Org.Bookings.ById.Get;
 
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantBookings bookings) : Endpoint<Request, BookingResponse>
 {
     public override void Configure()
     {
         Get("/t/{slug}/Bookings/{id}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
     }
 

@@ -1,6 +1,6 @@
 using FastEndpoints;
 using FluentValidation.Results;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
@@ -11,13 +11,13 @@ using DataFacility = Fbs.WebApi.Data.Entities.Facility;
 namespace Fbs.WebApi.Endpoints.Org.Bookings.Post;
 
 /// <summary>Books one or several slots as the caller.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantBookings bookings, TenantQuotas quotas) : Endpoint<Request, List<BookingResponse>>
 {
     public override void Configure()
     {
         Post("/t/{slug}/Bookings");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
     }
 

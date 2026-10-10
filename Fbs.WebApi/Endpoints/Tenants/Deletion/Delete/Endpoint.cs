@@ -1,17 +1,17 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Tenancy;
 
 namespace Fbs.WebApi.Endpoints.Tenants.Deletion.Delete;
 
 /// <summary>An admin takes back asking for their organisation to be deleted, while it is still there.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, TenantDeletions deletions) : Endpoint<Request>
 {
     public override void Configure()
     {
         Delete("/Tenants/{slug}/Deletion");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
     }
 
     public override async Task HandleAsync(Request req, CancellationToken ct)

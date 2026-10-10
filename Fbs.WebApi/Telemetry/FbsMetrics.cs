@@ -70,11 +70,20 @@ public static class FbsMetrics
 
     // Sign-in
 
-    /// <summary>Session tokens that were refused, by reason: <c>expired</c>, <c>signature</c>, <c>unknown_key</c>, <c>issuer</c>, <c>azp</c>, <c>subject</c> or <c>invalid</c>.</summary>
+    /// <summary>
+    /// Session tokens that were refused, by provider (<c>clerk</c> or <c>workos</c>) and reason: <c>expired</c>, <c>signature</c>,
+    /// <c>unknown_key</c>, <c>issuer</c>, <c>azp</c> (Clerk), <c>audience</c> (WorkOS), <c>subject</c> or <c>invalid</c>.
+    /// </summary>
     public static readonly Counter<long> AuthFailures = Meter.CreateCounter<long>("fbs.auth.failures", "{token}", "Session tokens refused, by why");
 
-    /// <summary>Webhooks from Clerk, by type and result: <c>accepted</c>, <c>invalid_signature</c> or <c>not_configured</c>.</summary>
+    /// <summary>Webhooks from Clerk or WorkOS, by provider, type and result: <c>accepted</c>, <c>invalid_signature</c> or <c>not_configured</c>.</summary>
     public static readonly Counter<long> Webhooks = Meter.CreateCounter<long>("fbs.webhooks.received", "{webhook}", "Webhooks received, by type and result");
+
+    /// <summary>
+    /// Accounts that had a Clerk user joined to their WorkOS user, by when: <c>import</c> (by <c>import-clerk-users</c>) or <c>sign_in</c>
+    /// (the first time they signed in with WorkOS, as the import hadn't).
+    /// </summary>
+    public static readonly Counter<long> AccountsMoved = Meter.CreateCounter<long>("fbs.accounts.moved", "{account}", "Accounts joined from Clerk to WorkOS");
 
     public static readonly Counter<long> RateLimitRejections = Meter.CreateCounter<long>("fbs.rate_limit.rejections", "{request}", "Requests refused for being too many, by which limit");
 
@@ -84,7 +93,7 @@ public static class FbsMetrics
 
     public static readonly Counter<long> AccountsCreated = Meter.CreateCounter<long>("fbs.accounts.created", "{account}", "Accounts made the first time somebody signed in");
 
-    public static readonly Counter<long> AccountsErased = Meter.CreateCounter<long>("fbs.accounts.erased", "{account}", "Accounts erased because Clerk said they were deleted");
+    public static readonly Counter<long> AccountsErased = Meter.CreateCounter<long>("fbs.accounts.erased", "{account}", "Accounts erased because Clerk or WorkOS said they were deleted");
 
     /// <summary>
     /// Joining with a link, by outcome: <c>joined</c>, <c>waiting</c> (for an admin), <c>already_in</c>, <c>full</c> (the

@@ -1,7 +1,7 @@
 using FastEndpoints;
 using Fbs.WebApi.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Tenancy;
 using SqlSugar;
@@ -12,13 +12,13 @@ namespace Fbs.WebApi.Endpoints.Invites.ByToken.Get;
 /// What a link is for, so somebody can see where they are joining before they do. A link that doesn't work, for
 /// whatever reason, is not found, so they can't be told apart.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
         Get("/Invites/{token}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         Options(x => x.RequireRateLimiting(RateLimitPolicies.Join));
     }
 

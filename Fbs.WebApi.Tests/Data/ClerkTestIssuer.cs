@@ -32,6 +32,9 @@ public sealed class ClerkTestIssuer
 
     public string KeyId { get; } = "test-key-1";
 
+    /// <summary>The key Clerk signs with, for a token that is signed by Clerk but says it is from somebody else.</summary>
+    public SecurityKey SigningKey => new RsaSecurityKey(_rsa) { KeyId = KeyId };
+
     /// <summary>The public key, as Clerk publishes it.</summary>
     public string JwksJson
     {

@@ -1,27 +1,19 @@
 using System.Security.Claims;
-using Fbs.WebApi.Bookings;
-using Fbs.WebApi.Claims;
-using Fbs.WebApi.TelegramLinks;
 using Fbs.WebApi.Telemetry;
-using Fbs.WebApi.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Protocols;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Fbs.WebApi.Auth.Clerk;
 
-/// <summary>
-/// Marks an endpoint that is for people who sign in with Clerk, which only exists when that is turned on, as
-/// it needs the database and accounts to be there.
-/// </summary>
+/// <summary>Marks an endpoint that only exists while signing in with Clerk is on, such as its webhook.</summary>
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class RequiresClerkAttribute : Attribute;
 
 /// <summary>
 /// Signing in with Clerk: the API accepts the session token the browser gets from Clerk as a bearer token,
-/// and checks it against Clerk's keys.
+/// and checks it against Clerk's keys. Endpoints don't ask for this scheme, but for <see cref="AccountAuthentication.Scheme"/>,
+/// which sends Clerk's tokens here.
 /// </summary>
 public static class ClerkAuthentication
 {
@@ -31,11 +23,11 @@ public static class ClerkAuthentication
 
     public static bool IsEnabled(IConfiguration configuration) => configuration.GetSection("Clerk").Get<ClerkOptions>()?.Enabled == true;
 
-    public static IServiceCollection AddClerkAuthentication(this IServiceCollection services, IConfiguration configuration)
+    internal static IServiceCollection AddClerkAuthentication(this IServiceCollection services)
     {
         services
             .AddOptions<ClerkOptions>()
-            .Bind(configuration.GetSection("Clerk"))
+            .BindConfiguration("Clerk")
             .Validate(
                 options => !options.Enabled || options.AuthorizedParties.Count > 0,
                 "Clerk:AuthorizedParties is required: the origins of the apps that may use a session token."
@@ -46,20 +38,6 @@ public static class ClerkAuthentication
             )
             .ValidateOnStart();
         services.AddHttpClient(HttpClientName);
-        services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentAccount, CurrentAccount>();
-        services.AddScoped<TenantContext>();
-        services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
-        services.AddScoped<TenantBookings>();
-        services.AddScoped<TenantQuotas>();
-        services.AddScoped<AuditLog>();
-        services.AddScoped<TenantDeletions>();
-        services.AddSingleton<TelegramBotIdentity>();
-        services.AddScoped<TelegramLinker>();
-        services.AddScoped<MemberClaims>();
-        services.AddScoped<AccountErasure>();
-        services.AddScoped<MemberPromotions>();
-        services.Configure<TenantLimits>(configuration.GetSection("Limits"));
 
         services.AddAuthentication().AddJwtBearer(Scheme, _ => { });
         services
@@ -73,7 +51,12 @@ public static class ClerkAuthentication
                     // A key is not looked for in the claims, so a token can't make one up
                     jwt.MapInboundClaims = false;
                     jwt.SaveToken = false;
-                    jwt.ConfigurationManager = new ClerkConfigurationManager(issuer, options, httpClientFactory.CreateClient(HttpClientName));
+                    jwt.ConfigurationManager = new JwksConfigurationManager(
+                        issuer,
+                        options.JwksUrl ?? $"{issuer}/.well-known/jwks.json",
+                        options.JwksJson,
+                        httpClientFactory.CreateClient(HttpClientName)
+                    );
                     jwt.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
@@ -97,12 +80,12 @@ public static class ClerkAuthentication
                             var azp = context.Principal?.FindFirstValue("azp");
                             if (azp is null || !options.AuthorizedParties.Contains(azp, StringComparer.OrdinalIgnoreCase))
                             {
-                                FbsMetrics.AuthFailures.Add(1, new KeyValuePair<string, object?>("reason", "azp"));
+                                CountFailure("azp");
                                 context.Fail("The token was not issued to this app.");
                             }
                             else if (context.Principal?.FindFirstValue("sub") is not { Length: > 0 })
                             {
-                                FbsMetrics.AuthFailures.Add(1, new KeyValuePair<string, object?>("reason", "subject"));
+                                CountFailure("subject");
                                 context.Fail("The token is not for anyone.");
                             }
 
@@ -111,7 +94,7 @@ public static class ClerkAuthentication
                         // A request with no token isn't a failure, so it isn't counted: this is for tokens that were sent and refused
                         OnAuthenticationFailed = context =>
                         {
-                            FbsMetrics.AuthFailures.Add(1, new KeyValuePair<string, object?>("reason", ReasonOf(context.Exception)));
+                            CountFailure(AccountAuthentication.ReasonOf(context.Exception));
                             return Task.CompletedTask;
                         },
                     };
@@ -121,78 +104,6 @@ public static class ClerkAuthentication
         return services;
     }
 
-    /// <summary>Why a token was refused, in a few words that are ours: what a token says is never what is counted.</summary>
-    internal static string ReasonOf(Exception exception) =>
-        exception switch
-        {
-            SecurityTokenExpiredException => "expired",
-            SecurityTokenNotYetValidException => "not_yet_valid",
-            // Before the signature, which it is a kind of
-            SecurityTokenSignatureKeyNotFoundException => "unknown_key",
-            SecurityTokenInvalidSignatureException => "signature",
-            SecurityTokenInvalidIssuerException => "issuer",
-            _ => "invalid",
-        };
-
-    /// <summary>Clerk's keys, fetched from its Frontend API and kept for an hour, or read from the settings.</summary>
-    private sealed class ClerkConfigurationManager : IConfigurationManager<OpenIdConnectConfiguration>
-    {
-        private readonly string _issuer;
-        private readonly IConfigurationManager<OpenIdConnectConfiguration>? _static;
-        private readonly ConfigurationManager<JsonWebKeySet>? _keys;
-
-        public ClerkConfigurationManager(string issuer, ClerkOptions options, HttpClient httpClient)
-        {
-            _issuer = issuer;
-            if (!string.IsNullOrWhiteSpace(options.JwksJson))
-            {
-                _static = new StaticConfigurationManager<OpenIdConnectConfiguration>(Configuration(issuer, new JsonWebKeySet(options.JwksJson)));
-                return;
-            }
-
-            _keys = new ConfigurationManager<JsonWebKeySet>(
-                options.JwksUrl ?? $"{issuer}/.well-known/jwks.json",
-                new JwksRetriever(),
-                new HttpDocumentRetriever(httpClient) { RequireHttps = true }
-            )
-            {
-                AutomaticRefreshInterval = TimeSpan.FromHours(1),
-                // A token signed with a key that isn't there asks for the keys again, but not more than this often
-                RefreshInterval = TimeSpan.FromSeconds(30),
-            };
-        }
-
-        public async Task<OpenIdConnectConfiguration> GetConfigurationAsync(CancellationToken cancel)
-        {
-            if (_static is not null)
-            {
-                return await _static.GetConfigurationAsync(cancel);
-            }
-
-            return Configuration(_issuer, await _keys!.GetConfigurationAsync(cancel));
-        }
-
-        public void RequestRefresh()
-        {
-            _static?.RequestRefresh();
-            _keys?.RequestRefresh();
-        }
-
-        private static OpenIdConnectConfiguration Configuration(string issuer, JsonWebKeySet keys)
-        {
-            var configuration = new OpenIdConnectConfiguration { Issuer = issuer, JsonWebKeySet = keys };
-            foreach (var key in keys.GetSigningKeys())
-            {
-                configuration.SigningKeys.Add(key);
-            }
-
-            return configuration;
-        }
-    }
-
-    private sealed class JwksRetriever : IConfigurationRetriever<JsonWebKeySet>
-    {
-        public async Task<JsonWebKeySet> GetConfigurationAsync(string address, IDocumentRetriever retriever, CancellationToken cancel) =>
-            new(await retriever.GetDocumentAsync(address, cancel));
-    }
+    private static void CountFailure(string reason) =>
+        FbsMetrics.AuthFailures.Add(1, new KeyValuePair<string, object?>("reason", reason), new KeyValuePair<string, object?>("provider", "clerk"));
 }

@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Bookings;
 using Fbs.WebApi.Data;
 using Fbs.WebApi.Data.Entities;
@@ -12,13 +12,13 @@ namespace Fbs.WebApi.Endpoints.Org.Bookings.ById.Put;
 /// Changes what a booking says, and when it is. Whoever made it never changes, and it stays at the facility it was made
 /// for. Its own booker, anyone in their unit and admins can change it.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, TenantBookings bookings) : Endpoint<Request, BookingResponse>
 {
     public override void Configure()
     {
         Put("/t/{slug}/Bookings/{id}");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
     }
 

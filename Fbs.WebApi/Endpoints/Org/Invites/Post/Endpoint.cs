@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Endpoints.Org.Members;
 using Fbs.WebApi.Tenancy;
@@ -12,13 +12,13 @@ namespace Fbs.WebApi.Endpoints.Org.Invites.Post;
 /// Makes a link for people to join with. Whoever uses it waits to be let in unless the organisation has turned that
 /// off, so a link that is shared further than it should be exposes nothing.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, IOptions<TenantLimits> limits, AuditLog audit) : Endpoint<Request, Response>
 {
     public override void Configure()
     {
         Post("/t/{slug}/Invites");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
     }

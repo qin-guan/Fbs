@@ -1,5 +1,5 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.RateLimiting;
 using Fbs.WebApi.Tenancy;
@@ -15,13 +15,13 @@ namespace Fbs.WebApi.Endpoints.Org.Export.Get;
 /// A copy of everything an organisation has, to keep, for its admins: who is in it, and every booking. It is the organisation's own,
 /// and it is limited and written in its history, as it has the phone numbers of everyone in it.
 /// </summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ITenantContext tenantContext, ISqlSugarClient sql, AuditLog audit) : EndpointWithoutRequest<Response>
 {
     public override void Configure()
     {
         Get("/t/{slug}/Export");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
         PreProcessor<ResolveTenant>();
         PreProcessor<RequireAdmin>();
         Options(x => x.RequireRateLimiting(RateLimitPolicies.Export));

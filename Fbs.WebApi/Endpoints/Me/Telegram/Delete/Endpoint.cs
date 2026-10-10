@@ -1,17 +1,17 @@
 using FastEndpoints;
-using Fbs.WebApi.Auth.Clerk;
+using Fbs.WebApi.Auth;
 using Fbs.WebApi.TelegramLinks;
 
 namespace Fbs.WebApi.Endpoints.Me.Telegram.Delete;
 
 /// <summary>Stops notifications going to Telegram, and a link that was made and not used from working.</summary>
-[RequiresClerk]
+[RequiresAccounts]
 public class Endpoint(ICurrentAccount currentAccount, TelegramLinker linker) : EndpointWithoutRequest
 {
     public override void Configure()
     {
         Delete("/Me/Telegram");
-        AuthSchemes(ClerkAuthentication.Scheme);
+        AuthSchemes(AccountAuthentication.Scheme);
     }
 
     public override async Task HandleAsync(CancellationToken ct)
