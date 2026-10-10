@@ -29,6 +29,24 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      title: 'Book A Space',
+      meta: [
+        {
+          name: 'description',
+          content: 'Book A Space helps units, clubs, and teams check facility availability, coordinate shared spaces, and manage bookings from a phone.',
+        },
+        { name: 'robots', content: 'index, follow' },
+        { name: 'theme-color', content: '#f97316' },
+        { property: 'og:site_name', content: 'Book A Space' },
+        { property: 'og:type', content: 'website' },
+        { property: 'og:title', content: 'Book A Space' },
+        { property: 'og:description', content: 'Book A Space helps units, clubs, and teams check facility availability, coordinate shared spaces, and manage bookings from a phone.' },
+        { property: 'og:image', content: '/images/logo.png' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: 'Book A Space' },
+        { name: 'twitter:description', content: 'Book A Space helps units, clubs, and teams check facility availability, coordinate shared spaces, and manage bookings from a phone.' },
+        { name: 'twitter:image', content: '/images/logo.png' },
+      ],
       script: [
         {
           src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1586897931312395',
