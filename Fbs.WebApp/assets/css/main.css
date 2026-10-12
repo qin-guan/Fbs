@@ -27,6 +27,45 @@
   color: var(--ui-text-muted);
 }
 
+/* Why a press on the calendar picked nothing, said under how to pick a time (composables/booking-help.ts) */
+.driver-popover .booking-tour-tip {
+  display: block;
+  margin-top: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: calc(var(--ui-radius) * 1.5);
+  background-color: color-mix(in oklab, var(--ui-warning) 14%, var(--ui-bg));
+  color: var(--ui-text-highlighted);
+}
+
+/* While the walkthrough has the calendar used, a press that ends on the overlay is let through to end the drag (composables/booking-help.ts) */
+.booking-tour-hands-on .driver-overlay path {
+  pointer-events: none !important;
+}
+
+/* And the time picked can be moved and stretched again: vue-cal draws it afresh as it changes, which takes off what driver.js marks it with */
+.booking-tour-hands-on .vuecal__event.new-booking,
+.booking-tour-hands-on .vuecal__event.new-booking * {
+  pointer-events: auto;
+}
+
+/* Picking a time: there is no room around the calendar, so it would sit over the middle of it. It goes in a corner, away from the first facility. */
+@media (min-width: 640px) {
+  .driver-popover.booking-tour-aside {
+    top: auto !important;
+    left: auto !important;
+    right: 1.5rem !important;
+    bottom: 1.5rem !important;
+  }
+
+  .driver-popover.booking-tour-aside .driver-popover-arrow {
+    display: none;
+  }
+}
+
+.driver-popover .driver-popover-description strong {
+  color: var(--ui-text-highlighted);
+}
+
 .driver-popover .driver-popover-progress-text {
   color: var(--ui-text-dimmed);
 }

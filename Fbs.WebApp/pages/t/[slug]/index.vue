@@ -100,6 +100,7 @@ const noFacilities = computed(() => bookable.value !== undefined && bookable.val
 
     <template #body>
       <TenantSetupChecklist v-if="isAdmin" />
+      <TenantWelcome v-else-if="bookable?.length" />
 
       <UAlert
         v-if="noFacilities && !isAdmin"
