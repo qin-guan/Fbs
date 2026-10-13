@@ -6,12 +6,13 @@ using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public abstract class BotTests(FbsApiFactory factory)
+[ClassDataSource<DatabaseFbsApiFactory>]
+public class BotTests(DatabaseFbsApiFactory factory)
 {
     private const long OwnChatId = 9001;
     private const long SomeoneElsesId = 7777;
 
-    protected FbsApiFactory Factory { get; } = factory;
+    private DatabaseFbsApiFactory Factory { get; } = factory;
 
     /// <summary>The booker's Telegram chat ID, as stored.</summary>
     private string BookerChatId => Factory.TelegramChatIdOf(Users.Booker)!;
@@ -171,13 +172,3 @@ public abstract class BotTests(FbsApiFactory factory)
         await Assert.That(BookerChatId).IsEqualTo(before);
     }
 }
-
-/// <summary>BotTests with users, facilities, the roster and login codes in Google Sheets.</summary>
-[ClassDataSource<FbsApiFactory>]
-[InheritsTests]
-public class GoogleBotTests(FbsApiFactory factory) : BotTests(factory);
-
-/// <summary>BotTests with users, facilities, the roster and login codes in the database.</summary>
-[ClassDataSource<DatabaseFbsApiFactory>]
-[InheritsTests]
-public class DatabaseBotTests(DatabaseFbsApiFactory factory) : BotTests(factory);

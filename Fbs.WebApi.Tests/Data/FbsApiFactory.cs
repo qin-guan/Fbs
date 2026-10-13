@@ -1,11 +1,8 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using Fbs.WebApi.Entities;
-using Fbs.WebApi.Repository;
 using Fbs.WebApi.Tests.Fakes;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
-using Google.Apis.Sheets.v4;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -19,11 +16,11 @@ using Microsoft.Extensions.Options;
 namespace Fbs.WebApi.Tests.Data;
 
 /// <summary>
-/// Runs the real API in memory, with Google Sheets, Google Calendar and Telegram faked at the HTTP level.
+/// Runs the real API in memory, with Google Calendar and Telegram faked at the HTTP level, and no database, so it
+/// doesn't start: <see cref="DatabaseFbsApiFactory"/> is the one with a database.
 /// </summary>
 /// <remarks>
-/// Inject with <c>[ClassDataSource&lt;FbsApiFactory&gt;]</c> to get a fresh app and fakes for every test. The app
-/// starts on first use, so the fakes can be set up before then.
+/// The app starts on first use, so the fakes can be set up before then.
 /// </remarks>
 public class FbsApiFactory : WebApplicationFactory<Program>
 {
@@ -36,20 +33,6 @@ public class FbsApiFactory : WebApplicationFactory<Program>
     public FakeGoogle Google { get; } = new();
     public FakeTelegram Telegram { get; } = new();
 
-    /// <summary>Adds someone to the users, as if they were there before the test.</summary>
-    public virtual void AddUser(string unit, string name, string phone, string? telegramChatId, string notificationGroup, bool isAdmin = false) =>
-        Google.Sheets["Users"].Add([unit, name, phone, telegramChatId ?? "", notificationGroup, isAdmin ? "TRUE" : "FALSE"]);
-
-    /// <summary>The Telegram chat the user has linked, as stored.</summary>
-    public virtual string? TelegramChatIdOf(string phone) => Google.Sheets["Users"].Single(row => row[2] == phone)[3];
-
-    /// <summary>How many login codes are stored.</summary>
-    public virtual int StoredCodeCount => Google.Sheets["OTPs"].Count - 1;
-
-    /// <summary>Makes the login code that was sent to the phone look like it was sent a while ago.</summary>
-    public virtual void AgeCode(string phone, TimeSpan age) =>
-        Google.Sheets["OTPs"].Single(row => row[0] == phone)[2] = DateTimeOffset.UtcNow.Subtract(age).ToString();
-
     public HttpClient CreateClientFor(string phone)
     {
         var client = CreateClient();
@@ -57,39 +40,10 @@ public class FbsApiFactory : WebApplicationFactory<Program>
         return client;
     }
 
-    /// <summary>
-    /// Adds a booking where bookings are kept, and waits for the API to pick it up, as if it was made
-    /// before the test.
-    /// </summary>
-    public virtual async Task AddBookingAsync(Booking booking)
-    {
-        Google.AddBooking(booking);
-        await Services.GetRequiredService<BookingCache>().SyncAsync();
-    }
-
-    /// <summary>Adds a lot of bookings before the test starts, quicker than one at a time.</summary>
-    public virtual void AddBookings(IReadOnlyList<Booking> bookings)
-    {
-        foreach (var booking in bookings)
-        {
-            Google.AddBooking(booking);
-        }
-    }
-
-    /// <summary>
-    /// How many bookings each place that keeps them holds, which is the same for all of them unless
-    /// something has gone wrong. Cancelled bookings aren't counted.
-    /// </summary>
-    public virtual IReadOnlyList<int> StoredBookingCounts =>
-        [Google.Events(FakeGoogle.MainCalendar).Count, Google.Events(FakeGoogle.CarbonCopyCalendar).Count];
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(EnvironmentName);
         builder.UseSetting("Google:ServiceAccountJsonCredential", "unused");
-        builder.UseSetting("Google:SpreadsheetId", "spreadsheet");
-        builder.UseSetting("Google:CalendarId", FakeGoogle.MainCalendar);
-        builder.UseSetting("Google:CarbonCopyCalendarId", FakeGoogle.CarbonCopyCalendar);
         builder.UseSetting("Telegram:Token", "123456:test-token");
         builder.UseSetting("Telegram:WebhookUrl", "https://fbs.test/Bot");
         builder.UseSetting("Telegram:WebhookSecret", TelegramWebhookSecret);
@@ -103,8 +57,6 @@ public class FbsApiFactory : WebApplicationFactory<Program>
             };
             services.RemoveAll<CalendarService>();
             services.AddSingleton(new CalendarService(initializer));
-            services.RemoveAll<SheetsService>();
-            services.AddSingleton(new SheetsService(initializer));
 
             // Without the retries every HTTP client gets, which would make a failure from the fake take
             // seconds to show, and are not what these tests are about
@@ -130,7 +82,7 @@ public class FbsApiFactory : WebApplicationFactory<Program>
 /// <summary>
 /// The same API running as it does when deployed, for things that only differ in production.
 /// </summary>
-public class ProductionFbsApiFactory : FbsApiFactory
+public class ProductionFbsApiFactory : DatabaseFbsApiFactory
 {
     protected override string EnvironmentName => "Production";
 }

@@ -125,11 +125,14 @@ test('a calendar is asked for with its id, and the code is then what is sent', a
   expect(calls.filter(c => c.key === 'POST /t/alpha/Calendar')).toHaveLength(0)
 
   await page.getByLabel('Calendar id').fill('team@group.calendar.google.com')
+  // The form looks at the field again once it is left, and is not pressed on until it has
+  await page.getByLabel('Calendar id').blur()
+  await expect(page.getByText('The calendar id is the address of the calendar')).toHaveCount(0)
   await page.getByRole('button', { name: 'Connect the calendar' }).click()
   await expect(page.getByText('Look on the calendar for the code', { exact: true }).first()).toBeVisible()
   expect(calls.filter(c => c.key === 'POST /t/alpha/Calendar').at(-1)!.body).toEqual({ calendarId: 'team@group.calendar.google.com' })
 
-  await page.getByLabel('Code').fill('ab23cdef')
+  await page.getByLabel('Code', { exact: true }).fill('ab23cdef')
   await page.getByRole('button', { name: 'Confirm the code' }).click()
   await expect(page.getByText('The calendar is connected', { exact: true }).first()).toBeVisible()
   expect(calls.filter(c => c.key === 'POST /t/alpha/Calendar/Confirm').at(-1)!.body).toEqual({ code: 'ab23cdef' })

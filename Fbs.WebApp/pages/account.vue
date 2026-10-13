@@ -11,6 +11,7 @@ useHead({ title: 'Your account' })
 const toast = useToast()
 const queryClient = useQueryClient()
 const { data: me } = useGetMe()
+const { canManageAccount, manageAccount } = useAccountSession()
 
 const connecting = ref(false)
 const { data: telegram } = useGetMeTelegram({ query: { refetchInterval: computed(() => connecting.value ? 3000 : false) } })
@@ -60,7 +61,7 @@ async function downloadMyData() {
 }
 
 const fields = computed(() => [
-  { label: 'Name', description: 'The name on your account', value: me.value?.name },
+  { label: 'Name', description: 'The name on your account, which organizations call you by unless it\'s changed there', value: me.value?.name },
   { label: 'Email', description: 'The email you sign in with', value: me.value?.email },
 ])
 </script>
@@ -93,7 +94,23 @@ const fields = computed(() => [
           />
         </UFormField>
       </template>
+
+      <template v-if="canManageAccount">
+        <USeparator />
+
+        <div class="flex justify-end">
+          <UButton
+            label="Change name or email"
+            icon="i-lucide-user-pen"
+            color="neutral"
+            variant="subtle"
+            @click="manageAccount"
+          />
+        </div>
+      </template>
     </UPageCard>
+
+    <AccountNames :me="me" />
 
     <UPageCard
       title="Your data"

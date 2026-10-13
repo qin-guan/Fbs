@@ -1,8 +1,8 @@
 namespace Fbs.WebApi.Data;
 
 /// <summary>
-/// Phone numbers are stored in E.164 form, such as +6591234567. The API still speaks the form the
-/// spreadsheet used, without the plus, until it stops needing to.
+/// Phone numbers are stored in E.164 form, such as +6591234567. The endpoints of the phone number sign-in
+/// still speak the form the previous version kept them in, without the plus, until they are removed.
 /// </summary>
 public static class PhoneNumbers
 {

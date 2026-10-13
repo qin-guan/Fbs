@@ -35,13 +35,20 @@ export interface SessionState {
   isSignedIn: boolean | undefined
 }
 
-/** How to sign out, once Clerk has said. It isn't state, as it is only asked for by somebody who clicks. */
-export const sessionActions: { signOut?: () => Promise<void> } = {}
+/**
+ * How to sign out, and where the name and email on the account are changed, once Clerk has said. It isn't state, as it is only
+ * asked for by somebody who clicks.
+ */
+export const sessionActions: { signOut?: () => Promise<void>, manageAccount?: () => void } = {}
 
 export interface AccountSession {
   isLoaded: Readonly<Ref<boolean>>
   isSignedIn: Readonly<Ref<boolean | undefined>>
   signOut: () => Promise<void>
+  /** Whether the name and email on the account can be changed from here: only with Clerk, which keeps them. */
+  canManageAccount: boolean
+  /** Opens Clerk's page for the account, where its name and email are changed. */
+  manageAccount: () => void
 }
 
 /**
@@ -60,6 +67,10 @@ export function useAccountSession(): AccountSession {
     isSignedIn: computed(() => state.value.isSignedIn),
     signOut: async () => {
       await sessionActions.signOut?.()
+    },
+    canManageAccount: mode === 'clerk',
+    manageAccount: () => {
+      sessionActions.manageAccount?.()
     },
   }
 }

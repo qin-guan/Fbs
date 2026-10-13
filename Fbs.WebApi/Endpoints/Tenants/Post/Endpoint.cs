@@ -53,7 +53,7 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, IOpti
             Id = Guid.NewGuid(),
             TenantId = tenant.Id,
             UserId = accountId,
-            DisplayName = account.Name ?? account.Email ?? "Admin",
+            DisplayName = MemberNames.Of(account) ?? "Admin",
             Role = MemberRole.Admin,
             Status = MemberStatus.Active,
         };

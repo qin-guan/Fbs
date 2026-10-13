@@ -38,7 +38,7 @@ Everything under `/t/:slug`, in the organization's time zone (not the browser's:
 | `/t/:slug/admin/invites` | admins | links to join with, shown once when they are made |
 | `/t/:slug/admin/audit` | admins | the history: what has been done to the organization, the latest first, a page at a time |
 | `/t/:slug/admin/settings` (lower down) | admins | a copy of the organization's data as a file, and deleting it: by typing its address, and taken back until it is deleted for good |
-| `/account` | everyone | a copy of what is kept about them as a file, and connecting Telegram |
+| `/account` | everyone | the name on their account (changed with Clerk) and what each organization calls them (changed there), a copy of what is kept about them as a file, and connecting Telegram |
 
 An admin who opens an organization with nothing in it is shown a checklist (`components/tenant/setup-checklist.vue`). A member who reaches an admin page by its address
 is told it is for admins (`components/tenant/admin-gate.vue`), and nothing is asked of the API for them.

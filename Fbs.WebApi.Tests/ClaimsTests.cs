@@ -23,8 +23,8 @@ public class ClaimsTests
     public required ClerkFbsApiFactory Factory { get; init; }
 
     /// <summary>
-    /// Puts the test organisation in the state <c>import-legacy</c> leaves it in: every member unclaimed, each with a legacy chat,
-    /// and claiming on.
+    /// Puts the test organisation in the state the import from the previous version left it in: every member unclaimed, each with a
+    /// legacy chat, and claiming on.
     /// </summary>
     private void AsImported(bool claimEnabled = true)
     {

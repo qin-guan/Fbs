@@ -10,8 +10,8 @@ using DataUnit = Fbs.WebApi.Data.Entities.Unit;
 namespace Fbs.WebApi.Tests.Data;
 
 /// <summary>
-/// The API with its users, facilities, roster and login codes in the database rather than in Google
-/// Sheets, seeded with the same people and facilities that <see cref="Fakes.FakeGoogle"/> starts with.
+/// The API with its database, seeded with an organisation of its own and the people (see <see cref="Users"/>) and
+/// facilities the tests of the phone number sign-in book with.
 /// </summary>
 /// <remarks>
 /// Every factory gets a tenant of its own in the shared test database, so tests don't see each other's data.
@@ -70,7 +70,8 @@ public class DatabaseFbsApiFactory : FbsApiFactory
         }
     }
 
-    public override void AddUser(string unit, string name, string phone, string? telegramChatId, string notificationGroup, bool isAdmin = false)
+    /// <summary>Adds someone to the users, as if they were there before the test.</summary>
+    public void AddUser(string unit, string name, string phone, string? telegramChatId, string notificationGroup, bool isAdmin = false)
     {
         if (!_units.TryGetValue(unit, out var unitId))
         {
@@ -94,17 +95,16 @@ public class DatabaseFbsApiFactory : FbsApiFactory
             .ExecuteCommand();
     }
 
-    public override Task AddBookingAsync(Booking booking)
+    /// <summary>Adds a booking, as if it was made before the test.</summary>
+    public Task AddBookingAsync(Booking booking)
     {
         AddBookings([booking]);
         return Task.CompletedTask;
     }
 
-    /// <remarks>
-    /// Someone who booked and isn't a member, as with bookings that were made by people since taken off
-    /// the users sheet, is kept as a member who has left.
-    /// </remarks>
-    public override void AddBookings(IReadOnlyList<Booking> bookings)
+    /// <summary>Adds a lot of bookings before the test starts, quicker than one at a time.</summary>
+    /// <remarks>Someone who booked and isn't a member, as with people who have since left, is kept as a member who has left.</remarks>
+    public void AddBookings(IReadOnlyList<Booking> bookings)
     {
         var facilities = _db.Queryable<DataFacility>().Where(f => f.TenantId == _tenantId).ToList().ToDictionary(f => f.Name);
         var members = _db.Queryable<TenantMember>().Where(m => m.TenantId == _tenantId).ToList().ToDictionary(m => m.Phone!);
@@ -151,8 +151,9 @@ public class DatabaseFbsApiFactory : FbsApiFactory
         _db.Insertable(rows).PageSize(500).ExecuteCommand();
     }
 
-    public override IReadOnlyList<int> StoredBookingCounts =>
-        [_db.Queryable<DataBooking>().Count(b => b.TenantId == _tenantId && b.CancelledAt == null)];
+    /// <summary>How many bookings are stored, leaving out those that were cancelled.</summary>
+    public int StoredBookingCount =>
+        _db.Queryable<DataBooking>().Count(b => b.TenantId == _tenantId && b.CancelledAt == null);
 
     /// <summary>The ID of the member with the phone number, as they were seeded.</summary>
     public Guid MemberIdOf(string phone)
@@ -161,7 +162,8 @@ public class DatabaseFbsApiFactory : FbsApiFactory
         return _db.Queryable<TenantMember>().First(m => m.TenantId == _tenantId && m.Phone == stored).Id;
     }
 
-    public override string? TelegramChatIdOf(string phone)
+    /// <summary>The Telegram chat the user has linked, as stored.</summary>
+    public string? TelegramChatIdOf(string phone)
     {
         var stored = PhoneNumbers.ToStored(phone);
         return _db.Queryable<TenantMember>().First(m => m.TenantId == _tenantId && m.Phone == stored).LegacyChatId;
@@ -173,9 +175,11 @@ public class DatabaseFbsApiFactory : FbsApiFactory
     /// </summary>
     public void ClearLoginCodes() => _db.Deleteable<LoginOtp>().ExecuteCommand();
 
-    public override int StoredCodeCount =>_db.Queryable<LoginOtp>().Count();
+    /// <summary>How many login codes are stored.</summary>
+    public int StoredCodeCount => _db.Queryable<LoginOtp>().Count();
 
-    public override void AgeCode(string phone, TimeSpan age)
+    /// <summary>Makes the login code that was sent to the phone look like it was sent a while ago.</summary>
+    public void AgeCode(string phone, TimeSpan age)
     {
         var stored = PhoneNumbers.ToStored(phone);
         var at = DateTimeOffset.UtcNow.Subtract(age);
@@ -185,7 +189,6 @@ public class DatabaseFbsApiFactory : FbsApiFactory
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
-        builder.UseSetting("Storage:Provider", "Database");
         builder.UseSetting("ConnectionStrings:db", _database.ConnectionString);
         builder.UseSetting("Storage:TenantSlug", Slug);
         // Every test's API shares the one outbox table, and only this one's messages are its to send

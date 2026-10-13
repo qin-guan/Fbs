@@ -5,9 +5,10 @@ using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public abstract class BookingCancelTests(FbsApiFactory factory)
+[ClassDataSource<DatabaseFbsApiFactory>]
+public class BookingCancelTests(DatabaseFbsApiFactory factory)
 {
-    protected FbsApiFactory Factory { get; } = factory;
+    private DatabaseFbsApiFactory Factory { get; } = factory;
 
     private async Task<Booking> AddBookingAsync(string userPhone = Users.Booker)
     {
@@ -92,13 +93,3 @@ public abstract class BookingCancelTests(FbsApiFactory factory)
         await Factory.AssertStoredBookingsAsync(1);
     }
 }
-
-/// <summary>BookingCancelTests with users, facilities, the roster and login codes in Google Sheets.</summary>
-[ClassDataSource<FbsApiFactory>]
-[InheritsTests]
-public class GoogleBookingCancelTests(FbsApiFactory factory) : BookingCancelTests(factory);
-
-/// <summary>BookingCancelTests with users, facilities, the roster and login codes in the database.</summary>
-[ClassDataSource<DatabaseFbsApiFactory>]
-[InheritsTests]
-public class DatabaseBookingCancelTests(DatabaseFbsApiFactory factory) : BookingCancelTests(factory);

@@ -1,5 +1,9 @@
 # Cutover 1: from Google Sheets and Calendar to the database
 
+> Done, and kept as a record. Google as the store, the sheets sync, `import-legacy`, `verify-legacy` and `export-legacy` have since
+> been removed ([sunset, step 3](sunset-legacy.md#3-the-api-google-as-the-store-done)), so none of the settings or commands below
+> for them work any more.
+
 This moves bookings, users, facilities and the nominal roll from Google Sheets and Calendar into TiDB. Sign-in is
 unchanged (Telegram codes); moving it to Clerk is Cutover 2. See [ADR 0001](../adr/0001-clerk-multitenancy-tidb.md).
 

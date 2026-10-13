@@ -75,7 +75,7 @@ public class Endpoint(ICurrentAccount currentAccount, ISqlSugarClient sql, Tenan
             Id = Guid.NewGuid(),
             TenantId = invite.TenantId,
             UserId = accountId,
-            DisplayName = string.IsNullOrWhiteSpace(req.DisplayName) ? account.Name ?? account.Email ?? "Member" : req.DisplayName.Trim(),
+            DisplayName = string.IsNullOrWhiteSpace(req.DisplayName) ? MemberNames.Of(account) ?? "Member" : req.DisplayName.Trim(),
             UnitId = invite.UnitId,
             Role = invite.Role,
             Status = tenant.RequireApproval ? MemberStatus.Pending : MemberStatus.Active,

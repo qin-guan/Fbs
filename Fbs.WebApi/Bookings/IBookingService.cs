@@ -43,9 +43,6 @@ public interface IBookingService
 
     /// <param name="cancelledByPhone">Who is cancelling it, which a store that keeps cancelled bookings records.</param>
     Task DeleteAsync(Guid id, string cancelledByPhone, CancellationToken cancellationToken = default);
-
-    /// <summary>Forgets anything held in memory, so the next read is of what is stored.</summary>
-    Task ReloadAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>

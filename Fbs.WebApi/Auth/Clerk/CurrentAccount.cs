@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Fbs.WebApi.Data.Entities;
 using Fbs.WebApi.Telemetry;
+using Fbs.WebApi.Tenancy;
 using SqlSugar;
 
 namespace Fbs.WebApi.Auth.Clerk;
@@ -10,7 +11,8 @@ public interface ICurrentAccount
 {
     /// <summary>
     /// Their account, or null if the request isn't signed in with Clerk, or the account has been deleted. A
-    /// name or email that has changed with Clerk is changed here.
+    /// name or email that has changed with Clerk is changed here, and in the organisations where they are still
+    /// called by it (see <see cref="MemberNames"/>).
     /// </summary>
     Task<UserAccount?> GetAsync(CancellationToken cancellationToken = default);
 }
@@ -55,9 +57,11 @@ public sealed class CurrentAccount(IHttpContextAccessor httpContextAccessor, ISq
         }
         else if (account.DeletedAt is null && ((name is not null && account.Name != name) || (email is not null && account.Email != email)))
         {
+            var before = MemberNames.Of(account);
             account.Name = name ?? account.Name;
             account.Email = email ?? account.Email;
             await sql.Updateable(account).UpdateColumns(a => new { a.Name, a.Email }).ExecuteCommandAsync(cancellationToken);
+            await MemberNames.FollowAccountAsync(sql, account, before, cancellationToken);
         }
 
         _resolved = true;

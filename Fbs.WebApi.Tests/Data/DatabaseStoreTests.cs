@@ -7,7 +7,7 @@ namespace Fbs.WebApi.Tests.Data;
 
 /// <summary>
 /// What the database-backed stores do that the API tests, which go through the same seeded people and
-/// facilities as the Google ones, don't reach.
+/// facilities every time, don't reach.
 /// </summary>
 public class DatabaseStoreTests
 {

@@ -4,9 +4,10 @@ After [Cutover 1](cutover-1-database.md) (the database is the store) and [Cutove
 over their places), what is left of the old version is code nobody uses, and a way back nobody should need. This is how to remove it, in small
 changes, and when it is safe to. See [ADR 0001](../adr/0001-clerk-multitenancy-tidb.md), whose last Phase 1 item this is.
 
-**Nothing in this is done yet, on purpose.** Until the switch has been verified in production, going back is a matter of configuration
-(`Storage__Provider=Google` and the old build of the app, with `export-legacy` to carry back what was booked in the database). Every step
-below takes some of that away, so each has a gate.
+**Step 3 is done, before 1 and 2**, as the sheets were no longer used: Google is not a store any more, and the sheets, the import and
+`export-legacy` have gone, with `/Cache/Purge` from step 2, which only emptied what had been read from Google. Going back is no longer a
+matter of configuration. The rest is not done yet. Until a step is done, going back from it is a matter of deploying what was there
+before, and each has a gate.
 
 ## Before any of it
 
@@ -53,7 +54,7 @@ The last thing that can be undone by deploying the old build. Everything after i
 - Remove their tests: `AuthTests`, `Booking*Tests`, `CachePurgeTests`, the phone number parts of `BotTests`.
 - Regenerate the API client for the app, and check the diff is only what was removed.
 
-### 3. The API: Google as the store
+### 3. The API: Google as the store (done)
 
 **The point of no return for going back by configuration.** Take a backup first, and do not do this in the same week as step 2.
 
@@ -61,7 +62,8 @@ The last thing that can be undone by deploying the old build. Everything after i
   the only store, and needs `ConnectionStrings:db`).
 - Remove `Legacy/` (the importer, verifier, exporter and the Sheets reference sync), and `import-legacy`, `verify-legacy` and `export-legacy` from the migrator.
   Keep what the outbound calendar sync uses of Google: only Sheets goes.
-- Remove `Google:` settings that are for Sheets, and the Sheets scope from the service account.
+- Remove `Google:` settings that are for Sheets (`Google__SpreadsheetId`, `Google__CalendarId`, `Google__CarbonCopyCalendarId`, and `Storage__Provider`,
+  `ReferenceData__Sheets__*`), and the service account's access to the spreadsheet.
 - Remove `LegacyImporterTests`, `LegacyExporterTests`, `SheetsCallsTests`, `SheetsReferenceSyncTests`, `CalendarBookingTests` (the Google-as-store ones), and the
   Google-mode parts of the others.
 

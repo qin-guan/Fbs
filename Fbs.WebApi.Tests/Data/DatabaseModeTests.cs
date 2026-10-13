@@ -11,7 +11,8 @@ using DataBooking = Fbs.WebApi.Data.Entities.Booking;
 namespace Fbs.WebApi.Tests.Data;
 
 /// <summary>
-/// With <c>Storage:Provider=Database</c> everything is in the database, and nothing is asked of Google.
+/// Booking with the phone number sign-in: everything is in the database, and Google is only asked anything to copy
+/// bookings to a calendar that was connected.
 /// </summary>
 [ClassDataSource<DatabaseFbsApiFactory>]
 public class DatabaseModeTests(DatabaseFbsApiFactory factory)
@@ -25,7 +26,7 @@ public class DatabaseModeTests(DatabaseFbsApiFactory factory)
     }
 
     [Test]
-    public async Task Booking_uses_no_google_service()
+    public async Task Booking_without_a_calendar_asks_nothing_of_google()
     {
         using var client = factory.CreateClientFor(Users.Booker);
 
@@ -47,8 +48,6 @@ public class DatabaseModeTests(DatabaseFbsApiFactory factory)
         (await client.GetAsync("/Booking")).EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync($"/Booking/{id}", new { conduct = "Range practice" })).EnsureSuccessStatusCode();
         (await client.DeleteAsync($"/Booking/{id}")).EnsureSuccessStatusCode();
-        using var admin = factory.CreateClientFor(Users.Admin);
-        (await admin.GetAsync("/Cache/Purge")).EnsureSuccessStatusCode();
 
         await Assert.That(factory.Google.Requests).IsEmpty();
     }

@@ -2,13 +2,9 @@ namespace Fbs.WebApi.Options;
 
 public class GoogleOptions
 {
-    public required string ServiceAccountJsonCredential { get; set; }
-    public required string SpreadsheetId { get; set; }
-    public required string CalendarId { get; set; }
-
     /// <summary>
-    /// This is another calendar that will be in sync with the main storage calendar,
-    /// but accepts manual changes, since embedded data is not read from the events in this calendar
+    /// The service account, as its JSON key in base64, that bookings are copied to organisations' calendars as. A calendar is
+    /// shared with its email to be connected.
     /// </summary>
-    public required string CarbonCopyCalendarId { get; set; }
+    public required string ServiceAccountJsonCredential { get; set; }
 }

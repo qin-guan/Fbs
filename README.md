@@ -6,6 +6,7 @@ You need:
 
 * .NET 10
 * Node.js and pnpm
+* Docker, for the database
 * DevTunnel
 * Telegram Bot Token
 
@@ -39,7 +40,9 @@ dotnet user-secrets set "Telegram:WebhookSecret" "<A_RANDOM_STRING>";
 Telegram can talk to the bot. Use 16 to 256 characters of `A-Z`, `a-z`, `0-9`, `_` or `-`, for example the
 output of `openssl rand -hex 32`. The API won't start without it.
 
-You need to provide the service account with access to the facility spreadsheet.
+Bookings are copied to an organisation's Google Calendar, once it connects one, as a service account. Set its JSON key, in
+base64, with `dotnet user-secrets set "Google:ServiceAccountJsonCredential" "<THE_KEY_IN_BASE64>";` (see
+[Google Calendar](#google-calendar)).
 
 Start the AppHost project, which runs the API and the web app (on http://localhost:3000) and prints a link to the
 Aspire dashboard:
@@ -60,8 +63,7 @@ is built: see [`Fbs.WebApp/README.md`](Fbs.WebApp/README.md), which also says ho
 
 ## Database
 
-Bookings are kept in Google Calendar, and users, facilities, the roster and login codes in Google Sheets. The database
-is where they are moving to (see `docs/adr/`), on [TiDB](https://www.pingcap.com/tidb/) through SqlSugar. Its schema is
+Everything is kept in the database, on [TiDB](https://www.pingcap.com/tidb/) through SqlSugar (see `docs/adr/`). Its schema is
 applied with the migrator, which the API never does itself:
 
 ```powershell
@@ -75,15 +77,13 @@ dotnet run --project ./Fbs.DbMigrator -- apply --allow-destructive;   # also dro
 `apply` stops before dropping a column unless `--allow-destructive` is given, so read the `diff` first. Applying
 also puts back a declared index that has gone missing, which SqlSugar's own comparison doesn't notice.
 
-Once `ConnectionStrings:db` is set, the API checks at startup that the database has every table, column and index it
-needs, and refuses to start if not, so a version deployed before its schema was applied never takes traffic. Extra
-columns and indexes are fine, so the previous version keeps working after the next one has been applied. Turn the
-check off with `Startup:ValidateDatabaseSchema=false`.
+The API needs `ConnectionStrings:db`, and refuses to start without it. At startup it checks that the database has every
+table, column and index it needs, and refuses to start if not, so a version deployed before its schema was applied never
+takes traffic. Extra columns and indexes are fine, so the previous version keeps working after the next one has been
+applied. Turn the check off with `Startup:ValidateDatabaseSchema=false`.
 
-Set `Storage:Provider=Database` to keep bookings, users, facilities, the roster and login codes in the database instead,
-and to stop using Google Calendar and Sheets altogether. It needs `ConnectionStrings:db`, and the API refuses to start
-without it. They belong to the tenant named by `Storage:TenantSlug` (`3sib` by default), which has to exist. Google
-stays the default until the data has been imported.
+What is booked with the phone number sign-in, and its users, facilities, roster and login codes, belong to the tenant
+named by `Storage:TenantSlug` (`3sib` by default), which has to exist.
 
 A facility is never booked twice, including by requests at the same moment: booking, or moving a booking onto a
 facility, first locks the facility's row, then looks for a clash with a locking read. Cancelling keeps the booking,
@@ -92,7 +92,7 @@ stored with the booking.
 
 ### Signing in with Clerk
 
-With `Storage:Provider=Database` and `Clerk:Issuer` (Clerk's Frontend API, such as `https://example.clerk.accounts.dev`) set, the
+With `Clerk:Issuer` (Clerk's Frontend API, such as `https://example.clerk.accounts.dev`) set, the
 API also accepts Clerk session tokens as `Authorization: Bearer` tokens, alongside the Telegram code and cookie the app uses
 today. `Clerk:AuthorizedParties` lists the origins of the apps that may use one, checked against the token's `azp` (it is
 required), so a token issued to another app on the same Clerk instance is refused. The keys come from
@@ -115,8 +115,15 @@ Everything that belongs to an organisation is under `/t/{slug}`, and the organis
 is sent. Only an active member gets in. Someone who isn't a member, or has left, is told there is no such organisation, the same as
 for an address that isn't one, so addresses can't be tried to find which exist; someone waiting to be let in gets a 403 saying so,
 and so does anyone in an organisation that has been suspended. `GET /t/{slug}` says what the organisation is and who the caller is
-in it. `GET` and `PUT /t/{slug}/Settings` are for admins: name, time zone, calling code, the length of a slot (15, 30 or 60
-minutes) and whether people who join with an invite wait to be approved (they do unless it's turned off).
+in it, and `PUT /t/{slug}/Me` changes what they are called in it (`displayName`). `GET` and `PUT /t/{slug}/Settings` are for
+admins: name, time zone, calling code, the length of a slot (15, 30 or 60 minutes) and whether people who join with an invite wait
+to be approved (they do unless it's turned off).
+
+What somebody is called in an organisation, which is what everyone in it sees, is the organisation's own. It starts as the name
+on their account (its email if it has none) when they make or join it, unless they give another when they join, and they or an
+admin can change it. While it is still the name on their account it follows that name: one changed with Clerk is changed in
+every organisation where they are called by the old one, apart from those they have left, and each of those writes down that
+they did (`member.renamed`). A name made different, such as a rank in front, stays as it is.
 
 Admins manage what the organisation is made of, all under `/t/{slug}`:
 
@@ -175,9 +182,9 @@ Telegram is where a person is told about bookings, connected to their account fr
   people carried over from before are told as they were. Somebody waiting to be let in, or who has left, is told nothing.
   Somebody who is in more than one organisation is told which one a booking is in.
 
-**Claiming** moves people from the old sign-in (phone number and a Telegram code) to Clerk accounts. `import-legacy` creates
-them as `Unclaimed` members with no account, and keeps the Telegram chat the old version sent their codes to
-(`LegacyChatId`). A signed-in user claims their member row like this:
+**Claiming** moves people from the old sign-in (phone number and a Telegram code) to Clerk accounts. The import from the
+previous version made them `Unclaimed` members with no account, and kept the Telegram chat the old version sent their codes
+to (`LegacyChatId`). A signed-in user claims their member row like this:
 
 1. `GET /Claims/{slug}` checks they can (404 if claiming is off, or they are a member already).
 2. `POST /Claims/{slug}/Start` returns `https://t.me/<bot>?start=claim_<token>`, valid once for ten minutes.
@@ -254,47 +261,6 @@ calendar messages wait, untried, and go when it is active again, so its calendar
 that the dispatcher had taken at the moment it was suspended is still stopped before Telegram is asked. (Replies to somebody who asks the bot something, such as
 connecting Telegram, are not about an organisation, and are still answered.)
 
-### Moving from Google
-
-`import-legacy` copies the Users, Facilities and Nominal Roll sheets and the bookings in the calendar into the database, and
-`verify-legacy` checks that the database has all of it, as it is. Both need the `Google__*` settings the API has, and
-`ConnectionStrings__db`.
-
-```powershell
-dotnet run --project ./Fbs.DbMigrator -- import-legacy --tenant 3sib --name "3 SIB" --dry-run;   # what would happen, keeping none of it
-dotnet run --project ./Fbs.DbMigrator -- import-legacy --tenant 3sib --name "3 SIB";             # import it, and make the tenant if it isn't there
-dotnet run --project ./Fbs.DbMigrator -- verify-legacy --tenant 3sib;                            # exits 2 if anything is different
-dotnet run --project ./Fbs.DbMigrator -- import-legacy --tenant 3sib --overwrite;                # replace what an earlier import saved, for the last one
-dotnet run --project ./Fbs.DbMigrator -- export-legacy --tenant 3sib;                            # going back: write what was booked in the database back to Google Calendar
-```
-
-It keeps the IDs bookings have, so the events that go with them stay the same, and people who have never signed in with an account
-are kept as members waiting to claim their place. Rows that can't be imported, such as a phone number that is on the Users
-sheet twice (the first counts, as it always has), are left out and listed as warnings, and so are bookings by people no longer
-on the sheet (kept as by a member who has left), of facilities no longer on the sheet (kept, and nobody can book them), and
-bookings that overlap another. Everything is done in one transaction, so it is all imported or none of it.
-
-`export-legacy` is for going back after the switch: it writes bookings made, changed and cancelled in the database back to
-Google Calendar in the form the old version reads (in both calendars, keeping their IDs), lists any it can't, and writes only
-what is still different when run again.
-
-Running `import-legacy` again only adds what is new, so it can be run days ahead, and again just before switching. `--overwrite` replaces
-what was imported with what Google has now, and is refused once anything has been done in the database, as Google is by then
-out of date.
-
-### Sheets after the switch
-
-Until there are screens to manage people and facilities in, the Users, Facilities and Nominal Roll sheets can stay where they
-are edited: `ReferenceData:Sheets:Enabled=true` (with `Storage:Provider=Database` and the `Google:*` settings) reads them every
-`ReferenceData:Sheets:Interval` (5 minutes) and keeps the database in step. The sheet decides who is a member, their name and
-unit, and every facility and roster entry. The database keeps what is changed in the app (who is an admin, whom someone hears
-about, which Telegram chat is theirs), so those columns of the sheet no longer have any effect.
-
-Someone taken off the Users sheet is marked as having left, and comes back by being put back on it; a facility taken off can no
-longer be booked; what they made, and what was booked, is kept. An empty sheet, or taking more than
-`ReferenceData:Sheets:MaxRemovedFraction` (half) of the members off at once (when there are at least five), is taken to be a
-mistake, and removes nobody. Problems with rows (a phone number twice, none at all) are logged once, until they change.
-
 ### Outbox
 
 Work that follows a change, such as telling people about it, is written to the `OutboxMessage` table in the same
@@ -310,7 +276,7 @@ at once, as they do while a new version starts, and a message that an instance d
 that are done are removed after `Outbox:Retention` (7 days). `Outbox:PollInterval` (10 seconds) is how long an idle
 dispatcher waits before looking, for messages written by another instance, and `Outbox:TenantId` limits it to one tenant.
 
-With `Storage:Provider=Database`, telling people about bookings on Telegram goes through the outbox: whoever made the booking,
+Telling people about bookings on Telegram goes through the outbox: whoever made the booking,
 plus those who asked to hear about everyone's bookings or their unit's, once each. Bookings made together are one message
 that lists them, not one for each. People with no Telegram are left out, and so are those who have blocked the bot; a
 Telegram outage is tried again later without telling twice the people who were told already. Times are in the tenant's
@@ -390,9 +356,9 @@ A gauge says nothing until the first look, and keeps the last one when the datab
 
 ## Testing
 
-The API tests use [TUnit](https://tunit.dev) and run the API in memory, with Google and Telegram faked, so they need
-no secrets. The tests that use the database run against [TiDB](https://www.pingcap.com/tidb/), as production does,
-because it reads inside transactions differently to MySQL. The AppHost starts it in a container, so all they need is Docker,
+The API tests use [TUnit](https://tunit.dev) and run the API in memory, with Google Calendar and Telegram faked, so they
+need no secrets. The database they use is [TiDB](https://www.pingcap.com/tidb/), as production's is, because it reads
+inside transactions differently to MySQL. The AppHost starts it in a container, so all they need is Docker,
 and every run creates, and drops, a database of its own on it.
 
 ```powershell
@@ -405,8 +371,8 @@ The API answers `GET /health` with `Healthy` in every environment. Point the hos
 8080). The image includes `curl` because hosts like Coolify run the health check inside the container, and Coolify
 only replaces the old container once it passes.
 
-When the database is configured, `/health` also checks that it answers, so a version that can't reach it is not put in place of
-the one that is running, and says nothing more than `Healthy` or `Unhealthy`. The image carries the migrator too, so a hook that
+`/health` also checks that the database answers, so a version that can't reach it is not put in place of the one that is
+running, and says nothing more than `Healthy` or `Unhealthy`. The image carries the migrator too, so a hook that
 runs in the container can apply the schema before the version starts: `dotnet Fbs.DbMigrator.dll apply`.
 
 Nothing is sent anywhere until `OTEL_EXPORTER_OTLP_ENDPOINT` is set to a collector, such as Grafana Cloud's or one of your own, with `OTEL_EXPORTER_OTLP_HEADERS` for
@@ -431,9 +397,8 @@ What an organisation can have, and make in a day, is limited too, so that one ca
 which (`unit-limit`, `facility-limit`, `member-limit` or `booking-limit`), and a batch is made whole or not at all. Somebody who is refused joining with a link,
 or letting somebody back in, doesn't use up the link. They are looked at just before something is made, so a number made at the same moment can go a little over.
 
-`Maintenance__ReadOnly=true` makes the API read only: everything can be read and anything that changes something answers 503.
-It is for moving the data, see [the runbook](docs/runbooks/cutover-1-database.md), which has the steps for switching from Google
-to the database.
+`Maintenance__ReadOnly=true` makes the API read only: everything can be read and anything that changes something answers 503,
+for while the data is being moved.
 
 Set `Telegram__WebhookSecret` (see above) in the environment before deploying. The API registers it with
 Telegram on startup and rejects bot updates that don't carry it.

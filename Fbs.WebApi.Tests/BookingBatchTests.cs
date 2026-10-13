@@ -8,11 +8,12 @@ using TUnit.Assertions.Enums;
 
 namespace Fbs.WebApi.Tests;
 
-public abstract class BookingBatchTests(FbsApiFactory factory)
+[ClassDataSource<DatabaseFbsApiFactory>]
+public class BookingBatchTests(DatabaseFbsApiFactory factory)
 {
     private static readonly TimeSpan Singapore = TimeSpan.FromHours(8);
 
-    protected FbsApiFactory Factory { get; } = factory;
+    private DatabaseFbsApiFactory Factory { get; } = factory;
 
     private HttpClient _client = null!;
 
@@ -322,37 +323,7 @@ public abstract class BookingBatchTests(FbsApiFactory factory)
         await Assert.That(clash).HasStatus(HttpStatusCode.BadRequest);
         await Factory.AssertStoredBookingsAsync(2);
     }
-}
 
-/// <summary>BookingBatchTests with users, facilities, the roster and login codes in Google Sheets.</summary>
-[ClassDataSource<FbsApiFactory>]
-[InheritsTests]
-public class GoogleBookingBatchTests(FbsApiFactory factory) : BookingBatchTests(factory)
-{
-    [Test]
-    public async Task Sends_a_telegram_message_for_each_booking()
-    {
-        var created = await CreateThreeAsync();
-
-        // One message per booking to the booker, their unit and the "All" group; none to other units
-        var messages = await Factory.Telegram.WaitForMessagesAsync(9);
-        await Assert.That(messages).Count().IsEqualTo(9);
-        await Assert.That(messages.Count(m => m.ChatId == 1001)).IsEqualTo(3);
-        await Assert.That(messages.Count(m => m.ChatId == 1002)).IsEqualTo(3);
-        await Assert.That(messages.Count(m => m.ChatId == 1003)).IsEqualTo(3);
-        await Assert.That(messages).DoesNotContain(m => m.ChatId == 1004);
-        foreach (var booking in created)
-        {
-            await Assert.That(messages.Count(m => m.Text.Contains(booking.Id.ToString()))).IsEqualTo(3);
-        }
-    }
-}
-
-/// <summary>BookingBatchTests with users, facilities, the roster and login codes in the database.</summary>
-[ClassDataSource<DatabaseFbsApiFactory>]
-[InheritsTests]
-public class DatabaseBookingBatchTests(DatabaseFbsApiFactory factory) : BookingBatchTests(factory)
-{
     [Test]
     public async Task Sends_one_message_about_all_the_bookings_to_each_person()
     {

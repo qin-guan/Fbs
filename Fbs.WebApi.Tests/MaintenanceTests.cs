@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 namespace Fbs.WebApi.Tests;
 
 /// <summary>The API while the data is being moved: everything can be read, and nothing can be changed.</summary>
-public sealed class ReadOnlyFbsApiFactory : FbsApiFactory
+public sealed class ReadOnlyFbsApiFactory : DatabaseFbsApiFactory
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -57,7 +57,7 @@ public class MaintenanceTests
         }
 
         // Nothing was made, and Telegram was not told
-        await Assert.That(Factory.Google.Events(Fakes.FakeGoogle.MainCalendar)).IsEmpty();
+        await Factory.AssertStoredBookingsAsync(0);
         await Task.Delay(200);
         await Assert.That(Factory.Telegram.Messages).IsEmpty();
     }
@@ -76,7 +76,7 @@ public class MaintenanceTests
     [Test]
     public async Task Without_the_setting_nothing_is_refused()
     {
-        await using var normal = new FbsApiFactory();
+        await using var normal = new DatabaseFbsApiFactory();
         using var client = normal.CreateClientFor(Users.Booker);
 
         var response = await client.DeleteAsync($"/Booking/{Guid.NewGuid()}");
