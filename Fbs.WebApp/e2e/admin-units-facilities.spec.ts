@@ -176,7 +176,7 @@ test.describe('units', () => {
 
     await goto('/t/alpha/admin/units', { waitUntil: 'hydration' })
 
-    await expect(page.getByText('There are no units yet.')).toBeVisible()
+    await expect(page.getByText('There are no units yet, and you can leave it that way.')).toBeVisible()
   })
 })
 
