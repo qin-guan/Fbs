@@ -17,6 +17,7 @@ using Fbs.WebApi.Repository;
 using Fbs.WebApi.RateLimiting;
 using Fbs.WebApi.Repository.Database;
 using Fbs.WebApi.Telemetry;
+using Fbs.WebApi.Tenancy;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Options;
@@ -137,6 +138,8 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<OutboxDispatcher>(
 builder.Services.AddSingleton<TelegramThrottle>();
 builder.Services.AddScoped<IOutboxHandler, TelegramBookingNotifier>();
 builder.Services.AddScoped<IOutboxHandler, CalendarBookingSync>();
+// What admins do to an organisation, such as connecting its calendar, is written down, with Clerk or without
+builder.Services.AddScoped<AuditLog>();
 builder.Services.AddScoped<CalendarConnector>();
 builder.Services.Configure<CalendarSyncOptions>(builder.Configuration.GetSection("CalendarSync"));
 builder.Services.AddHostedService<CalendarReconciler>();
