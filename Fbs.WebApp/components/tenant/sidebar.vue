@@ -85,6 +85,7 @@ const links = computed<NavigationMenuItem[][]>(() => [
       <UNavigationMenu
         :collapsed="collapsed"
         :items="[[
+          { label: 'How to book', icon: 'i-lucide-book-open', to: path('guide'), onSelect: close },
           { label: 'Switch organization', icon: 'i-lucide-arrow-left-right', to: '/orgs', onSelect: close },
           { label: 'Your account', icon: 'i-lucide-circle-user-round', to: '/account', onSelect: close },
         ]]"

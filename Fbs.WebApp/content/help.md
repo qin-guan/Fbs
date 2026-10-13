@@ -6,7 +6,7 @@ Double click on an event for more information
 
 ## How can I make a new booking
 
-Click and drag on the calendar space to make a booking
+Press where it starts, in the facility's column, and drag down to where it ends. On a phone, hold your finger down for half a second before you drag, or the calendar scrolls instead. For a walkthrough on the calendar itself, press **Show me around** at the top of the New booking page
 
 ---
 

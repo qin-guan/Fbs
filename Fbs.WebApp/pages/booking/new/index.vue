@@ -28,6 +28,8 @@ const confirmation = ref({
 const helpVisible = ref(false)
 const helpMaximized = ref(false)
 const builderOpen = ref(false)
+const calendar = useTemplateRef<HTMLElement>('calendar')
+const calendarReady = ref(false)
 
 const { data: help } = await useLazyAsyncData(() => queryCollection('content').path('/help').first())
 const { data: facilities, isPending: facilitiesIsPending } = useGetFacility()
@@ -41,40 +43,12 @@ const facilityTypes = computed(() => {
   return facilities.value?.map(f => f.group).filter((v, i, a): v is string => !!v && a.indexOf(v) === i)
 })
 
-const { $driver } = useNuxtApp()
-const onboarded = useLocalStorage<boolean>('new-index-onboarded', false)
+// Whoever went through the walkthrough this page had before isn't shown the new one unasked: they get help if they look stuck instead
+const sawOldTour = useLocalStorage<boolean>('new-index-onboarded', false)
 
 const facilityType = useRouteQuery<string>('facility-type')
 const startDate = useRouteQuery('start-date')
 const view = useRouteQuery('view', 'day')
-
-onMounted(() => {
-  if (!onboarded.value) {
-    $driver.setConfig({
-      showProgress: true,
-      steps: [
-        { element: '#facility-type', popover: { title: 'Facility type', description: 'Facilities are grouped. Pick a type and its schedule shows.' } },
-        { element: '.vuecal__header', popover: { title: 'Date and time', description: 'Change the day and the time from here.' } },
-        { element: '.vuecal__schedule--cell', popover: { title: 'Schedule', description: 'Bookings show up in this grid.' } },
-        { element: '.vuecal__time-column', popover: { title: 'Scroll', description: 'On a phone, scroll the timeline from this column.' } },
-        {
-          element: '#confirm-selection', popover: {
-            title: 'Confirm selection',
-            description: 'After a slot is selected, this confirms the booking.',
-            onNextClick() {
-              onboarded.value = true
-              $driver.moveNext()
-            },
-          },
-        },
-      ],
-      onCloseClick() {
-        onboarded.value = true
-      },
-    })
-    $driver.drive()
-  }
-})
 
 const facilitiesUnderFacilityType = computed(() => {
   if (facilitiesIsPending.value) {
@@ -191,6 +165,19 @@ const selectionIsWholeDay = computed(() => {
   return whole.start.getTime() === selection.value.start.getTime() && whole.end.getTime() === selection.value.end.getTime()
 })
 
+// The walkthrough, the first time and when asked for, and help for whoever looks stuck picking a time
+const bookingHelp = useBookingHelp(calendar, {
+  selection,
+  ready: computed(() => calendarReady.value && !!facilities.value?.length),
+  empty: computed(() => !selection.value && !basket.slots.value.length),
+  firstVisit: computed(() => !sawOldTour.value),
+})
+
+function pickFromList() {
+  bookingHelp.dismiss()
+  builderOpen.value = true
+}
+
 const slotCount = computed(() => basket.slots.value.length + (selection.value ? 1 : 0))
 const continueLabel = computed(() => basket.slots.value.length
   ? `Continue with ${slotCount.value} ${slotCount.value === 1 ? 'slot' : 'slots'}`
@@ -208,6 +195,7 @@ watch(facilityType, () => {
 
 function onReady({ view }) {
   view.scrollToCurrentTime()
+  calendarReady.value = true
 }
 
 function selectWholeDay() {
@@ -372,6 +360,15 @@ function onViewChange({ start, id }) {
         </template>
 
         <template #right>
+          <UTooltip text="Show me around">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-route"
+              aria-label="Show me around"
+              @click="bookingHelp.startTour()"
+            />
+          </UTooltip>
           <UTooltip text="Help">
             <UButton
               color="neutral"
@@ -476,7 +473,11 @@ function onViewChange({ start, id }) {
         </div>
       </div>
 
-      <div class="relative flex flex-1 min-h-80">
+      <div
+        id="booking-calendar"
+        ref="calendar"
+        class="relative flex flex-1 min-h-80"
+      >
         <div class="absolute inset-0">
           <VueCal
             v-bind="calOptions"
@@ -491,6 +492,31 @@ function onViewChange({ start, id }) {
             </template>
           </VueCal>
         </div>
+
+        <BookingHelpGhost
+          v-if="bookingHelp.tourStep.value === 'pick' && !selection"
+          :touch="bookingHelp.touch.value"
+        />
+
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="translate-y-2 opacity-0"
+          leave-active-class="transition duration-150 ease-in"
+          leave-to-class="translate-y-2 opacity-0"
+        >
+          <div
+            v-if="bookingHelp.hint.value"
+            class="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex justify-center sm:justify-end"
+          >
+            <BookingHelpHint
+              :hint="bookingHelp.hint.value"
+              :touch="bookingHelp.touch.value"
+              @tour="bookingHelp.showMe"
+              @list="pickFromList"
+              @close="bookingHelp.dismiss"
+            />
+          </div>
+        </Transition>
       </div>
 
       <section
@@ -535,7 +561,10 @@ function onViewChange({ start, id }) {
         />
       </section>
 
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        id="booking-summary"
+        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+      >
         <div class="min-w-0 text-sm">
           <template v-if="selectionSummary">
             <p class="font-medium text-highlighted truncate">

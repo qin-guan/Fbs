@@ -22,6 +22,8 @@ const now = useNow({ interval: 60_000 })
 const zone = computed(() => ({ timeZone: timeZone.value, slotMinutes: org.value?.slotMinutes ?? 30 }))
 const selection = ref<Slot>()
 const builderOpen = ref(false)
+const calendar = useTemplateRef<HTMLElement>('calendar')
+const calendarReady = ref(false)
 
 const { data: facilities, isPending: facilitiesIsPending } = useGetOrgFacilitiesBookable({ path: computed(() => ({ slug: slug.value })) })
 
@@ -176,6 +178,18 @@ const selectionIsWholeDay = computed(() => {
   return whole.start.getTime() === selection.value.start.getTime() && whole.end.getTime() === selection.value.end.getTime()
 })
 
+// The walkthrough, the first time and when asked for, and help for whoever looks stuck picking a time
+const bookingHelp = useBookingHelp(calendar, {
+  selection,
+  ready: computed(() => calendarReady.value && !!facilities.value?.length),
+  empty: computed(() => !selection.value && !basket.slots.value.length),
+})
+
+function pickFromList() {
+  bookingHelp.dismiss()
+  openBuilder()
+}
+
 const slotCount = computed(() => basket.slots.value.length + (selection.value ? 1 : 0))
 const continueLabel = computed(() => basket.slots.value.length
   ? `Continue with ${slotCount.value} ${slotCount.value === 1 ? 'slot' : 'slots'}`
@@ -187,6 +201,7 @@ function openBuilder() {
 
 function onReady({ view }: { view: { scrollToCurrentTime: () => void } }) {
   view.scrollToCurrentTime()
+  calendarReady.value = true
 }
 
 function selectWholeDay() {
@@ -315,6 +330,23 @@ function onViewChange({ start, end, id }: { start: Date, end: Date, id: string }
             ]"
           />
         </template>
+
+        <template #right>
+          <UDropdownMenu
+            :items="[
+              { label: 'Show me around', icon: 'i-lucide-route', onSelect: () => bookingHelp.startTour() },
+              { label: 'How to book', icon: 'i-lucide-book-open', to: path('guide') },
+            ]"
+            :content="{ align: 'end' }"
+          >
+            <UButton
+              icon="i-lucide-circle-help"
+              color="neutral"
+              variant="ghost"
+              aria-label="Help"
+            />
+          </UDropdownMenu>
+        </template>
       </AppNavbar>
     </template>
 
@@ -381,6 +413,8 @@ function onViewChange({ start, end, id }: { start: Date, end: Date, id: string }
       </p>
 
       <div
+        id="booking-calendar"
+        ref="calendar"
         class="relative flex flex-1 min-h-80"
         :class="{ 'zone-differs': zoneDiffers }"
       >
@@ -398,6 +432,31 @@ function onViewChange({ start, end, id }: { start: Date, end: Date, id: string }
             </template>
           </VueCal>
         </div>
+
+        <BookingHelpGhost
+          v-if="bookingHelp.tourStep.value === 'pick' && !selection"
+          :touch="bookingHelp.touch.value"
+        />
+
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="translate-y-2 opacity-0"
+          leave-active-class="transition duration-150 ease-in"
+          leave-to-class="translate-y-2 opacity-0"
+        >
+          <div
+            v-if="bookingHelp.hint.value"
+            class="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex justify-center sm:justify-end"
+          >
+            <BookingHelpHint
+              :hint="bookingHelp.hint.value"
+              :touch="bookingHelp.touch.value"
+              @tour="bookingHelp.showMe"
+              @list="pickFromList"
+              @close="bookingHelp.dismiss"
+            />
+          </div>
+        </Transition>
       </div>
 
       <section
@@ -443,7 +502,10 @@ function onViewChange({ start, end, id }: { start: Date, end: Date, id: string }
         />
       </section>
 
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        id="booking-summary"
+        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+      >
         <div class="min-w-0 text-sm">
           <template v-if="selectionSummary">
             <p class="font-medium text-highlighted truncate">

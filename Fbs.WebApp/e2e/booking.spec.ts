@@ -6,6 +6,11 @@ import type { Table } from './support'
 // Los Angeles, when the organization is in Singapore
 test.use({ timezoneId: 'America/Los_Angeles', viewport: { width: 1200, height: 900 } })
 
+// The walkthrough of the booking page starts on a first visit, and has tests of its own (booking-help.spec.ts)
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('fbs:booking-tour-done', 'true'))
+})
+
 const org = {
   slug: 'alpha',
   name: 'Alpha Company',

@@ -31,6 +31,7 @@ Everything under `/t/:slug`, in the organization's time zone (not the browser's:
 | `/t/:slug/bookings/:id` | everyone in it | one booking, changed or cancelled by whoever may |
 | `/t/:slug/book`, `/t/:slug/book/confirm` | everyone in it | pick a slot on the calendar, or several facilities and days with the builder, then confirm with a point of contact |
 | `/t/:slug/timeline` | everyone in it | a row for each facility, along the days of a window |
+| `/t/:slug/guide` | everyone in it | how to book, with the walkthrough of the booking page a press away |
 | `/t/:slug/admin/settings` | admins | name, time zone, calling code, shortest booking, whether people wait to be let in, and turning off claiming from before accounts |
 | `/t/:slug/admin/units`, `.../facilities` | admins | what people belong to, and what they can book |
 | `/t/:slug/admin/members` | admins | letting in, turning away, changing, removing and adding by phone number |
@@ -41,6 +42,16 @@ Everything under `/t/:slug`, in the organization's time zone (not the browser's:
 
 An admin who opens an organization with nothing in it is shown a checklist (`components/tenant/setup-checklist.vue`). A member who reaches an admin page by its address
 is told it is for admins (`components/tenant/admin-gate.vue`), and nothing is asked of the API for them.
+
+Learning to book (`composables/booking-help.ts`, `components/booking-help/`, and `pages/t/[slug]/guide.vue`):
+
+- The booking page walks through itself the first time it is opened, and again from its help menu: at one step it asks for a time to be dragged out on the real
+  calendar, and goes on by itself once it is. It is driver.js, and the steps find the page by `#facility-type`, `#booking-calendar`, `#booking-summary`,
+  `#book-multiple` and `#confirm-selection`, so keep those ids.
+- It watches presses on the calendar (`lib/struggle.ts`), and offers help to whoever looks stuck: clicks or taps that pick nothing, a finger let go after holding
+  without dragging (vue-cal waits half a second before a finger can drag), or somebody who has never picked a time not picking one for a while.
+- A member new to booking is pointed to the guide from the bookings page (`components/tenant/welcome.vue`). What has been seen is kept in the browser
+  (`fbs:booking-tour-done`, `fbs:picked-a-time`, `fbs:welcome-hidden`). The old build's booking page has the walkthrough and the help too.
 
 Where the code is:
 
