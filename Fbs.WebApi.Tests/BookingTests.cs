@@ -7,11 +7,12 @@ using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public abstract class BookingTests(FbsApiFactory factory)
+[ClassDataSource<DatabaseFbsApiFactory>]
+public class BookingTests(DatabaseFbsApiFactory factory)
 {
     private static readonly TimeSpan Singapore = TimeSpan.FromHours(8);
 
-    protected FbsApiFactory Factory { get; } = factory;
+    private DatabaseFbsApiFactory Factory { get; } = factory;
 
     private HttpClient _client = null!;
 
@@ -93,7 +94,7 @@ public abstract class BookingTests(FbsApiFactory factory)
     }
 
     [Test]
-    public async Task Bookings_by_users_no_longer_on_the_users_sheet_are_still_listed()
+    public async Task Bookings_by_people_who_are_no_longer_members_are_still_listed()
     {
         var orphaned = Existing("Eiger", Midnight(5), Midnight(6));
         orphaned.UserPhone = "6500000000";
@@ -175,13 +176,3 @@ public abstract class BookingTests(FbsApiFactory factory)
         await Assert.That(await Factory.Telegram.WaitForMessagesAsync(6)).Count().IsEqualTo(6);
     }
 }
-
-/// <summary>BookingTests with users, facilities, the roster and login codes in Google Sheets.</summary>
-[ClassDataSource<FbsApiFactory>]
-[InheritsTests]
-public class GoogleBookingTests(FbsApiFactory factory) : BookingTests(factory);
-
-/// <summary>BookingTests with users, facilities, the roster and login codes in the database.</summary>
-[ClassDataSource<DatabaseFbsApiFactory>]
-[InheritsTests]
-public class DatabaseBookingTests(DatabaseFbsApiFactory factory) : BookingTests(factory);

@@ -107,7 +107,6 @@ export type { GetAdminUsersOptions, GetAdminUsersResponse, GetAdminUsersResponse
 export type { GetAuthMeOptions, GetAuthMeResponse, GetAuthMeResponses, GetAuthMeStatus200, GetAuthMeStatus401 } from './GetAuthMe'
 export type { GetBookingOptions, GetBookingResponse, GetBookingResponses, GetBookingStatus200, GetBookingStatus401 } from './GetBooking'
 export type { GetBookingByIdOptions, GetBookingByIdPath, GetBookingByIdResponse, GetBookingByIdResponses, GetBookingByIdStatus200, GetBookingByIdStatus401 } from './GetBookingById'
-export type { GetCachePurgeOptions, GetCachePurgeResponse, GetCachePurgeResponses, GetCachePurgeStatus204, GetCachePurgeStatus401, GetCachePurgeStatus403 } from './GetCachePurge'
 export type { GetClaimsBySlugOptions, GetClaimsBySlugPath, GetClaimsBySlugResponse, GetClaimsBySlugResponses, GetClaimsBySlugStatus200, GetClaimsBySlugStatus401, GetClaimsBySlugStatus403 } from './GetClaimsBySlug'
 export type { GetFacilityOptions, GetFacilityResponse, GetFacilityResponses, GetFacilityStatus200, GetFacilityStatus401 } from './GetFacility'
 export type { GetFacilityTimeSlotsOptions, GetFacilityTimeSlotsPath, GetFacilityTimeSlotsQuery, GetFacilityTimeSlotsResponse, GetFacilityTimeSlotsResponses, GetFacilityTimeSlotsStatus200, GetFacilityTimeSlotsStatus401 } from './GetFacilityTimeSlots'

@@ -7,9 +7,10 @@ using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public abstract class AuthTests(FbsApiFactory factory)
+[ClassDataSource<DatabaseFbsApiFactory>]
+public class AuthTests(DatabaseFbsApiFactory factory)
 {
-    protected FbsApiFactory Factory { get; } = factory;
+    private DatabaseFbsApiFactory Factory { get; } = factory;
 
     private HttpClient _client = null!;
 
@@ -134,20 +135,9 @@ public abstract class AuthTests(FbsApiFactory factory)
 
         response.EnsureSuccessStatusCode();
     }
-}
 
-/// <summary>AuthTests with users, facilities, the roster and login codes in Google Sheets.</summary>
-[ClassDataSource<FbsApiFactory>]
-[InheritsTests]
-public class GoogleAuthTests(FbsApiFactory factory) : AuthTests(factory);
-
-/// <summary>AuthTests with users, facilities, the roster and login codes in the database.</summary>
-[ClassDataSource<DatabaseFbsApiFactory>]
-[InheritsTests]
-public class DatabaseAuthTests(DatabaseFbsApiFactory factory) : AuthTests(factory)
-{
     // A login code belongs to a phone number, not to a tenant, and every test asks for one for the same
     // number, so one left by the last test would stop the next asking for another
     [Before(Test)]
-    public void ClearLoginCodes() => ((DatabaseFbsApiFactory)Factory).ClearLoginCodes();
+    public void ClearLoginCodes() => Factory.ClearLoginCodes();
 }

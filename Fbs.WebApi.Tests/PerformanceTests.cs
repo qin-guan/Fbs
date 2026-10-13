@@ -8,16 +8,17 @@ namespace Fbs.WebApi.Tests;
 
 /// <summary>
 /// Checks every operation stays under a second with years of bookings and realistic round trips to
-/// Google and Telegram.
+/// Telegram.
 /// </summary>
-public abstract class PerformanceTests(FbsApiFactory factory)
+[ClassDataSource<DatabaseFbsApiFactory>]
+public class PerformanceTests(DatabaseFbsApiFactory factory)
 {
     private const int ExistingBookings = 5000;
     private const int Subscribers = 20;
     private static readonly TimeSpan Budget = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan Singapore = TimeSpan.FromHours(8);
 
-    protected FbsApiFactory Factory { get; } = factory;
+    private DatabaseFbsApiFactory Factory { get; } = factory;
 
     private readonly List<(string Operation, TimeSpan Elapsed)> _timings = [];
 
@@ -53,7 +54,6 @@ public abstract class PerformanceTests(FbsApiFactory factory)
             Factory.AddUser("Delta", $"Subscriber {i}", $"6570000{i:000}", $"{2000 + i}", "All");
         }
 
-        Factory.Google.Latency = TimeSpan.FromMilliseconds(150);
         Factory.Telegram.Latency = TimeSpan.FromMilliseconds(100);
     }
 
@@ -152,13 +152,3 @@ public abstract class PerformanceTests(FbsApiFactory factory)
         await Assert.That(slow).IsEmpty();
     }
 }
-
-/// <summary>PerformanceTests with users, facilities, the roster and login codes in Google Sheets.</summary>
-[ClassDataSource<FbsApiFactory>]
-[InheritsTests]
-public class GooglePerformanceTests(FbsApiFactory factory) : PerformanceTests(factory);
-
-/// <summary>PerformanceTests with users, facilities, the roster and login codes in the database.</summary>
-[ClassDataSource<DatabaseFbsApiFactory>]
-[InheritsTests]
-public class DatabasePerformanceTests(DatabaseFbsApiFactory factory) : PerformanceTests(factory);

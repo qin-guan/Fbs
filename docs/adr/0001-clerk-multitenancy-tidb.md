@@ -312,10 +312,10 @@ Each is a small PR stacked on the one before.
 - [x] Cutover readiness: migrator in the image, `/health` pings the database, `Maintenance:ReadOnly`,
   runbook, AppHost with TiDB
 - [x] `export-legacy` for rollback (writes bookings made, changed and cancelled in the database back as legacy events)
-- [ ] Delete the Google-as-store code, the legacy events and handlers, and the importer, after the
-  switch has been verified in production (a separate change, so the switch can be undone by
-  configuration alone until then). The gates, the order it is done in, and what can be undone after
-  each step are in [the sunset runbook](../runbooks/sunset-legacy.md)
+- [x] Delete the Google-as-store code, the sheets sync and the importer, once the sheets were no longer
+  used (step 3 of [the sunset runbook](../runbooks/sunset-legacy.md))
+- [ ] Delete the legacy events and handlers, with the rest of the phone number sign-in. The gates, the
+  order it is done in, and what can be undone after each step are in [the sunset runbook](../runbooks/sunset-legacy.md)
 
 ### Phase 2 stack (Cutover 2)
 

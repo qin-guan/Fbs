@@ -187,7 +187,7 @@ public class ClerkAuthTests
     [Test]
     public async Task Without_clerk_turned_on_there_is_nothing_for_it()
     {
-        await using var factory = new FbsApiFactory();
+        await using var factory = new DatabaseFbsApiFactory();
         using var client = factory.CreateClient();
 
         await Assert.That(await client.GetAsync("/Me")).HasStatus(HttpStatusCode.NotFound);
@@ -200,7 +200,7 @@ public class ClerkAuthTests
 
         var exception = await Assert.That(() => factory.CreateClient()).Throws<InvalidOperationException>();
 
-        await Assert.That(exception!.Message).Contains("Storage:Provider=Database");
+        await Assert.That(exception!.Message).Contains("ConnectionStrings:db");
     }
 
     [Test]

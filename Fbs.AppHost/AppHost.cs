@@ -2,7 +2,7 @@ using Projects;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// The database everything is moving to. TiDB, as in production, because it reads inside transactions differently to
+// The database everything is kept in. TiDB, as in production, because it reads inside transactions differently to
 // MySQL, see docs/adr/spikes/s3-tidb-concurrency. It is ready when its status endpoint answers, which is after the
 // port it is reached on starts accepting connections. The tests start this too, see TestDatabase
 var tidb = builder
@@ -23,15 +23,11 @@ var migrator = builder
     .WithReference(db)
     .WaitFor(tidb);
 
-// Google and Telegram settings are read from the API's user secrets, see README.md. It reads and writes Google
-// until Storage__Provider=Database, which moves it all to the database above
+// Google and Telegram settings are read from the API's user secrets, see README.md
 var api = builder
     .AddProject<Fbs_WebApi>("api")
     .WithReference(db)
-    .WaitForCompletion(migrator)
-    // Booking times in Telegram messages are shown in the server's local time, until Storage__Provider=Database,
-    // which shows them in the tenant's
-    .WithEnvironment("TZ", "Asia/Singapore");
+    .WaitForCompletion(migrator);
 
 builder
     .AddJavaScriptApp("app", "../Fbs.WebApp")

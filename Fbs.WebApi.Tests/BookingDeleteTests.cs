@@ -7,9 +7,10 @@ using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public abstract class BookingDeleteTests(FbsApiFactory factory)
+[ClassDataSource<DatabaseFbsApiFactory>]
+public class BookingDeleteTests(DatabaseFbsApiFactory factory)
 {
-    protected FbsApiFactory Factory { get; } = factory;
+    private DatabaseFbsApiFactory Factory { get; } = factory;
 
     private HttpClient _client = null!;
     private readonly Booking _booking = new()
@@ -89,13 +90,3 @@ public abstract class BookingDeleteTests(FbsApiFactory factory)
         await Factory.AssertStoredBookingsAsync(1);
     }
 }
-
-/// <summary>BookingDeleteTests with users, facilities, the roster and login codes in Google Sheets.</summary>
-[ClassDataSource<FbsApiFactory>]
-[InheritsTests]
-public class GoogleBookingDeleteTests(FbsApiFactory factory) : BookingDeleteTests(factory);
-
-/// <summary>BookingDeleteTests with users, facilities, the roster and login codes in the database.</summary>
-[ClassDataSource<DatabaseFbsApiFactory>]
-[InheritsTests]
-public class DatabaseBookingDeleteTests(DatabaseFbsApiFactory factory) : BookingDeleteTests(factory);

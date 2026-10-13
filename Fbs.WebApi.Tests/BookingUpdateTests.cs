@@ -7,11 +7,12 @@ using Fbs.WebApi.Tests.Helpers;
 
 namespace Fbs.WebApi.Tests;
 
-public abstract class BookingUpdateTests(FbsApiFactory factory)
+[ClassDataSource<DatabaseFbsApiFactory>]
+public class BookingUpdateTests(DatabaseFbsApiFactory factory)
 {
     private static readonly TimeSpan Singapore = TimeSpan.FromHours(8);
 
-    protected FbsApiFactory Factory { get; } = factory;
+    private DatabaseFbsApiFactory Factory { get; } = factory;
 
     private HttpClient _client = null!;
 
@@ -213,13 +214,3 @@ public abstract class BookingUpdateTests(FbsApiFactory factory)
         await Assert.That(response).HasStatus(HttpStatusCode.NotFound);
     }
 }
-
-/// <summary>BookingUpdateTests with users, facilities, the roster and login codes in Google Sheets.</summary>
-[ClassDataSource<FbsApiFactory>]
-[InheritsTests]
-public class GoogleBookingUpdateTests(FbsApiFactory factory) : BookingUpdateTests(factory);
-
-/// <summary>BookingUpdateTests with users, facilities, the roster and login codes in the database.</summary>
-[ClassDataSource<DatabaseFbsApiFactory>]
-[InheritsTests]
-public class DatabaseBookingUpdateTests(DatabaseFbsApiFactory factory) : BookingUpdateTests(factory);

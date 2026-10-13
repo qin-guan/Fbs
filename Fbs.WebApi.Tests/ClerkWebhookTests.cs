@@ -146,7 +146,7 @@ public class ClerkWebhookTests
 
         await Assert.That(await PostAsync(body, factory: noSecret)).HasStatus(HttpStatusCode.ServiceUnavailable);
 
-        await using var withoutClerk = new FbsApiFactory();
+        await using var withoutClerk = new DatabaseFbsApiFactory();
         using var client = withoutClerk.CreateClient();
         await Assert.That(await client.PostAsync("/webhooks/clerk", new StringContent(body))).HasStatus(HttpStatusCode.NotFound);
     }

@@ -279,9 +279,6 @@ public sealed class DatabaseBookingService(ISqlSugarClient sql, DefaultTenant te
         FbsMetrics.BookingsCancelled.Add(1);
     }
 
-    /// <summary>Bookings are read from the database every time, so there is nothing to reload.</summary>
-    public Task ReloadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-
     private Task LockFacilitiesAsync(Guid tenantId, List<Guid> facilityIds, CancellationToken cancellationToken) =>
         BookingLocks.LockFacilitiesAsync(sql, tenantId, facilityIds, cancellationToken);
 

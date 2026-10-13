@@ -28,7 +28,7 @@ public sealed class DefaultTenant(ISqlSugarClient sql, IConfiguration configurat
         if (tenant is null)
         {
             throw new InvalidOperationException(
-                $"There is no tenant with the slug '{slug}'. Import the data first, or set Storage:TenantSlug."
+                $"There is no tenant with the slug '{slug}'. Set Storage:TenantSlug to the organisation the phone number sign-in is for."
             );
         }
 

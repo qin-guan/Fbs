@@ -13,6 +13,16 @@ public class StartupTests
         new FbsApiFactoryWithDatabase(connectionString, validate);
 
     [Test]
+    public async Task The_api_does_not_start_without_a_database()
+    {
+        await using var factory = new FbsApiFactory();
+
+        var exception = await Assert.That(() => factory.CreateClient()).Throws<InvalidOperationException>();
+
+        await Assert.That(exception!.Message).Contains("ConnectionStrings:db");
+    }
+
+    [Test]
     public async Task The_api_does_not_start_against_a_database_that_is_missing_the_schema()
     {
         await using var database = await TestDatabase.CreateAsync();
