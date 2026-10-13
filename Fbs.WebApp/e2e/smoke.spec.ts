@@ -180,6 +180,41 @@ test('the account page connects and disconnects Telegram', async ({ page, goto, 
   await expect(page.getByRole('button', { name: 'Connect Telegram' })).toBeVisible()
 })
 
+test('the account page shows what each organization calls them, and they change it there', async ({ page, goto, api }) => {
+  const places = [
+    { ...membership('alpha', 'Alpha'), displayName: 'Sam Lee', tenantStatus: 'Active' },
+    { ...membership('bravo', 'Bravo'), displayName: 'CPT Sam', tenantStatus: 'Active' },
+    { ...membership('charlie', 'Charlie', 'Member', 'Pending'), displayName: 'Sam Lee', tenantStatus: 'Active' },
+  ]
+  const calls = await api({
+    'GET /Me': () => json(me(places, 'Sam Lee', 'sam@example.com')),
+    'GET /Me/Telegram': () => json({ linked: false, linkedAt: null }),
+    'PUT /t/bravo/Me': (request) => {
+      places[1]!.displayName = request.postDataJSON().displayName
+      return json({ memberId: 'm', displayName: places[1]!.displayName, role: 'Member', notificationScope: 'None', phone: null })
+    },
+  })
+  await goto('/account', { waitUntil: 'hydration' })
+
+  await expect(page.getByText('Alpha · the name on your account')).toBeVisible()
+  await expect(page.getByText('Bravo · only in this organization')).toBeVisible()
+  // Somebody waiting to be let in can't change anything there yet
+  await expect(page.getByRole('button', { name: 'Change your name in Charlie' })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Change your name in Bravo' }).click()
+  const input = page.getByRole('textbox', { name: 'Your name in Bravo' })
+  await expect(input).toHaveValue('CPT Sam')
+  await page.getByRole('button', { name: 'Use the name on your account, Sam Lee' }).click()
+  await expect(input).toHaveValue('Sam Lee')
+  await expect(page.getByText('It\'s the name on your account, so it changes when that does.')).toBeVisible()
+  await input.fill('MAJ Sam')
+  await page.getByRole('button', { name: 'Save' }).click()
+
+  await expect(page.getByText('Bravo · only in this organization')).toBeVisible()
+  await expect(page.getByText('MAJ Sam', { exact: true })).toBeVisible()
+  expect(calls).toContainEqual(expect.objectContaining({ key: 'PUT /t/bravo/Me', body: { displayName: 'MAJ Sam' } }))
+})
+
 test('the old phone number pages can\'t be reached', async ({ page, goto, api }) => {
   await api({ 'GET /Me': () => json(me()) })
 

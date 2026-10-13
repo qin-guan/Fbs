@@ -78,6 +78,7 @@ export { postTenantsDeletionMutationKey, usePostTenantsDeletion } from './usePos
 export { putAdminBookingsMutationKey, usePutAdminBookings } from './usePutAdminBookings'
 export { putOrgBookingsByIdMutationKey, usePutOrgBookingsById } from './usePutOrgBookingsById'
 export { putOrgFacilitiesByIdMutationKey, usePutOrgFacilitiesById } from './usePutOrgFacilitiesById'
+export { putOrgMeMutationKey, usePutOrgMe } from './usePutOrgMe'
 export { putOrgMembersByIdMutationKey, usePutOrgMembersById } from './usePutOrgMembersById'
 export { putOrgSettingsMutationKey, usePutOrgSettings } from './usePutOrgSettings'
 export { putOrgUnitsByIdMutationKey, usePutOrgUnitsById } from './usePutOrgUnitsById'

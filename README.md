@@ -115,8 +115,15 @@ Everything that belongs to an organisation is under `/t/{slug}`, and the organis
 is sent. Only an active member gets in. Someone who isn't a member, or has left, is told there is no such organisation, the same as
 for an address that isn't one, so addresses can't be tried to find which exist; someone waiting to be let in gets a 403 saying so,
 and so does anyone in an organisation that has been suspended. `GET /t/{slug}` says what the organisation is and who the caller is
-in it. `GET` and `PUT /t/{slug}/Settings` are for admins: name, time zone, calling code, the length of a slot (15, 30 or 60
-minutes) and whether people who join with an invite wait to be approved (they do unless it's turned off).
+in it, and `PUT /t/{slug}/Me` changes what they are called in it (`displayName`). `GET` and `PUT /t/{slug}/Settings` are for
+admins: name, time zone, calling code, the length of a slot (15, 30 or 60 minutes) and whether people who join with an invite wait
+to be approved (they do unless it's turned off).
+
+What somebody is called in an organisation, which is what everyone in it sees, is the organisation's own. It starts as the name
+on their account (its email if it has none) when they make or join it, unless they give another when they join, and they or an
+admin can change it. While it is still the name on their account it follows that name: one changed with Clerk is changed in
+every organisation where they are called by the old one, apart from those they have left, and each of those writes down that
+they did (`member.renamed`). A name made different, such as a rank in front, stays as it is.
 
 Admins manage what the organisation is made of, all under `/t/{slug}`:
 

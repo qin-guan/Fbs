@@ -129,7 +129,7 @@ async function join() {
       >
         <UFormField
           label="Your name"
-          description="What other people see. Rank and name, for instance."
+          description="What people in it see, such as your rank and name. Left as the name on your account, it changes when that does."
         >
           <UInput
             v-model="displayName"
