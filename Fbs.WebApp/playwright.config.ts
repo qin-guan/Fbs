@@ -22,6 +22,8 @@ export default defineConfig<ConfigOptions>({
     nuxt: {
       host: `http://localhost:${port}`,
     },
+    // For the `request` fixture, which asks for what is served as a crawler would (e2e/home.spec.ts)
+    baseURL: `http://localhost:${port}`,
     ...devices['Desktop Chrome'],
     viewport: { width: 1100, height: 800 },
     trace: 'retain-on-failure',
