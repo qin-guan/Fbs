@@ -1,7 +1,7 @@
 {
   "name": "Book A Space",
   "short_name": "Book A Space",
-  "description": "Facility booking for organizations that share space: see what's free, and book rooms, courts and halls in a few taps.",
+  "description": "Open source facility booking for organizations that share space: see what's available, and book rooms, courts and halls in a few taps.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

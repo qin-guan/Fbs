@@ -33,10 +33,10 @@ won't match the HTML (and the build will call the API).
 
 | What | Where |
 |---|---|
-| The name, title, description and the picture's alt text | `lib/site.ts` |
+| The name, title, description, the picture's alt text, and where the code is on GitHub | `lib/site.ts` |
 | What every page starts with: description, Open Graph, Twitter cards, icons, the manifest | `app.head` in `nuxt.config.ts` |
 | The canonical link and `og:url` of each page, and `Page \| Book A Space` titles | `app.vue` |
-| The home page's title, `robots`, and structured data (Organization, WebSite, WebPage, WebApplication, FAQPage) | `pages/index.vue` |
+| The home page's title, `robots`, and structured data (Organization, WebSite, WebPage, WebApplication, SoftwareSourceCode, FAQPage) | `pages/index.vue` |
 | `robots.txt` and `sitemap.xml`, written when the app is built | `server/routes/` |
 | `X-Robots-Tag: noindex` for the pages behind a sign in, and keeping crawlers out of them | `privatePaths` in `lib/site.ts` |
 | The picture link previews show (1200 by 630), the icons, and the manifest | `public/og-image.png`, `public/icon-*.png`, `public/site.webmanifest` |

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ButtonProps } from '@nuxt/ui'
 import { site } from '~/lib/site'
 
 definePageMeta({
@@ -10,6 +11,18 @@ definePageMeta({
 const accounts = usesAccounts()
 const { primary } = useHomeLinks()
 const { siteUrl } = useRuntimeConfig().public
+
+const github: ButtonProps = {
+  label: 'View the code on GitHub',
+  to: site.repository,
+  target: '_blank',
+  icon: 'i-simple-icons-github',
+  color: 'neutral',
+  variant: 'subtle',
+}
+
+// The way in to the hosted version, and the code, at the end of the page
+const closing = computed(() => [primary.value[0]!, github])
 
 const spaces = [
   { label: 'Meeting rooms', icon: 'i-lucide-presentation' },
@@ -25,7 +38,7 @@ const spaces = [
 
 const features = [
   {
-    title: 'See what\'s free at a glance',
+    title: 'See what\'s available at a glance',
     description: 'A timeline of every facility, by the day or the week, grouped by type. Spot an open slot in seconds instead of asking around.',
     icon: 'i-lucide-calendar-range',
   },
@@ -56,6 +69,31 @@ const features = [
   },
 ]
 
+// The two ways to have it, which is the same code either way
+const hosting = [
+  {
+    title: 'Hosted for you',
+    badge: 'Free forever',
+    icon: 'i-lucide-cloud',
+    description: 'Sign up at bookaspace.app and create your organization. We run the servers.',
+    points: [
+      'A free plan that never expires',
+      'Nothing to install or update',
+    ],
+  },
+  {
+    title: 'On your own servers',
+    badge: 'Open source',
+    icon: 'i-lucide-server',
+    description: 'The code for the API and the web app is on GitHub. Run it on your own infrastructure, so your data stays with you, and change it as you need.',
+    points: [
+      'The API comes with a Dockerfile and stores its data in TiDB',
+      'You set the limits on facilities, members and bookings',
+      'The README covers setup and deployment',
+    ],
+  },
+]
+
 const steps = [
   {
     title: 'Create your organization',
@@ -67,7 +105,7 @@ const steps = [
   },
   {
     title: 'Start booking',
-    description: 'Everyone sees what\'s free and books it from a phone, tablet or computer. Nothing to install.',
+    description: 'Everyone sees what\'s available and books it from a phone, tablet or computer, with nothing to install.',
   },
 ]
 
@@ -141,7 +179,23 @@ const useCases = [
 const faqs = [
   {
     label: 'What is Book A Space?',
-    content: 'Book A Space is an online facility booking system for organizations that share spaces. Members see what\'s free and book rooms, courts, halls and other facilities in a few taps, and admins decide what can be booked and who can book it.',
+    content: 'Book A Space is an open source facility booking system for organizations that share spaces. Members see what\'s available and book rooms, courts, halls and other facilities in a few taps, and admins decide what can be booked and who can book it. You can host it yourself, or use the hosted version on its free plan.',
+  },
+  {
+    label: 'Is Book A Space free?',
+    content: 'Yes. The hosted version has a free plan that never expires, and the code is free to download and run on your own servers.',
+  },
+  {
+    label: 'Is Book A Space open source?',
+    content: 'Yes. The code for the API and the web app is public on GitHub, at github.com/bookaspace-app/BookASpace. You can run it yourself and change it to fit how your organization books.',
+  },
+  {
+    label: 'Can I self-host Book A Space?',
+    content: 'Yes. The API is a .NET app with a Dockerfile, the web app is built with Nuxt, and everything is stored in a TiDB database. You will also need a Telegram bot for notifications and a Clerk account for sign-in. The README on GitHub covers setup and deployment, and when you host it yourself you set your own limits on facilities, members and bookings.',
+  },
+  {
+    label: 'Do I have to host it myself?',
+    content: 'No. Book A Space is also a hosted facility booking platform (SaaS) at bookaspace.app. Sign up, create your organization and start on the free plan. We run the servers, so there is nothing to install.',
   },
   {
     label: 'What kinds of facilities can I manage?',
@@ -189,6 +243,7 @@ useHead({
           'name': site.name,
           'url': home,
           'logo': { '@type': 'ImageObject', 'url': `${siteUrl}/icon-512.png`, 'width': 512, 'height': 512 },
+          'sameAs': [site.githubOrganization],
         },
         {
           '@type': 'WebSite',
@@ -222,6 +277,19 @@ useHead({
           'browserRequirements': 'Requires JavaScript and a modern web browser',
           'image': `${siteUrl}/og-image.png`,
           'featureList': [...features, ...adminTools].map(feature => feature.title),
+          'isAccessibleForFree': true,
+          // The hosted version's free plan
+          'offers': { '@type': 'Offer', 'name': 'Free plan', 'price': '0', 'priceCurrency': 'USD', 'url': home },
+          'publisher': { '@id': `${home}#organization` },
+        },
+        {
+          '@type': 'SoftwareSourceCode',
+          '@id': `${home}#source`,
+          'name': site.name,
+          'description': 'The source code of Book A Space, an open source facility booking system that can be self-hosted.',
+          'codeRepository': site.repository,
+          'programmingLanguage': ['C#', 'TypeScript'],
+          'targetProduct': { '@id': `${home}#app` },
           'publisher': { '@id': `${home}#organization` },
         },
         {
@@ -266,21 +334,30 @@ useHead({
       </template>
 
       <template #headline>
-        <span class="inline-flex items-center gap-2 rounded-full bg-default/80 px-3 py-1 text-sm font-medium text-toned ring ring-default backdrop-blur">
+        <a
+          :href="site.repository"
+          target="_blank"
+          rel="noopener"
+          class="inline-flex items-center gap-2 rounded-full bg-default/80 px-3 py-1 text-sm font-medium text-toned ring ring-default backdrop-blur transition hover:text-highlighted hover:ring-primary/40"
+        >
           <UIcon
-            name="i-lucide-sparkles"
-            class="size-4 text-primary"
+            name="i-simple-icons-github"
+            class="size-4"
           />
-          Facility booking, made simple
-        </span>
+          Open source on GitHub
+          <UIcon
+            name="i-lucide-arrow-up-right"
+            class="size-4 text-muted"
+          />
+        </a>
       </template>
 
       <template #title>
-        The easy way to book <span class="text-primary">shared spaces</span>
+        The open source <span class="text-primary">facility booking system</span>
       </template>
 
       <template #description>
-        Book A Space is the facility booking platform for organizations that share rooms, courts, halls and labs. See what's free, book it in a few taps, and never double book again.
+        Book A Space is a facility booking platform for organizations that share rooms, courts, halls and labs. Host it on your own servers, or use the hosted version on a free plan that never expires.
       </template>
 
       <HomePreview class="mx-auto mt-4 w-full max-w-5xl" />
@@ -327,10 +404,10 @@ useHead({
             id="features-title"
             class="mt-2 text-3xl font-bold tracking-tight text-pretty text-highlighted sm:text-4xl"
           >
-            Everything you need to run shared spaces
+            A room booking system everybody can use
           </h2>
           <p class="mt-4 text-lg text-muted text-pretty">
-            Replace the spreadsheets, group chats and paper sign-up sheets with one booking system everybody can use.
+            Move bookings out of spreadsheets, group chats and paper sign-up sheets, and onto one calendar that everybody can check.
           </p>
         </div>
 
@@ -358,9 +435,81 @@ useHead({
     </section>
 
     <section
+      id="open-source"
+      aria-labelledby="open-source-title"
+      class="scroll-mt-(--ui-header-height) border-y border-default bg-elevated/30"
+    >
+      <UContainer class="py-24 sm:py-32">
+        <div class="mx-auto max-w-2xl text-center">
+          <p class="font-semibold text-primary">
+            Open source
+          </p>
+          <h2
+            id="open-source-title"
+            class="mt-2 text-3xl font-bold tracking-tight text-pretty text-highlighted sm:text-4xl"
+          >
+            Host it yourself, or let us host it for free
+          </h2>
+          <p class="mt-4 text-lg text-muted text-pretty">
+            Book A Space is open source, and the hosted version runs the same code.
+          </p>
+        </div>
+
+        <ul class="mx-auto mt-16 grid max-w-5xl gap-6 lg:grid-cols-2">
+          <li
+            v-for="(option, index) in hosting"
+            :key="option.title"
+            class="flex flex-col rounded-2xl bg-default p-8 ring"
+            :class="index === 0 ? 'ring-primary/40 shadow-xl shadow-primary/10' : 'ring-default'"
+          >
+            <div class="flex items-center justify-between gap-4">
+              <span class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary ring ring-primary/20">
+                <UIcon
+                  :name="option.icon"
+                  class="size-5"
+                />
+              </span>
+              <span
+                class="rounded-full px-3 py-1 text-sm font-semibold ring ring-inset"
+                :class="index === 0 ? 'bg-primary/10 text-primary ring-primary/25' : 'bg-elevated text-toned ring-default'"
+              >
+                {{ option.badge }}
+              </span>
+            </div>
+            <h3 class="mt-6 text-xl font-semibold text-highlighted">
+              {{ option.title }}
+            </h3>
+            <p class="mt-2 text-base/7 text-muted">
+              {{ option.description }}
+            </p>
+            <ul class="mt-6 space-y-3 text-sm/6 text-toned">
+              <li
+                v-for="point in option.points"
+                :key="point"
+                class="flex gap-3"
+              >
+                <UIcon
+                  name="i-lucide-check"
+                  class="mt-0.5 size-5 shrink-0 text-primary"
+                />
+                {{ point }}
+              </li>
+            </ul>
+            <div class="mt-8 flex flex-1 items-end">
+              <UButton
+                v-bind="index === 0 ? primary[0] : github"
+                size="lg"
+              />
+            </div>
+          </li>
+        </ul>
+      </UContainer>
+    </section>
+
+    <section
       id="how-it-works"
       aria-labelledby="how-it-works-title"
-      class="scroll-mt-(--ui-header-height) border-y border-default bg-elevated/30"
+      class="scroll-mt-(--ui-header-height)"
     >
       <UContainer class="py-24 sm:py-32">
         <div class="mx-auto max-w-2xl text-center">
@@ -404,7 +553,10 @@ useHead({
       </UContainer>
     </section>
 
-    <section aria-labelledby="admins-title">
+    <section
+      aria-labelledby="admins-title"
+      class="border-y border-default bg-elevated/30"
+    >
       <UContainer class="grid items-center gap-16 py-24 sm:py-32 lg:grid-cols-2">
         <div>
           <p class="font-semibold text-primary">
@@ -414,10 +566,10 @@ useHead({
             id="admins-title"
             class="mt-2 text-3xl font-bold tracking-tight text-pretty text-highlighted sm:text-4xl"
           >
-            Stay in control, without the admin work
+            Decide who can book what
           </h2>
           <p class="mt-4 text-lg text-muted text-pretty">
-            Decide what can be booked and who can book it. Book A Space keeps the record, so you don't have to.
+            Set up units and facilities, choose who can book each one, and let Book A Space keep the record.
           </p>
 
           <ul class="mt-10 space-y-6">
@@ -540,7 +692,7 @@ useHead({
     <section
       id="use-cases"
       aria-labelledby="use-cases-title"
-      class="scroll-mt-(--ui-header-height) border-y border-default bg-elevated/30"
+      class="scroll-mt-(--ui-header-height)"
     >
       <UContainer class="py-24 sm:py-32">
         <div class="mx-auto max-w-2xl text-center">
@@ -551,10 +703,10 @@ useHead({
             id="use-cases-title"
             class="mt-2 text-3xl font-bold tracking-tight text-pretty text-highlighted sm:text-4xl"
           >
-            Built for any organization that shares space
+            Facility booking for any organization that shares space
           </h2>
           <p class="mt-4 text-lg text-muted text-pretty">
-            Wherever people take turns with the same rooms, courts and halls, Book A Space keeps it fair and clear.
+            If people in your organization take turns with the same spaces, Book A Space can manage the bookings.
           </p>
         </div>
 
@@ -584,7 +736,7 @@ useHead({
     <section
       id="faq"
       aria-labelledby="faq-title"
-      class="scroll-mt-(--ui-header-height)"
+      class="scroll-mt-(--ui-header-height) border-y border-default bg-elevated/30"
     >
       <UContainer class="grid gap-12 py-24 sm:py-32 lg:grid-cols-[2fr_3fr]">
         <div>
@@ -612,11 +764,11 @@ useHead({
       </UContainer>
     </section>
 
-    <UContainer class="pb-24 sm:pb-32">
+    <UContainer class="py-24 sm:py-32">
       <UPageCTA
         title="Ready to stop double booking?"
-        description="Bring every room, court and hall into one place, and let people book what's free in a few taps."
-        :links="primary"
+        description="Start on the free hosted plan, or get the code from GitHub and run it yourself."
+        :links="closing"
         variant="subtle"
         class="overflow-hidden"
         :ui="{ title: 'text-3xl sm:text-4xl font-bold tracking-tight', description: 'text-lg' }"
