@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { site } from '~/lib/site'
+
 // The home page's: a header with the way round the page, and a footer. Drawn when the app is built (see routeRules in nuxt.config.ts),
 // so what depends on who is signed in comes from useHomeLinks, and the banner is only drawn in the browser.
 const { primary, header } = useHomeLinks()
 
 const sections = [
   { label: 'Features', to: '/#features' },
+  { label: 'Open source', to: '/#open-source' },
   { label: 'How it works', to: '/#how-it-works' },
   { label: 'Use cases', to: '/#use-cases' },
   { label: 'FAQ', to: '/#faq' },
@@ -42,6 +45,14 @@ useHead({ htmlAttrs: { class: 'motion-safe:scroll-smooth' } })
       </nav>
 
       <template #right>
+        <UButton
+          :to="site.repository"
+          target="_blank"
+          icon="i-simple-icons-github"
+          color="neutral"
+          variant="ghost"
+          aria-label="Book A Space on GitHub"
+        />
         <UColorModeButton />
         <UButton
           v-for="link in header"
@@ -109,7 +120,7 @@ useHead({ htmlAttrs: { class: 'motion-safe:scroll-smooth' } })
           <div class="sm:col-span-2">
             <AppLogo />
             <p class="mt-4 max-w-sm text-sm text-muted">
-              The facility booking platform for organizations that share space. See what's free, book it in a few taps, and keep every booking clash-free.
+              Open source facility booking for organizations that share space. Host it yourself, or use the hosted version on its free plan.
             </p>
           </div>
 
@@ -131,6 +142,15 @@ useHead({ htmlAttrs: { class: 'motion-safe:scroll-smooth' } })
                   active-class=""
                 >
                   {{ section.label }}
+                </ULink>
+              </li>
+              <li>
+                <ULink
+                  :to="site.repository"
+                  target="_blank"
+                  class="text-muted hover:text-highlighted"
+                >
+                  Source code on GitHub
                 </ULink>
               </li>
             </ul>

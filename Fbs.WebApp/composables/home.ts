@@ -1,9 +1,6 @@
 import type { ButtonProps } from '@nuxt/ui'
 import { useGetAuthMe } from '~/api'
 
-/** Where the old build signs people up, until the switch to accounts */
-const telegramBot = 'https://t.me/temasek_facility_booking_bot'
-
 /**
  * Where the buttons of the home page take somebody, which depends on how the build signs people in and on whether they are.
  *
@@ -37,10 +34,7 @@ export function useHomeLinks() {
           { label: 'Make a booking', to: '/booking/new', icon: 'i-lucide-calendar-plus' },
           { label: 'View bookings', to: '/booking', color: 'neutral', variant: 'subtle' },
         ]
-      : [
-          { label: 'Log in', to: '/auth/login', trailingIcon: 'i-lucide-arrow-right' },
-          { label: 'Sign up on Telegram', to: telegramBot, target: '_blank', icon: 'i-simple-icons-telegram', color: 'neutral', variant: 'subtle' },
-        ]
+      : [{ label: 'Log in', to: '/auth/login', trailingIcon: 'i-lucide-arrow-right' }]
   })
 
   /** The buttons in the header, which is narrower */

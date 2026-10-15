@@ -11,11 +11,15 @@ test.describe('the home page, for crawlers', () => {
     const html = await response.text()
 
     expect(html).toMatch(/<html[^>]* lang="en"/)
-    expect(html).toContain('<title>Book A Space: facility and room booking for shared spaces</title>')
-    expect(html).toMatch(/<h1[^>]*>[^]*The easy way to book[^]*<\/h1>/)
-    expect(html).toContain('Everything you need to run shared spaces')
+    expect(html).toContain('<title>Book A Space: free, open source facility booking system</title>')
+    expect(html).toMatch(/<h1[^>]*>[^]*The open source[^]*facility booking system[^]*<\/h1>/)
+    expect(html).toContain('A room booking system everybody can use')
+    // Both ways to have it, and where the code is
+    expect(html).toContain('Free forever')
+    expect(html).toContain('href="https://github.com/bookaspace-app/BookASpace"')
     // The answers are there while they are closed
     expect(html).toContain('made all at once or not at all')
+    expect(html).toContain('a free plan that never expires')
 
     expect(html).toContain(`<link rel="canonical" href="${site}/">`)
     expect(html).toContain(`<meta property="og:url" content="${site}/">`)
@@ -31,7 +35,7 @@ test.describe('the home page, for crawlers', () => {
 
     const json = /<script type="application\/ld\+json"[^>]*>(.*?)<\/script>/s.exec(html)?.[1]
     const types = (JSON.parse(json!)['@graph'] as { '@type': string }[]).map(node => node['@type'])
-    expect(types).toEqual(expect.arrayContaining(['Organization', 'WebSite', 'WebPage', 'WebApplication', 'FAQPage']))
+    expect(types).toEqual(expect.arrayContaining(['Organization', 'WebSite', 'WebPage', 'WebApplication', 'SoftwareSourceCode', 'FAQPage']))
   })
 
   test('robots.txt keeps crawlers out of the pages behind a sign in, and points to the sitemap', async ({ request }) => {
