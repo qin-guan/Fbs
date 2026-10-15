@@ -47,6 +47,12 @@ export default defineNuxtConfig({
         { name: 'twitter:description', content: 'Book A Space helps units, clubs, and teams check facility availability, coordinate shared spaces, and manage bookings from a phone.' },
         { name: 'twitter:image', content: '/images/logo.png' },
       ],
+      link: [
+        // The .ico is for browsers without SVG favicons; its sizes keep Chrome from picking it over the SVG
+        { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
+        { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+      ],
       script: [
         {
           src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1586897931312395',
