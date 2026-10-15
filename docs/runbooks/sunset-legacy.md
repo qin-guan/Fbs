@@ -37,8 +37,8 @@ app, on each, and look at staging by hand: signing in, booking, the admin pages,
 
 ### 1. The web app: only the pages for accounts
 
-- Remove the `legacy` build, and the pages only it reaches: `pages/auth`, `pages/booking`, `pages/profile`, `pages/faqs`, `pages/changelog`, the home page's
-  `components/home/legacy.vue`, the `app` layout (and `landing`, if nothing else uses it then), and the composables only they use (`booking.ts`,
+- Remove the `legacy` build, and the pages only it reaches: `pages/auth`, `pages/booking`, `pages/profile`, `pages/faqs`, `pages/changelog`, the old build's
+  buttons on the home page (in `composables/home.ts`, with its `/Auth/Me` and `/auth/`, `/booking` and `/profile` in `privatePaths` in `lib/site.ts`), the `app` layout (and `landing`, if nothing else uses it then), and the composables only they use (`booking.ts`,
   `booking-slots.ts`, `nominal-roll.ts`, the ones for a session by cookie). `lib/` and `composables/tenant.ts` are the new pages' and stay.
 - `authMode` is then `clerk` (and `test`, for the browser tests); `NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is required.
 - Regenerate the API client after step 2, not before: this still calls what is there.

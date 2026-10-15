@@ -12,25 +12,7 @@ const signedIn = computed(() => accounts ? isLoaded.value && isSignedIn.value ==
   <div class="min-h-svh flex flex-col bg-default">
     <header class="sticky top-0 z-10 border-b border-default bg-default/75 backdrop-blur">
       <UContainer class="h-(--ui-header-height) flex items-center justify-between gap-3">
-        <NuxtLink
-          to="/"
-          class="flex items-center gap-2.5 font-semibold text-highlighted"
-        >
-          <img
-            v-if="!accounts"
-            src="/images/logo.png"
-            alt="3SIB crest"
-            width="32"
-            height="26"
-            class="h-7 w-auto"
-          >
-          <UIcon
-            v-else
-            name="i-lucide-calendar-check"
-            class="size-6 text-primary"
-          />
-          <span>Book A Space</span>
-        </NuxtLink>
+        <AppLogo />
 
         <div class="flex items-center gap-1.5">
           <UColorModeButton />

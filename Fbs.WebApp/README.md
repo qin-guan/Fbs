@@ -1,6 +1,7 @@
 # Facility Booking web app
 
-A Nuxt 4 single page app (`ssr: false`) for the API in `Fbs.WebApi`. Its API client is generated from the API's OpenAPI document with
+A Nuxt 4 app for the API in `Fbs.WebApi`, whose pages are drawn in the browser, but for the home page, which is drawn when it is built (see
+[The home page, and search engines](#the-home-page-and-search-engines)). Its API client is generated from the API's OpenAPI document with
 [Kubb](https://kubb.dev): start the API, then `pnpm codegen` (or `OPENAPI_URL=<file or address> pnpm codegen`), and commit what it writes to `api/`.
 
 ## How people sign in
@@ -20,6 +21,28 @@ if they have none. Everything that belongs to an organization is under `/t/:slug
 `@clerk/nuxt` is only added to a build with a key, and the app reads what Clerk says through `composables/session.ts` and `plugins/clerk-session.client.ts`, so
 nothing else in the app, or in the download for the old pages, depends on it. Clerk's session token needs `email` and `name` as custom claims (see the
 [Cutover 2 runbook](../docs/runbooks/cutover-2-accounts.md)).
+
+## The home page, and search engines
+
+Every page is drawn in the browser (`'/**': { ssr: false }` in `routeRules`), as there is no server to check a session on, but the home page, which is
+drawn when the app is built (`'/': { prerender: true }`). So what it says, its metadata, and its structured data are in its HTML, for search engines and
+link previews that don't run JavaScript. It is the same page for everyone: what depends on who is signed in (the buttons, in `composables/home.ts`, and
+taking somebody signed in to their organization, `components/home/redirect.vue`) is only looked at once it is in the browser, after the page drawn there
+has caught up with the HTML. Keep anything that reads the session, `localStorage` or the API on that page behind `useMounted` or `<ClientOnly>`, or it
+won't match the HTML (and the build will call the API).
+
+| What | Where |
+|---|---|
+| The name, title, description and the picture's alt text | `lib/site.ts` |
+| What every page starts with: description, Open Graph, Twitter cards, icons, the manifest | `app.head` in `nuxt.config.ts` |
+| The canonical link and `og:url` of each page, and `Page \| Book A Space` titles | `app.vue` |
+| The home page's title, `robots`, and structured data (Organization, WebSite, WebPage, WebApplication, FAQPage) | `pages/index.vue` |
+| `robots.txt` and `sitemap.xml`, written when the app is built | `server/routes/` |
+| `X-Robots-Tag: noindex` for the pages behind a sign in, and keeping crawlers out of them | `privatePaths` in `lib/site.ts` |
+| The picture link previews show (1200 by 630), the icons, and the manifest | `public/og-image.png`, `public/icon-*.png`, `public/site.webmanifest` |
+
+The addresses given to search engines and previews start with `NUXT_PUBLIC_SITE_URL` (`https://bookaspace.app` when it isn't set), when the app is built:
+set it for a build deployed anywhere else, such as staging. `e2e/home.spec.ts` checks what is served, as a crawler sees it.
 
 ## Pages of an organization
 
