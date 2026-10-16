@@ -12,11 +12,11 @@
     <PackageReference Include="FastEndpoints" Version="8.3.0" />
     <PackageReference Include="FastEndpoints.Security" Version="8.3.0" />
     <PackageReference Include="FastEndpoints.Swagger" Version="8.3.0" />
-    <PackageReference Include="Google.Apis.Calendar.v3" Version="1.75.0.4206" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.17.10" />
+    <PackageReference Include="Google.Apis.Calendar.v3" Version="1.77.0.4285" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.18.0" />
     <PackageReference Include="SqlSugarCore" Version="5.1.4.221" />
-    <PackageReference Include="Telegram.Bot" Version="22.10.3.2" />
+    <PackageReference Include="Telegram.Bot" Version="22.10.3.3" />
   </ItemGroup>
 
   <ItemGroup>
